@@ -397,21 +397,25 @@ var PRAZO_DIAS_UTEIS = 5;
 var STORAGE_KEY = 'cartorio-data';
 var FS_IDB_NAME = 'cartorio-fs';
 var FS_IDB_STORE = 'handles';
-var FS_HANDLE_KEY = 'dataFile';
-var FS_DEFAULT_NAME = 'controle-atos-dados.json';
+var FS_HANDLE_KEY = 'dataDir';
+var FS_DATA_FILE = 'controle-atos-dados.json';
+var FS_BACKUP_DIR = 'backups';
+var FS_BACKUP_SLOTS = ['10:50', '17:45'];
+var FS_BACKUP_RETENTION_DIAS = 60;
 
 /* ===================== Estado ===================== */
 var state = null;
 var storageAvailable = true;
 var memoryFallback = {};
-var fsSupported = (typeof window !== 'undefined' && 'showSaveFilePicker' in window && 'showOpenFilePicker' in window);
+var fsSupported = (typeof window !== 'undefined' && 'showDirectoryPicker' in window);
 var fileMode = false;
-var fileHandle = null;
+var dirHandle = null;
 var fsPendingHandle = null;
 var fsStatus = 'init';   /* init | connected | reconnect | error | offer | unsupported */
-var fsFileName = '';
+var fsFolderName = '';
 var fsWriting = false;
 var fsPending = false;
+var backupRunning = false;
 var ui = {
   search:'', statusFilter:'all', canalFilter:'all', pessoaFilter:'all',
   onlyOverdue:false, sortBy:'prazo', viewMode:'lista', agruparPessoa:false
@@ -533,7 +537,7 @@ function loadState(){
   }).catch(function(){ return defaultState(); });
 }
 function saveState(){
-  if(fileMode && fileHandle){
+  if(fileMode && dirHandle){
     return fsFlush();
   }
   return window.storage.set(STORAGE_KEY, JSON.stringify(state), false).catch(function(e){
@@ -541,11 +545,12 @@ function saveState(){
   });
 }
 
-/* ===================== Armazenamento em arquivo (File System Access) =====================
-   Persistencia opcional num arquivo .json escolhido pelo usuario. Se esse arquivo ficar
-   dentro de uma pasta sincronizada (Google Drive para Desktop, OneDrive, etc.), o backup
-   na nuvem e a sincronizacao entre maquinas ficam por conta dela. Convive com o backup
-   manual e com o window.storage do artifact — nao substitui nenhum. So funciona em
+/* ===================== Armazenamento em pasta (File System Access) =====================
+   Persistencia opcional numa PASTA local escolhida pelo usuario. Dentro dela o app mantem
+   o arquivo de dados ao vivo (FS_DATA_FILE) e uma subpasta de backups (FS_BACKUP_DIR) com
+   copias datadas geradas 2x/dia (FS_BACKUP_SLOTS), com "recuperacao na proxima abertura".
+   Tudo fica so no computador — nada vai para a nuvem (se a pasta for local). Convive com o
+   backup manual e com o window.storage do artifact — nao substitui nenhum. So funciona em
    navegadores Chromium (Chrome/Edge), por isso ha deteccao e degradacao graciosa. */
 
 function idbOpen(){
@@ -596,30 +601,113 @@ function fsQueryGranted(handle){
   if(!handle.queryPermission) return Promise.resolve(false);
   return handle.queryPermission({mode:'readwrite'}).then(function(p){ return p==='granted'; }).catch(function(){ return false; });
 }
-function fsReadHandle(handle){
-  return handle.getFile().then(function(f){ return f.text(); });
-}
-function fsWriteHandle(handle, text){
-  return handle.createWritable().then(function(w){
+function fsWriteFileHandle(fh, text){
+  return fh.createWritable().then(function(w){
     return Promise.resolve(w.write(text)).then(function(){ return w.close(); });
   });
 }
 
-/* Grava o estado no arquivo, coalescendo gravacoes sobrepostas: varias acoes rapidas nao
-   devem abrir writables concorrentes, e a ultima gravacao sempre reflete o estado atual. */
+/* Le o arquivo de dados de dentro da pasta conectada. Aplica em `state` e retorna:
+   'loaded' (carregou dados validos), 'new' (pasta ainda sem arquivo de dados) ou
+   'invalid' (arquivo existe mas nao e um JSON valido desta ferramenta — nao mexe em state). */
+function loadFromDir(handle){
+  return handle.getFileHandle(FS_DATA_FILE, {create:false}).then(function(fh){
+    return fh.getFile().then(function(f){ return f.text(); }).then(function(text){
+      if(!text || !text.trim()) return 'new';
+      var imported = null;
+      try{ imported = JSON.parse(text); }catch(e){ return 'invalid'; }
+      if(imported && Array.isArray(imported.protocolos)){ state = migrate(imported); holidayCache = {}; return 'loaded'; }
+      return 'invalid';
+    });
+  }).catch(function(){ return 'new'; });
+}
+
+/* Grava o estado no arquivo de dados dentro da pasta, coalescendo gravacoes sobrepostas:
+   varias acoes rapidas nao devem abrir writables concorrentes, e a ultima gravacao sempre
+   reflete o estado atual. */
 function fsFlush(){
-  if(!fileHandle) return Promise.resolve();
+  if(!dirHandle) return Promise.resolve();
   if(fsWriting){ fsPending = true; return Promise.resolve(); }
   fsWriting = true;
-  return fsWriteHandle(fileHandle, JSON.stringify(state)).then(function(){
+  return dirHandle.getFileHandle(FS_DATA_FILE, {create:true}).then(function(fh){
+    return fsWriteFileHandle(fh, JSON.stringify(state));
+  }).then(function(){
     fsWriting = false;
     if(fsPending){ fsPending = false; return fsFlush(); }
   }).catch(function(e){
     fsWriting = false;
-    console.error('Falha ao salvar no arquivo', e);
+    console.error('Falha ao salvar na pasta', e);
     fsStatus = 'error';
     App.render();
   });
+}
+
+/* ---- Backups automaticos locais: copias datadas 2x/dia dentro da subpasta backups/ ---- */
+function collectDirEntries(dirH){
+  var it = dirH.values();
+  var acc = [];
+  function step(){
+    return it.next().then(function(res){
+      if(res.done) return acc;
+      acc.push(res.value);
+      return step();
+    });
+  }
+  return step();
+}
+function pruneBackups(bdir){
+  return collectDirEntries(bdir).then(function(entries){
+    var cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - FS_BACKUP_RETENTION_DIAS);
+    var cutoffISO = toISO(cutoff);
+    var dels = [];
+    entries.forEach(function(h){
+      if(h.kind !== 'file') return;
+      var m = /(\d{4}-\d{2}-\d{2})_\d{4}\.json$/.exec(h.name);
+      if(m && m[1] < cutoffISO) dels.push(h.name);
+    });
+    return dels.reduce(function(p, name){
+      return p.then(function(){ return bdir.removeEntry(name).catch(function(){}); });
+    }, Promise.resolve());
+  });
+}
+function writeBackupSnapshot(slot){
+  if(!dirHandle) return Promise.resolve(false);
+  var fname = 'controle-atos-dados-' + todayISO() + '_' + slot.replace(':', '') + '.json';
+  return dirHandle.getDirectoryHandle(FS_BACKUP_DIR, {create:true}).then(function(bdir){
+    return bdir.getFileHandle(fname, {create:true}).then(function(fh){
+      return fsWriteFileHandle(fh, JSON.stringify(state));
+    }).then(function(){ return pruneBackups(bdir); });
+  }).then(function(){ return true; }).catch(function(e){
+    console.error('Falha no backup automatico', e); return false;
+  });
+}
+/* Enquanto o app esta aberto (e na abertura), verifica se algum horario de backup ja
+   passou hoje e ainda nao foi feito — se sim, faz a copia. "Recuperacao na proxima
+   abertura": se o app estava fechado no horario, a copia sai assim que ele abrir depois,
+   no mesmo dia. Os marcadores de "ja fiz hoje" ficam no localStorage (por maquina). */
+function checkScheduledBackups(){
+  if(!fileMode || !dirHandle || backupRunning) return;
+  var now = new Date();
+  var today = toISO(now);
+  var nowMin = now.getHours() * 60 + now.getMinutes();
+  var due = null;
+  for(var i=0;i<FS_BACKUP_SLOTS.length;i++){
+    var slot = FS_BACKUP_SLOTS[i];
+    var parts = slot.split(':');
+    var slotMin = parseInt(parts[0],10) * 60 + parseInt(parts[1],10);
+    var key = 'cartorio-backup-' + slot.replace(':','');
+    var last = null;
+    try{ last = window.localStorage.getItem(key); }catch(e){}
+    if(nowMin >= slotMin && last !== today){ due = {slot:slot, key:key}; break; }
+  }
+  if(!due) return;
+  backupRunning = true;
+  writeBackupSnapshot(due.slot).then(function(ok){
+    if(ok){ try{ window.localStorage.setItem(due.key, today); }catch(e){} }
+    backupRunning = false;
+    if(settingsOpen) App.render();
+  }).catch(function(){ backupRunning = false; });
 }
 
 /* ===================== Utilidades de data ===================== */
@@ -1298,69 +1386,52 @@ App.importBackupFile = function(inputEl){
   reader.readAsText(file);
 };
 
-/* ---- Armazenamento em arquivo: conectar / abrir / reconectar / desconectar ---- */
-App.conectarNovoArquivo = function(){
-  if(!fsSupported){ window.alert('Este navegador não permite salvar em arquivo local. Abra a ferramenta no Google Chrome ou no Microsoft Edge.'); return Promise.resolve(); }
-  return window.showSaveFilePicker({
-    suggestedName: FS_DEFAULT_NAME,
-    types: [{description:'Dados do Controle de Atos', accept:{'application/json':['.json']}}]
-  }).then(function(handle){
+/* ---- Armazenamento em pasta: conectar / reconectar / desconectar ---- */
+App.conectarPastaDados = function(){
+  if(!fsSupported){ window.alert('Este navegador não permite salvar em pasta local. Abra a ferramenta no Google Chrome ou no Microsoft Edge.'); return Promise.resolve(); }
+  return window.showDirectoryPicker({mode:'readwrite'}).then(function(handle){
     return fsVerifyPermission(handle).then(function(ok){
-      if(!ok){ window.alert('Permissão de escrita negada para o arquivo.'); return; }
-      return fsWriteHandle(handle, JSON.stringify(state)).then(function(){
-        fileHandle = handle; fileMode = true; fsStatus = 'connected'; fsFileName = handle.name; fsPendingHandle = null;
-        return idbHandleSet(handle);
-      }).then(function(){ App.render(); });
-    });
-  }).catch(function(err){
-    if(err && err.name==='AbortError') return;
-    console.error(err); window.alert('Não foi possível conectar o arquivo: '+(err && err.message ? err.message : err));
-  });
-};
-App.abrirArquivoExistente = function(){
-  if(!fsSupported){ window.alert('Este navegador não permite abrir arquivo local. Abra a ferramenta no Google Chrome ou no Microsoft Edge.'); return Promise.resolve(); }
-  return window.showOpenFilePicker({
-    multiple: false,
-    types: [{description:'Dados do Controle de Atos', accept:{'application/json':['.json']}}]
-  }).then(function(handles){
-    var handle = handles[0];
-    if(!handle) return;
-    return fsVerifyPermission(handle).then(function(ok){
-      if(!ok){ window.alert('Permissão negada para o arquivo.'); return; }
-      return fsReadHandle(handle).then(function(text){
-        var imported;
-        try{ imported = JSON.parse(text); }catch(e){ window.alert('Este arquivo não é um JSON válido desta ferramenta.'); return; }
-        if(!imported || !Array.isArray(imported.protocolos)){ window.alert('Este arquivo não parece conter dados desta ferramenta.'); return; }
-        state = migrate(imported); holidayCache = {};
-        fileHandle = handle; fileMode = true; fsStatus = 'connected'; fsFileName = handle.name; fsPendingHandle = null;
-        return idbHandleSet(handle).then(function(){ App.render(); });
+      if(!ok){ window.alert('Permissão de escrita negada para a pasta.'); return; }
+      return loadFromDir(handle).then(function(status){
+        if(status === 'invalid'){
+          window.alert('Esta pasta já contém um arquivo "'+FS_DATA_FILE+'" que não pôde ser lido. Para não sobrescrever nada, escolha outra pasta ou verifique esse arquivo.');
+          return;
+        }
+        dirHandle = handle; fileMode = true; fsStatus = 'connected'; fsFolderName = handle.name; fsPendingHandle = null;
+        var p = (status === 'new') ? fsFlush() : Promise.resolve();
+        return p.then(function(){ return idbHandleSet(handle); }).then(function(){
+          checkScheduledBackups();
+          App.render();
+        });
       });
     });
   }).catch(function(err){
     if(err && err.name==='AbortError') return;
-    console.error(err); window.alert('Não foi possível abrir o arquivo: '+(err && err.message ? err.message : err));
+    console.error(err); window.alert('Não foi possível conectar a pasta: '+(err && err.message ? err.message : err));
   });
 };
-App.reconectarArquivo = function(){
+App.reconectarPasta = function(){
   if(!fsPendingHandle) return Promise.resolve();
   var handle = fsPendingHandle;
   return fsVerifyPermission(handle).then(function(ok){
-    if(!ok){ window.alert('Permissão negada para o arquivo.'); return; }
-    return fsReadHandle(handle).then(function(text){
-      var imported = null;
-      try{ imported = JSON.parse(text); }catch(e){ imported = null; }
-      if(imported && Array.isArray(imported.protocolos)){ state = migrate(imported); holidayCache = {}; }
-      fileHandle = handle; fileMode = true; fsStatus = 'connected'; fsFileName = handle.name; fsPendingHandle = null;
-      App.render();
+    if(!ok){ window.alert('Permissão negada para a pasta.'); return; }
+    return loadFromDir(handle).then(function(status){
+      if(status === 'invalid'){
+        window.alert('O arquivo de dados desta pasta não pôde ser lido. Verifique o arquivo "'+FS_DATA_FILE+'" ou restaure um backup.');
+        return;
+      }
+      dirHandle = handle; fileMode = true; fsStatus = 'connected'; fsFolderName = handle.name; fsPendingHandle = null;
+      var p = (status === 'new') ? fsFlush() : Promise.resolve();
+      return p.then(function(){ checkScheduledBackups(); App.render(); });
     });
   }).catch(function(err){
-    console.error(err); window.alert('Não foi possível reconectar o arquivo: '+(err && err.message ? err.message : err));
+    console.error(err); window.alert('Não foi possível reconectar a pasta: '+(err && err.message ? err.message : err));
   });
 };
-App.desconectarArquivo = function(){
-  if(!window.confirm('Desconectar o arquivo? O app volta a salvar no armazenamento padrão do navegador. O arquivo NÃO é apagado — seus dados continuam nele e você pode reconectar depois.')) return Promise.resolve();
+App.desconectarPasta = function(){
+  if(!window.confirm('Desconectar a pasta? O app volta a salvar no armazenamento padrão do navegador. Os arquivos NÃO são apagados — seus dados e backups continuam na pasta e você pode reconectar depois.')) return Promise.resolve();
   return idbHandleClear().then(function(){
-    fileHandle = null; fileMode = false; fsPendingHandle = null;
+    dirHandle = null; fileMode = false; fsPendingHandle = null;
     fsStatus = fsSupported ? 'offer' : 'unsupported';
     App.render();
   });
@@ -1525,16 +1596,16 @@ App.toggleFeriadoMovel = function(key){
 /* ===================== Render ===================== */
 function renderFsBanner(){
   if(fileMode && fsStatus==='connected'){
-    return '<div class="banner-ok no-print">Salvando automaticamente no arquivo <strong>'+esc(fsFileName)+'</strong>. Uma pasta sincronizada (Google Drive/OneDrive) cuida do backup na nuvem e da sincronização. <button class="banner-link" onclick="App.desconectarArquivo()">desconectar</button></div>';
+    return '<div class="banner-ok no-print">Salvando automaticamente na pasta <strong>'+esc(fsFolderName)+'</strong> — com backups locais 2×/dia (10:50 e 17:45). <button class="banner-link" onclick="App.desconectarPasta()">desconectar</button></div>';
   }
   if(fsStatus==='reconnect'){
-    return '<div class="banner-warning no-print"><strong>Reconecte seu arquivo de dados</strong> para carregar e salvar seus protocolos neste computador. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.reconectarArquivo()">Reconectar arquivo</button></div>';
+    return '<div class="banner-warning no-print"><strong>Reconecte sua pasta de dados</strong> para carregar e salvar seus protocolos neste computador. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.reconectarPasta()">Reconectar pasta</button></div>';
   }
   if(fsStatus==='error'){
-    return '<div class="banner-warning no-print"><strong>Falha ao salvar no arquivo.</strong> Verifique se ele ainda existe e reconecte, ou use o backup manual em Configurações. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.abrirArquivoExistente()">Reabrir arquivo</button></div>';
+    return '<div class="banner-warning no-print"><strong>Falha ao salvar na pasta.</strong> Verifique se ela ainda existe e reconecte, ou use o backup manual em Configurações. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.conectarPastaDados()">Reconectar pasta</button></div>';
   }
   if(fsSupported && !storageAvailable){
-    return '<div class="banner-info no-print"><strong>Salvar automaticamente num arquivo (recomendado).</strong> Escolha um arquivo — de preferência dentro de uma pasta do Google Drive ou OneDrive — e seus protocolos passam a salvar e sincronizar sozinhos, sem depender de backup manual o tempo todo. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.conectarNovoArquivo()">Criar arquivo de dados</button> <button class="btn-ghost outlined" onclick="App.abrirArquivoExistente()">Abrir arquivo existente</button></div>';
+    return '<div class="banner-info no-print"><strong>Salvar automaticamente numa pasta local (recomendado).</strong> Escolha uma pasta no computador e seus protocolos passam a salvar sozinhos, com backups automáticos 2×/dia — sem depender de backup manual o tempo todo. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.conectarPastaDados()">Conectar pasta de dados</button></div>';
   }
   if(!fsSupported && !storageAvailable){
     return '<div class="banner-warning no-print">Para salvar automaticamente, abra a ferramenta no <strong>Google Chrome</strong> ou no <strong>Microsoft Edge</strong>. Neste navegador os dados não ficam salvos permanentemente — use o backup manual em Configurações para não perdê-los.</div>';
@@ -2075,27 +2146,33 @@ function renderSettingsModal(){
     '</div>';
   }).join('') || '<div class="hint">Nenhum documento cadastrado ainda.</div>';
 
-  var fsSectionStatus, fsButtons = '';
+  var fsSectionStatus, fsButtons = '', fsBackupInfo = '';
   if(fileMode && fsStatus==='connected'){
-    fsSectionStatus = 'Conectado ao arquivo <strong>'+esc(fsFileName)+'</strong>. Tudo é salvo automaticamente nele.';
+    fsSectionStatus = 'Conectado à pasta <strong>'+esc(fsFolderName)+'</strong>. Dados salvos automaticamente e backups 2×/dia na subpasta <code>'+FS_BACKUP_DIR+'</code>.';
   }else if(fsStatus==='reconnect'){
-    fsSectionStatus = 'Há um arquivo lembrado, mas ele precisa ser reconectado nesta sessão.';
+    fsSectionStatus = 'Há uma pasta lembrada, mas ela precisa ser reconectada nesta sessão.';
   }else if(!fsSupported){
-    fsSectionStatus = 'Este navegador não permite salvar em arquivo. Use o Google Chrome ou o Microsoft Edge.';
+    fsSectionStatus = 'Este navegador não permite salvar em pasta. Use o Google Chrome ou o Microsoft Edge.';
   }else{
-    fsSectionStatus = 'Nenhum arquivo conectado — os dados estão no armazenamento padrão do navegador.';
+    fsSectionStatus = 'Nenhuma pasta conectada — os dados estão no armazenamento padrão do navegador.';
   }
   if(fsSupported){
     if(fileMode && fsStatus==='connected'){
-      fsButtons = '<button type="button" class="btn-ghost outlined" onclick="App.abrirArquivoExistente()">Trocar de arquivo</button>'+
-                  '<button type="button" class="btn-ghost outlined" onclick="App.desconectarArquivo()">Desconectar</button>';
+      fsButtons = '<button type="button" class="btn-ghost outlined" onclick="App.conectarPastaDados()">Trocar de pasta</button>'+
+                  '<button type="button" class="btn-ghost outlined" onclick="App.desconectarPasta()">Desconectar</button>';
     }else if(fsStatus==='reconnect'){
-      fsButtons = '<button type="button" class="btn-ghost outlined" onclick="App.reconectarArquivo()">Reconectar arquivo</button>'+
-                  '<button type="button" class="btn-ghost outlined" onclick="App.conectarNovoArquivo()">Criar novo arquivo</button>';
+      fsButtons = '<button type="button" class="btn-ghost outlined" onclick="App.reconectarPasta()">Reconectar pasta</button>'+
+                  '<button type="button" class="btn-ghost outlined" onclick="App.conectarPastaDados()">Trocar de pasta</button>';
     }else{
-      fsButtons = '<button type="button" class="btn-ghost outlined" onclick="App.conectarNovoArquivo()">Criar arquivo de dados</button>'+
-                  '<button type="button" class="btn-ghost outlined" onclick="App.abrirArquivoExistente()">Abrir arquivo existente</button>';
+      fsButtons = '<button type="button" class="btn-ghost outlined" onclick="App.conectarPastaDados()">Conectar pasta de dados</button>';
     }
+  }
+  if(fileMode && fsStatus==='connected'){
+    var fsBackupItems = FS_BACKUP_SLOTS.map(function(slot){
+      var last = null; try{ last = window.localStorage.getItem('cartorio-backup-'+slot.replace(':','')); }catch(e){}
+      return slot+' (último: '+(last ? formatBR(last) : '—')+')';
+    });
+    fsBackupInfo = 'Backups automáticos: '+fsBackupItems.join(' · ')+'. Mantém os últimos '+FS_BACKUP_RETENTION_DIAS+' dias.';
   }
 
   var fm = state.feriadosMoveis;
@@ -2116,9 +2193,10 @@ function renderSettingsModal(){
       '</div>'+
 
       '<div class="settings-section">'+
-        '<h3>Armazenamento em arquivo (sincronização automática)</h3>'+
-        '<div class="hint">Salve os dados num arquivo <code>.json</code> dentro de uma pasta sincronizada (Google Drive para Desktop, OneDrive, etc.): a partir daí tudo é salvo automaticamente e a própria pasta cuida do backup na nuvem e da sincronização entre computadores, sem backup manual o tempo todo. Funciona no Chrome e no Edge. Em outro computador, use "Abrir arquivo existente" apontando para o mesmo arquivo na pasta sincronizada.</div>'+
+        '<h3>Armazenamento em pasta local (salva automático + backup)</h3>'+
+        '<div class="hint">Escolha uma pasta no computador: o app salva os dados nela automaticamente (<code>'+FS_DATA_FILE+'</code>) e ainda guarda backups 2×/dia (10:50 e 17:45) na subpasta <code>'+FS_BACKUP_DIR+'</code>. Tudo fica só neste computador — nada vai para a nuvem. Funciona no Chrome e no Edge. Dica: para não sincronizar na nuvem, use uma pasta fora do OneDrive/Google Drive (ex.: C:\\ControleAtos).</div>'+
         '<div class="hint" style="color:var(--ink);margin-top:6px;">'+fsSectionStatus+'</div>'+
+        (fsBackupInfo ? '<div class="hint" style="margin-top:4px;">'+fsBackupInfo+'</div>' : '')+
         (fsButtons ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">'+fsButtons+'</div>' : '')+
       '</div>'+
 
@@ -2312,22 +2390,27 @@ function bootstrap(){
     }
     return fsQueryGranted(handle).then(function(granted){
       if(!granted){
-        /* Handle lembrado, mas o navegador exige um gesto do usuario para reautorizar:
+        /* Pasta lembrada, mas o navegador exige um gesto do usuario para reautorizar:
            mostra o aviso de reconexao e carrega o fallback enquanto isso. */
         fsPendingHandle = handle; fsStatus = 'reconnect';
         return fallbackLoad();
       }
-      return fsReadHandle(handle).then(function(text){
-        var imported = null;
-        try{ imported = JSON.parse(text); }catch(e){ imported = null; }
-        if(imported && Array.isArray(imported.protocolos)){
-          state = migrate(imported);
-          fileHandle = handle; fileMode = true; fsStatus = 'connected'; fsFileName = handle.name;
-          renderAll();
-        }else{
+      return loadFromDir(handle).then(function(status){
+        if(status === 'loaded'){
+          dirHandle = handle; fileMode = true; fsStatus = 'connected'; fsFolderName = handle.name;
+          renderAll(); checkScheduledBackups();
+          return;
+        }
+        if(status === 'invalid'){
           fsPendingHandle = handle; fsStatus = 'reconnect';
           return fallbackLoad();
         }
+        /* 'new': pasta lembrada ainda sem arquivo de dados — cria a partir do fallback. */
+        return loadState().then(function(s){
+          state = s;
+          dirHandle = handle; fileMode = true; fsStatus = 'connected'; fsFolderName = handle.name;
+          return fsFlush();
+        }).then(function(){ renderAll(); checkScheduledBackups(); });
       }).catch(function(){
         fsPendingHandle = handle; fsStatus = 'reconnect';
         return fallbackLoad();
@@ -2341,6 +2424,7 @@ function bootstrap(){
 
 ensureStorage();
 bootstrap();
+setInterval(checkScheduledBackups, 60000);
 
 })();
 </script>
