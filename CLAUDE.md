@@ -23,11 +23,23 @@ de cada ato. Está no plano Pro do Claude.
 - **Re-render total a cada mudança de estado**: `App.render()` chama `renderAll()`, que
   reconstrói `#app.innerHTML` inteiro. Isso já causou bugs sutis (ver seção "Armadilhas"
   abaixo) — qualquer novo campo de texto/interação precisa levar isso em conta.
-- **Persistência**: tenta `window.storage.get/set` (API de artifacts do Claude.ai). Se
-  não existir (aberto fora do Claude.ai), cai num fallback em memória e mostra um aviso
-  no topo. Existe também backup/restauração manual (baixar/ler um `.json` com o
-  `state` inteiro) como rede de segurança — o usuário já teve problemas reais com o
-  artifact publicado não atualizar sozinho, então **não remover o backup manual**.
+- **Persistência (3 camadas que coexistem, nesta ordem de preferência):**
+  1. **Pasta local via File System Access** (Chrome/Edge): o usuário conecta uma pasta
+     (`App.conectarPastaDados`, guardada num `FileSystemDirectoryHandle` no IndexedDB).
+     Dentro dela o app mantém o arquivo de dados ao vivo (`FS_DATA_FILE`) — salvo a cada
+     mudança via `fsFlush` (com coalescência) — e uma subpasta `backups/` com cópias
+     datadas geradas **2×/dia** (`FS_BACKUP_SLOTS = 10:50 e 17:45`), com "recuperação na
+     próxima abertura" (`checkScheduledBackups`, marcadores no `localStorage`, retenção
+     `FS_BACKUP_RETENTION_DIAS`). O navegador exige um gesto por sessão para reautorizar
+     (estado `reconnect`). Só ativa em navegadores Chromium; há degradação graciosa.
+  2. **`window.storage.get/set`** (API de artifacts do Claude.ai), usado como fallback
+     quando nenhuma pasta está conectada. Sem ele (fora do Claude.ai), cai em memória.
+  3. **Backup/restauração manual** (baixar/ler um `.json` com o `state` inteiro) como
+     rede de segurança — o usuário já teve problemas reais com o artifact publicado não
+     atualizar sozinho, então **não remover o backup manual**.
+  Banner de status no topo (`renderFsBanner`) reflete a camada ativa. Contexto de
+  implantação: dev no notebook, uso diário no PC do trabalho (Chrome); dados **locais,
+  sem nuvem** (LGPD/sigilo). App servido pelo GitHub Pages; dados nunca saem do PC.
 - **Migração**: a função `migrate(raw)` roda a cada carregamento e preenche campos que
   não existiam em versões antigas do `state`, sem quebrar dados já salvos. Sempre que
   adicionar um campo novo ao `state` ou a um protocolo, adicionar o default
