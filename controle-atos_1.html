@@ -1,0 +1,2008 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Livro de Protocolos — Controle de Atos</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root{
+  --bg:#EFEEE6;
+  --bg-alt:#E7E4D8;
+  --card:#FBFAF6;
+  --ink:#221F1A;
+  --ink-soft:#6B675C;
+  --line:#D9D4C6;
+
+  --gray:#57544B;      --gray-soft:#E7E4DA;
+  --gold:#A26A1C;       --gold-soft:#F2E4C9;
+  --blue:#2C3E5C;       --blue-soft:#E3E8F1;
+  --plum:#5B3A5C;       --plum-soft:#EEE2EE;
+  --green:#3E6B4B;      --green-soft:#E1EDE3;
+  --dark:#4A4740;       --dark-soft:#E2DFD4;
+  --teal:#1F6F66;       --teal-soft:#DCEDEA;
+  --rose:#9C3B56;       --rose-soft:#F5E1E7;
+  --stamp-red:#8C2A20;  --stamp-red-soft:#F3E1DC;
+
+  --font-display:'Source Serif 4', Georgia, serif;
+  --font-body:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  --radius:4px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  line-height:1.4;
+  -webkit-font-smoothing:antialiased;
+}
+#app{max-width:1080px;margin:0 auto;padding:28px 20px 80px;}
+
+/* ---------- Header ---------- */
+.letterhead{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  padding-bottom:16px;margin-bottom:6px;
+  border-bottom:2px solid var(--ink);
+  flex-wrap:wrap;gap:12px;
+}
+.letterhead h1{
+  font-family:var(--font-display);font-weight:700;
+  font-size:30px;margin:0 0 4px;letter-spacing:-0.01em;
+}
+.letterhead .eyebrow{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:0.12em;
+  text-transform:uppercase;color:var(--ink-soft);
+}
+.header-rule2{border-bottom:1px solid var(--line);margin-bottom:20px;}
+.header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.today-line{font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);margin-bottom:14px;}
+
+.banner-warning{
+  background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold);
+  padding:10px 14px;border-radius:var(--radius);font-size:12.5px;margin-bottom:16px;
+}
+
+/* ---------- Buttons ---------- */
+button{font-family:var(--font-body);cursor:pointer;}
+.btn{
+  border:1px solid var(--ink);background:var(--card);color:var(--ink);
+  padding:8px 16px;border-radius:var(--radius);font-size:13.5px;font-weight:600;
+  transition:transform .12s ease, background .12s ease;
+}
+.btn:hover{background:var(--ink);color:var(--card);}
+.btn:active{transform:scale(0.97);}
+.btn-primary{background:var(--ink);color:var(--card);}
+.btn-primary:hover{background:var(--stamp-red);border-color:var(--stamp-red);}
+.btn-ghost{border:1px solid transparent;background:transparent;color:var(--ink-soft);padding:6px 10px;font-size:13px;border-radius:var(--radius);transition:background .15s ease, color .15s ease, border-color .15s ease;}
+.btn-ghost:hover{background:var(--bg-alt);color:var(--ink);}
+.btn-ghost.outlined{border:1px solid var(--line);}
+.btn-danger{border:1px solid var(--stamp-red);color:var(--stamp-red);background:transparent;}
+.btn-danger:hover{background:var(--stamp-red);color:#fff;}
+.icon-btn{
+  width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+  background:var(--card);display:inline-flex;align-items:center;justify-content:center;
+  font-size:15px;color:var(--ink-soft);flex-shrink:0;
+  transition:border-color .15s ease, color .15s ease, transform .1s ease;
+}
+.icon-btn:hover{border-color:var(--ink);color:var(--ink);}
+.icon-btn:active{transform:scale(0.92);}
+.mini-btn{width:24px;height:24px;border:1px solid var(--line);background:var(--card);border-radius:3px;font-size:11px;color:var(--ink-soft);transition:border-color .15s ease, color .15s ease, transform .1s ease;}
+.mini-btn:hover{border-color:var(--ink);color:var(--ink);}
+.mini-btn:active{transform:scale(0.9);}
+.mini-btn:disabled{opacity:0.35;cursor:not-allowed;}
+.remove-x{color:var(--stamp-red);background:none;border:none;font-size:15px;font-weight:700;padding:2px 6px;transition:transform .1s ease;}
+.remove-x:hover{transform:scale(1.15);}
+.remove-x:disabled{opacity:0.3;cursor:not-allowed;}
+
+/* ---------- Stats ---------- */
+.stats-bar{
+  display:flex;gap:0;margin:22px 0;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+  flex-wrap:wrap;
+}
+.stat{
+  flex:1;min-width:110px;padding:14px 10px;text-align:center;
+  border-right:1px solid var(--line);
+}
+.stat:last-child{border-right:none;}
+.stat .num{font-family:var(--font-mono);font-size:22px;font-weight:700;line-height:1;}
+.stat .lbl{font-size:10px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em;margin-top:6px;}
+.stat.alert .num{color:var(--stamp-red);}
+
+/* ---------- Filters ---------- */
+.filters-bar{
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;
+}
+.search-input{
+  flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);
+  border-radius:var(--radius);font-size:13.5px;background:var(--card);color:var(--ink);
+  font-family:var(--font-body);
+}
+.search-input:focus{outline:2px solid var(--blue);outline-offset:1px;}
+.pill-group{display:flex;gap:6px;flex-wrap:wrap;}
+.pill{
+  padding:6px 12px;border-radius:20px;border:1px solid var(--line);background:var(--card);
+  font-size:12px;color:var(--ink-soft);font-weight:500;white-space:nowrap;
+  transition:background .15s ease, color .15s ease, border-color .15s ease, transform .1s ease;
+}
+.pill.active{background:var(--ink);color:var(--card);border-color:var(--ink);}
+.pill:hover{border-color:var(--ink);}
+.pill:active{transform:scale(0.96);}
+select.sortsel{
+  padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius);
+  font-size:12.5px;background:var(--card);color:var(--ink);font-family:var(--font-body);
+}
+.segmented{display:flex;gap:6px;flex-wrap:wrap;}
+.seg-btn{
+  padding:8px 14px;border:1px solid var(--line);border-radius:20px;background:#fff;
+  font-size:12.5px;color:var(--ink-soft);font-weight:500;
+  transition:background .15s ease, color .15s ease, border-color .15s ease, transform .1s ease;
+}
+.seg-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+.seg-btn:active{transform:scale(0.96);}
+.hint{font-size:11.5px;color:var(--ink-soft);margin:4px 0 10px;}
+
+/* ---------- List / Ficha ---------- */
+.empty-state{
+  text-align:center;padding:60px 20px;color:var(--ink-soft);
+  border:1px dashed var(--line);border-radius:var(--radius);background:var(--card);
+  animation:fadeSlideIn .2s ease-out;
+}
+.empty-state .big{font-family:var(--font-display);font-size:18px;color:var(--ink);margin-bottom:6px;}
+.group-header{font-family:var(--font-display);font-size:15px;margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--ink);display:flex;justify-content:space-between;}
+.group-header:first-child{margin-top:0;}
+.group-header .cnt{font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);}
+
+.ficha{
+  display:flex;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  margin-bottom:12px;overflow:hidden;
+}
+.ficha-bar{width:5px;flex-shrink:0;}
+.ficha-body{flex:1;padding:14px 16px;min-width:0;}
+.ficha-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}
+.ficha-ident{display:flex;flex-direction:column;gap:2px;}
+.ficha-date{font-family:var(--font-mono);font-size:13px;font-weight:700;}
+.ficha-num{font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);}
+.ficha-cliente{font-family:var(--font-display);font-size:16.5px;margin-top:2px;cursor:pointer;text-decoration:underline dotted 1px;text-underline-offset:3px;transition:color .12s ease;}
+.ficha-cliente:hover{color:var(--stamp-red);}
+.ficha-cliente.empty{color:var(--ink-soft);font-style:italic;font-family:var(--font-body);font-size:13px;cursor:default;text-decoration:none;}
+.ficha-sub{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+.ficha-actions{display:flex;gap:4px;align-items:center;}
+.ficha-mid{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;align-items:center;}
+.tag{
+  font-size:11px;padding:3px 9px;border-radius:3px;background:var(--bg-alt);color:var(--ink-soft);
+  border:1px solid var(--line);transition:transform .1s ease;
+}
+.canal-tag{font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.04em;font-weight:600;}
+.pessoa-tag{font-family:var(--font-mono);font-weight:700;letter-spacing:0.03em;}
+.pessoa-tag.pf{color:var(--blue);background:var(--blue-soft);border-color:var(--blue);}
+.pessoa-tag.pj{color:var(--teal);background:var(--teal-soft);border-color:var(--teal);}
+
+.stamp{
+  display:inline-flex;align-items:center;font-family:var(--font-mono);font-size:10.5px;
+  text-transform:uppercase;letter-spacing:0.05em;font-weight:700;
+  padding:4px 10px;border-radius:3px;transform:rotate(-1deg);
+  border:1.5px solid currentColor;white-space:nowrap;
+}
+.stamp.gray{color:var(--gray);background:var(--gray-soft);}
+.stamp.gold{color:var(--gold);background:var(--gold-soft);}
+.stamp.blue{color:var(--blue);background:var(--blue-soft);}
+.stamp.plum{color:var(--plum);background:var(--plum-soft);}
+.stamp.green{color:var(--green);background:var(--green-soft);}
+.stamp.dark{color:var(--dark);background:var(--dark-soft);text-decoration:line-through;}
+.stamp.teal{color:var(--teal);background:var(--teal-soft);}
+.stamp.rose{color:var(--rose);background:var(--rose-soft);}
+
+.status-select{
+  font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;
+  font-weight:700;border-radius:3px;padding:5px 8px;border:1.5px solid currentColor;
+  background:transparent;cursor:pointer;max-width:210px;
+  transition:opacity .15s ease;
+}
+.status-select:hover{opacity:0.8;}
+
+.ficha-bottom{
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
+  padding-top:10px;border-top:1px dashed var(--line);
+}
+.docs-pending{font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.prazo-info{display:flex;align-items:center;gap:10px;}
+.prazo-text{font-size:12.5px;font-family:var(--font-mono);}
+.prazo-text.ok{color:var(--green);}
+.prazo-text.warn{color:var(--gold);}
+.prazo-text.late{color:var(--stamp-red);font-weight:700;}
+.dots{display:flex;gap:3px;}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:background .2s ease;}
+.dot.filled{background:var(--blue);}
+.dot.filled.late{background:var(--stamp-red);}
+.obs{font-size:12.5px;color:var(--ink-soft);margin-top:8px;font-style:italic;}
+.hist-toggle{font-size:11.5px;color:var(--ink-soft);background:none;border:none;text-decoration:underline;padding:0;margin-top:8px;transition:color .12s ease;}
+.hist-toggle:hover{color:var(--ink);}
+.hist-box{margin-top:8px;padding:8px 10px;background:var(--bg-alt);border-radius:3px;font-size:12px;}
+.hist-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--line);}
+.hist-row:last-child{border-bottom:none;}
+.hist-row .hd{font-family:var(--font-mono);color:var(--ink-soft);font-size:11px;}
+
+/* ---------- Kanban ---------- */
+.kanban-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;scroll-behavior:smooth;}
+.kanban-col{flex:0 0 250px;background:var(--bg-alt);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;max-height:75vh;transition:background .15s ease, border-color .15s ease;}
+.kanban-col.drag-over{background:var(--blue-soft);border-color:var(--blue);}
+.kanban-col-header{margin:10px;text-align:center;justify-content:center;}
+.kanban-col-body{flex:1;overflow-y:auto;padding:0 10px 10px;display:flex;flex-direction:column;gap:8px;scroll-behavior:smooth;}
+.kanban-card{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:9px 10px;cursor:grab;font-size:12.5px;transition:transform .12s ease, box-shadow .12s ease;}
+.kanban-card:hover{transform:translateY(-2px);box-shadow:0 3px 10px rgba(0,0,0,0.08);}
+.kanban-card:active{cursor:grabbing;transform:scale(0.98);}
+.k-top{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);margin-bottom:4px;}
+.k-cliente{font-family:var(--font-display);font-size:13.5px;margin-bottom:6px;}
+.k-tag{display:inline-block;font-size:10.5px;padding:2px 7px;border-radius:3px;font-family:var(--font-mono);}
+.k-tag.ok{background:var(--green-soft);color:var(--green);}
+.k-tag.warn{background:var(--gold-soft);color:var(--gold);}
+.k-tag.late{background:var(--stamp-red-soft);color:var(--stamp-red);}
+.kanban-empty{font-size:12px;color:var(--ink-soft);text-align:center;padding:14px 0;font-style:italic;}
+.kanban-hint{font-size:12px;color:var(--ink-soft);margin:0 0 12px;}
+
+/* ---------- Modal ---------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(34,31,26,0.55);
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:30px 16px;overflow-y:auto;z-index:50;
+}
+.overlay.entering{animation:fadeIn .18s ease;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:translateY(0);}}
+@keyframes modalPop{from{opacity:0;transform:scale(0.96) translateY(8px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.anim-in{animation:fadeSlideIn .2s ease;}
+@keyframes highlightNew{0%{background:var(--gold-soft);box-shadow:0 0 0 2px var(--gold);}75%{background:var(--gold-soft);box-shadow:0 0 0 2px var(--gold);}100%{background:var(--card);box-shadow:0 0 0 0 rgba(0,0,0,0);}}
+.ficha-new{animation:highlightNew 1.8s ease;}
+.ficha{transition:box-shadow .15s ease;}
+.ficha:hover{box-shadow:0 2px 10px rgba(34,31,26,0.06);}
+.modal{
+  background:var(--card);border-radius:6px;max-width:580px;width:100%;
+  padding:24px 26px 26px;box-shadow:0 12px 40px rgba(0,0,0,0.25);
+}
+.modal.entering{animation:modalPop .2s cubic-bezier(.2,.8,.3,1);}
+.modal.wide{max-width:640px;}
+.modal h2{font-family:var(--font-display);font-size:21px;margin:0 0 18px;}
+.field{margin-bottom:15px;}
+.field label{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:5px;font-weight:600;}
+.field input[type=text], .field input[type=date], .field textarea, .field select{
+  width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:var(--radius);
+  font-family:var(--font-body);font-size:13.5px;background:#fff;color:var(--ink);
+}
+.field textarea{resize:vertical;min-height:56px;}
+.field-row{display:flex;gap:12px;}
+.field-row .field{flex:1;}
+.checklist{
+  border:1px solid var(--line);border-radius:var(--radius);padding:10px;
+  max-height:170px;overflow-y:auto;background:#fff;
+}
+.checklist label{
+  display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 2px;
+  text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;
+}
+.checklist input[type=checkbox]{margin:0;}
+.add-tipo-row{display:flex;gap:6px;margin-top:8px;}
+.add-tipo-row input{flex:1;padding:7px 10px;border:1px solid var(--line);border-radius:var(--radius);font-size:12.5px;}
+.modal-actions{display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}
+.modal-actions-right{display:flex;gap:8px;}
+
+/* settings */
+.settings-section{margin-bottom:22px;}
+.settings-section h3{font-family:var(--font-display);font-size:15px;margin:0 0 4px;}
+.list-row{display:flex;justify-content:space-between;align-items:center;padding:6px 2px;border-bottom:1px solid var(--line);font-size:13px;gap:8px;}
+.list-row:last-child{border-bottom:none;}
+.status-row{display:flex;gap:6px;align-items:center;padding:7px 2px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.status-row:last-child{border-bottom:none;}
+.status-row input[type=text]{flex:1;min-width:140px;padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;}
+.status-row select{padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12px;}
+.status-row .final-lbl{font-size:11px;color:var(--ink-soft);display:flex;align-items:center;gap:4px;white-space:nowrap;}
+.swatch{width:15px;height:15px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,0.15);flex-shrink:0;}
+.new-status-form{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
+
+/* daily report */
+.report-section{margin-bottom:18px;}
+.report-section h3{font-family:var(--font-display);font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:8px;}
+.report-section h3 .count{font-family:var(--font-mono);font-size:12px;background:var(--bg-alt);padding:2px 8px;border-radius:10px;color:var(--ink-soft);}
+.report-row{font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;}
+.report-row:last-child{border-bottom:none;}
+.report-empty{font-size:12px;color:var(--ink-soft);font-style:italic;}
+
+@media (max-width:600px){
+  .letterhead{flex-direction:column;align-items:flex-start;}
+  .stat{min-width:33%;border-bottom:1px solid var(--line);}
+  .field-row{flex-direction:column;gap:0;}
+}
+@media print{
+  body *{visibility:hidden;}
+  #dailyReportPrint, #dailyReportPrint *{visibility:visible;}
+  #dailyReportPrint{position:absolute;left:0;top:0;width:100%;padding:10px;}
+  .overlay{position:static !important;background:none !important;padding:0 !important;display:block !important;}
+  .modal{box-shadow:none !important;max-width:100% !important;}
+  .no-print{display:none !important;}
+}
+</style>
+</head>
+<body>
+<div id="app"><div style="padding:60px;text-align:center;color:#6B675C;font-family:'JetBrains Mono',monospace;font-size:13px;">Carregando protocolos…</div></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===================== Constantes ===================== */
+var PALETTE = [
+  {key:'gray', name:'Cinza'},
+  {key:'gold', name:'Dourado'},
+  {key:'blue', name:'Azul'},
+  {key:'plum', name:'Ameixa'},
+  {key:'green', name:'Verde'},
+  {key:'dark', name:'Cinza escuro (riscado)'},
+  {key:'teal', name:'Verde-azulado'},
+  {key:'rose', name:'Rosa'}
+];
+
+var DEFAULT_STATUS_LIST = [
+  {key:'aguardando_documentos', label:'Aguardando documentos p/ análise', cor:'gray', isFinal:false, requerDigitalizacao:false},
+  {key:'pendencia_documentos', label:'Pendência de documentos', cor:'gold', isFinal:false, requerDigitalizacao:false},
+  {key:'em_analise', label:'Em análise pelo Tabelião', cor:'blue', isFinal:false, requerDigitalizacao:false},
+  {key:'aguardando_assinatura', label:'Aguardando assinatura', cor:'plum', isFinal:false, requerDigitalizacao:false},
+  {key:'finalizado', label:'Finalizado', cor:'green', isFinal:true, requerDigitalizacao:true},
+  {key:'desistiu', label:'Cliente desistiu', cor:'dark', isFinal:true, requerDigitalizacao:false}
+];
+
+var CANAIS = [
+  {key:'balcao', label:'Balcão'},
+  {key:'whatsapp', label:'WhatsApp'},
+  {key:'email', label:'E-mail'}
+];
+var CANAL_MAP = {};
+CANAIS.forEach(function(c){ CANAL_MAP[c.key] = c; });
+
+var DEFAULT_TIPOS = [
+  'Procuração Ad Judicia',
+  'Procuração Ad Negotia',
+  'Procuração para venda de imóvel',
+  'Procuração bancária/financeira',
+  'Escritura de Compra e Venda',
+  'Escritura de Doação',
+  'Escritura de Inventário e Partilha',
+  'Escritura de União Estável',
+  'Escritura de Divórcio Consensual',
+  'Escritura Declaratória'
+];
+
+var DEFAULT_DOCUMENTOS_CHECKLIST = [
+  'RG',
+  'CPF',
+  'Comprovante de residência',
+  'Certidão de casamento/nascimento'
+];
+
+var PRAZO_DIAS_UTEIS = 5;
+var STORAGE_KEY = 'cartorio-data';
+
+/* ===================== Estado ===================== */
+var state = null;
+var storageAvailable = true;
+var memoryFallback = {};
+var ui = {
+  search:'', statusFilter:'all', canalFilter:'all', pessoaFilter:'all',
+  onlyOverdue:false, sortBy:'prazo', viewMode:'lista', agruparPessoa:false
+};
+var draftModal = null;
+var settingsOpen = false;
+var clienteHistoryModal = null;
+var dailyReportOpen = false;
+var atosBalcaoModalOpen = false;
+var historicoAbertos = {};
+var obsAbertos = {};
+var vinculadosAbertos = {};
+var justOpenedKey = null;
+var justCreatedId = null;
+var justSwitchedView = false;
+var obsDraftText = {};
+var modalJustOpened = false;
+
+function defaultState(){
+  return {
+    protocolos: [],
+    tiposAtos: DEFAULT_TIPOS.slice(),
+    statusList: DEFAULT_STATUS_LIST.map(function(s){ return Object.assign({},s); }),
+    responsaveis: [],
+    ultimoResponsavel: '',
+    documentosChecklist: DEFAULT_DOCUMENTOS_CHECKLIST.slice(),
+    feriadosExtras: [],
+    feriadosMoveis: {carnaval:true, corpusChristi:true, sextaSanta:true},
+    atosBalcao: {}
+  };
+}
+
+function migrate(raw){
+  var s = raw || defaultState();
+  if(!s.tiposAtos) s.tiposAtos = DEFAULT_TIPOS.slice();
+  if(s.tiposAtos.length && typeof s.tiposAtos[0]!=='string'){
+    s.tiposAtos = s.tiposAtos.map(function(t){ return typeof t==='string' ? t : t.nome; });
+  }
+  if(!s.statusList || !s.statusList.length){
+    s.statusList = DEFAULT_STATUS_LIST.map(function(x){ return Object.assign({},x); });
+  }
+  s.statusList = s.statusList.map(function(st){
+    if(st.requerDigitalizacao==null) st.requerDigitalizacao=false;
+    return st;
+  });
+  var statusMapForMigration = {};
+  s.statusList.forEach(function(st){ statusMapForMigration[st.key]=st; });
+  if(!s.feriadosExtras) s.feriadosExtras=[];
+  if(s.ultimoResponsavel==null) s.ultimoResponsavel='';
+  if(!s.feriadosMoveis) s.feriadosMoveis={carnaval:true,corpusChristi:true,sextaSanta:true};
+  if(!s.atosBalcao) s.atosBalcao={};
+  s.protocolos = (s.protocolos||[]).map(function(p){
+    if(!p.historico || !p.historico.length) p.historico=[{status:p.status, ts:p.createdAt||Date.now()}];
+    if(!p.tipoPessoa) p.tipoPessoa='pf';
+    if(p.outorgados==null) p.outorgados='';
+    if(p.responsavel==null) p.responsavel='';
+    if(p.clienteTelefone==null || p.clienteEmail==null){
+      var legacyContato = p.clienteContato || '';
+      if(p.clienteTelefone==null) p.clienteTelefone = (legacyContato && legacyContato.indexOf('@')===-1) ? legacyContato : '';
+      if(p.clienteEmail==null) p.clienteEmail = (legacyContato && legacyContato.indexOf('@')!==-1) ? legacyContato : '';
+    }
+    if(p.clienteDocumento==null) p.clienteDocumento='';
+    if(p.valorAto==null) p.valorAto=null;
+    if(!p.documentosMarcados) p.documentosMarcados={};
+    if(!p.tipos) p.tipos=[];
+    if(!p.canais){ p.canais = p.canal ? [p.canal] : ['balcao']; }
+    if(!p.observacoesHistorico){
+      p.observacoesHistorico = (p.observacoes && p.observacoes.trim()) ? [{texto:p.observacoes.trim(), ts:p.createdAt||Date.now()}] : [];
+    }
+    if(p.rascunhoDigitalizado===undefined){
+      var stAtMigration = statusMapForMigration[p.status];
+      if(stAtMigration && stAtMigration.isFinal){
+        // Protocolo já estava finalizado/arquivado antes deste recurso existir: considera já arquivado.
+        p.rascunhoDigitalizado = true;
+        var lastFinalEntry = null;
+        (p.historico||[]).forEach(function(h){ if(h.status===p.status) lastFinalEntry=h; });
+        p.dataDigitalizacao = lastFinalEntry ? toISO(new Date(lastFinalEntry.ts)) : null;
+      }else{
+        p.rascunhoDigitalizado = false;
+        p.dataDigitalizacao = null;
+      }
+    }
+    if(p.dataDigitalizacao===undefined) p.dataDigitalizacao = null;
+    if(p.grupoVinculoId===undefined) p.grupoVinculoId = null;
+    if(p.naLixeira===undefined) p.naLixeira = false;
+    if(p.dataExclusao===undefined) p.dataExclusao = null;
+    return p;
+  });
+  if(!s.documentosChecklist) s.documentosChecklist = DEFAULT_DOCUMENTOS_CHECKLIST.slice();
+  if(!s.responsaveis){
+    var seen = {};
+    s.responsaveis = [];
+    s.protocolos.forEach(function(p){
+      if(p.responsavel && !seen[p.responsavel]){ seen[p.responsavel]=true; s.responsaveis.push(p.responsavel); }
+    });
+  }
+  return s;
+}
+
+/* ===================== Persistência ===================== */
+function ensureStorage(){
+  if(!window.storage){
+    storageAvailable=false;
+    window.storage = {
+      get:function(key){ return Promise.resolve(memoryFallback[key]!==undefined ? {key:key,value:memoryFallback[key],shared:false} : null); },
+      set:function(key,value){ memoryFallback[key]=value; return Promise.resolve({key:key,value:value,shared:false}); },
+      delete:function(key){ delete memoryFallback[key]; return Promise.resolve({key:key,deleted:true,shared:false}); },
+      list:function(){ return Promise.resolve({keys:Object.keys(memoryFallback)}); }
+    };
+  }
+}
+function loadState(){
+  return window.storage.get(STORAGE_KEY, false).then(function(res){
+    if(res && res.value){
+      try{ return migrate(JSON.parse(res.value)); }catch(e){ return defaultState(); }
+    }
+    return defaultState();
+  }).catch(function(){ return defaultState(); });
+}
+function saveState(){
+  return window.storage.set(STORAGE_KEY, JSON.stringify(state), false).catch(function(e){
+    console.error('Falha ao salvar dados', e);
+  });
+}
+
+/* ===================== Utilidades de data ===================== */
+function pad(n){ return n<10 ? '0'+n : ''+n; }
+function toISO(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function todayISO(){ return toISO(new Date()); }
+function parseISODate(iso){
+  var parts = iso.split('-');
+  return new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10));
+}
+function formatBR(iso){
+  if(!iso) return '';
+  var p = iso.split('-');
+  return p[2]+'/'+p[1]+'/'+p[0];
+}
+function sameDay(ts, iso){ return toISO(new Date(ts))===iso; }
+
+function getEaster(year){
+  var a=year%19, b=Math.floor(year/100), c=year%100, d=Math.floor(b/4), e=b%4,
+      f=Math.floor((b+8)/25), g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30,
+      i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7, m=Math.floor((a+11*h+22*l)/451),
+      month=Math.floor((h+l-7*m+114)/31), day=((h+l-7*m+114)%31)+1;
+  return new Date(year, month-1, day);
+}
+function addDays(date, n){ var d=new Date(date); d.setDate(d.getDate()+n); return d; }
+
+var holidayCache = {};
+function getHolidaySetForYear(year){
+  var cacheKey = year+'|'+JSON.stringify(state.feriadosMoveis);
+  if(holidayCache[cacheKey]) return holidayCache[cacheKey];
+  var set = {};
+  set[year+'-01-01']=1;
+  set[year+'-04-21']=1;
+  set[year+'-05-01']=1;
+  set[year+'-09-07']=1;
+  set[year+'-10-12']=1;
+  set[year+'-11-02']=1;
+  set[year+'-11-15']=1;
+  if(year>=2024) set[year+'-11-20']=1;
+  set[year+'-12-25']=1;
+  var easter = getEaster(year);
+  if(state.feriadosMoveis.sextaSanta) set[toISO(addDays(easter,-2))]=1;
+  if(state.feriadosMoveis.carnaval) set[toISO(addDays(easter,-47))]=1;
+  if(state.feriadosMoveis.corpusChristi) set[toISO(addDays(easter,60))]=1;
+  holidayCache[cacheKey]=set;
+  return set;
+}
+function isHoliday(iso){
+  var year = parseInt(iso.split('-')[0],10);
+  var set = getHolidaySetForYear(year);
+  if(set[iso]) return true;
+  for(var i=0;i<state.feriadosExtras.length;i++){
+    if(state.feriadosExtras[i].date===iso) return true;
+  }
+  return false;
+}
+function isBusinessDay(iso){
+  var d = parseISODate(iso);
+  var dow = d.getDay();
+  return dow!==0 && dow!==6 && !isHoliday(iso);
+}
+function addBusinessDays(startISO, n){
+  var d = parseISODate(startISO);
+  var count=0;
+  while(count<n){
+    d = addDays(d,1);
+    var iso = toISO(d);
+    if(isBusinessDay(iso)) count++;
+  }
+  return toISO(d);
+}
+function businessDaysBetween(startISO, endISO){
+  if(endISO<=startISO) return 0;
+  var d = parseISODate(startISO);
+  var end = parseISODate(endISO);
+  var count=0;
+  while(d<end){
+    d = addDays(d,1);
+    if(isBusinessDay(toISO(d))) count++;
+  }
+  return count;
+}
+
+function getStatusMap(){
+  var m={};
+  state.statusList.forEach(function(s){ m[s.key]=s; });
+  return m;
+}
+function getTiposOrdenadosPorUso(){
+  var lastUsed = {};
+  state.protocolos.forEach(function(p){
+    var ts = p.createdAt || 0;
+    (p.tipos||[]).forEach(function(t){
+      if(!lastUsed[t] || ts>lastUsed[t]) lastUsed[t]=ts;
+    });
+  });
+  return state.tiposAtos.slice().sort(function(a,b){
+    var ta = lastUsed[a]||0, tb = lastUsed[b]||0;
+    return tb-ta;
+  });
+}
+function getStatusOf(p){
+  return getStatusMap()[p.status] || {key:p.status, label:p.status||'Status desconhecido', cor:'gray', isFinal:false, requerDigitalizacao:false};
+}
+function isArquivado(p){
+  var st = getStatusOf(p);
+  if(!st.isFinal) return false;
+  if(st.requerDigitalizacao) return !!p.rascunhoDigitalizado;
+  return true;
+}
+function needsDigitalizacaoGate(p){
+  var st = getStatusOf(p);
+  return !!(st.isFinal && st.requerDigitalizacao && !p.rascunhoDigitalizado);
+}
+function getVinculados(p){
+  if(!p.grupoVinculoId) return [];
+  return state.protocolos.filter(function(x){ return x.grupoVinculoId===p.grupoVinculoId && x.id!==p.id && !x.naLixeira; });
+}
+
+function computePrazo(p){
+  if(!p.dataRecebimentoCompleto) return null;
+  if(getStatusOf(p).isFinal) return null;
+  var deadline = addBusinessDays(p.dataRecebimentoCompleto, PRAZO_DIAS_UTEIS);
+  var today = todayISO();
+  var elapsed = businessDaysBetween(p.dataRecebimentoCompleto, today);
+  var elapsedCapped = Math.min(elapsed, PRAZO_DIAS_UTEIS);
+  var isOverdue = today>deadline;
+  var isDueToday = today===deadline;
+  var diasAtraso = isOverdue ? businessDaysBetween(deadline, today) : 0;
+  return {deadline:deadline, elapsedCapped:elapsedCapped, isOverdue:isOverdue, isDueToday:isDueToday, diasAtraso:diasAtraso};
+}
+
+/* ===================== Helpers ===================== */
+function esc(s){
+  if(s==null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function jsAttr(s){
+  var v = String(s==null?'':s);
+  v = v.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\r/g,'');
+  v = v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return v;
+}
+function uid(){ return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function removeAccents(str){ return str.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function slugify(str){
+  return removeAccents(str).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'status';
+}
+
+function withFocus(fn){
+  var active = document.activeElement;
+  var id = active && active.id;
+  var start = (active && typeof active.selectionStart==='number') ? active.selectionStart : null;
+  var end = (active && typeof active.selectionEnd==='number') ? active.selectionEnd : null;
+  fn();
+  if(id){
+    var el = document.getElementById(id);
+    if(el){
+      el.focus();
+      if(start!=null && el.setSelectionRange){ try{ el.setSelectionRange(start,end); }catch(e){} }
+    }
+  }
+}
+
+/* ===================== App ===================== */
+var App = {};
+window.App = App;
+App.render = function(){ withFocus(renderAll); };
+
+/* ---- Filtros / ordenação ---- */
+App.setSearch = function(v){ ui.search=v; App.render(); };
+App.setStatusFilter = function(v){ ui.statusFilter=v; App.render(); };
+App.setCanalFilter = function(v){ ui.canalFilter=v; App.render(); };
+App.setPessoaFilter = function(v){ ui.pessoaFilter=v; App.render(); };
+App.toggleOverdue = function(){ ui.onlyOverdue=!ui.onlyOverdue; App.render(); };
+App.setSort = function(v){ ui.sortBy=v; App.render(); };
+App.setViewMode = function(v){ ui.viewMode=v; justSwitchedView=true; App.render(); };
+App.toggleAgrupar = function(){ ui.agruparPessoa=!ui.agruparPessoa; App.render(); };
+App.toggleHistorico = function(id){
+  var opening = !historicoAbertos[id];
+  historicoAbertos[id]=opening;
+  if(opening) justOpenedKey='hist:'+id;
+  App.render();
+};
+App.toggleVinculadosView = function(id){
+  var opening = !vinculadosAbertos[id];
+  vinculadosAbertos[id]=opening;
+  if(opening) justOpenedKey='vinc:'+id;
+  App.render();
+};
+
+function matchesFilters(p){
+  if(ui.viewMode==='lixeira'){
+    if(!p.naLixeira) return false;
+  }else{
+    if(p.naLixeira) return false;
+    var archived = isArquivado(p);
+    if(ui.viewMode==='arquivados'){ if(!archived) return false; }
+    else{ if(archived) return false; }
+    if(ui.statusFilter!=='all' && p.status!==ui.statusFilter) return false;
+  }
+  if(ui.canalFilter!=='all' && (p.canais||[]).indexOf(ui.canalFilter)===-1) return false;
+  if(ui.pessoaFilter!=='all' && p.tipoPessoa!==ui.pessoaFilter) return false;
+  if(ui.onlyOverdue){
+    var info = computePrazo(p);
+    if(!info || !info.isOverdue) return false;
+  }
+  if(ui.search){
+    var q = ui.search.toLowerCase();
+    var hay = (p.cliente+' '+p.numeroProtocolo+' '+p.tipos.join(' ')+' '+p.outorgados+' '+p.responsavel+' '+p.clienteTelefone+' '+p.clienteEmail).toLowerCase();
+    if(hay.indexOf(q)===-1) return false;
+  }
+  return true;
+}
+function sortComparator(a,b){
+  if(ui.viewMode==='lixeira'){
+    return (b.dataExclusao||0) - (a.dataExclusao||0);
+  }
+  var ia = computePrazo(a), ib = computePrazo(b);
+  var overdueA = ia && ia.isOverdue ? 0 : 1;
+  var overdueB = ib && ib.isOverdue ? 0 : 1;
+  if(overdueA!==overdueB) return overdueA-overdueB;
+  if(ui.sortBy==='data'){
+    return b.dataProtocolo<a.dataProtocolo ? -1 : (b.dataProtocolo>a.dataProtocolo?1:0);
+  }
+  var ka = ia ? ia.deadline : '9999-99-99';
+  var kb = ib ? ib.deadline : '9999-99-99';
+  if(ka===kb) return b.dataProtocolo<a.dataProtocolo?-1:1;
+  return ka<kb ? -1 : 1;
+}
+function getFilteredSorted(){
+  return state.protocolos.filter(matchesFilters).sort(sortComparator);
+}
+
+/* ---- CRUD protocolo ---- */
+App.openNew = function(){
+  draftModal = {
+    mode:'new', id:null, tipoPessoa:'pf',
+    canais:{balcao:true}, docsCompletos:false, responsavel: state.ultimoResponsavel || '',
+    tipos:{}, status: state.statusList[0] ? state.statusList[0].key : '',
+    vinculados:{}, vinculoSearch:''
+  };
+  modalJustOpened = true;
+  App.render();
+};
+App.openEdit = function(id){
+  var p = state.protocolos.filter(function(x){return x.id===id;})[0];
+  if(!p) return;
+  var tiposSet = {};
+  p.tipos.forEach(function(t){ tiposSet[t]=true; });
+  var canaisSet = {};
+  (p.canais||[]).forEach(function(c){ canaisSet[c]=true; });
+  var vinculadosSet = {};
+  getVinculados(p).forEach(function(v){ vinculadosSet[v.id]=true; });
+  draftModal = {
+    mode:'edit', id:id,
+    numeroProtocolo:p.numeroProtocolo, cliente:p.cliente, clienteTelefone:p.clienteTelefone, clienteEmail:p.clienteEmail,
+    outorgados:p.outorgados, responsavel:p.responsavel, tipoPessoa:p.tipoPessoa, canais:canaisSet,
+    dataProtocolo:p.dataProtocolo, docsCompletos:p.docsCompletos,
+    dataRecebimentoCompleto:p.dataRecebimentoCompleto,
+    tipos:tiposSet, status:p.status, novaObservacao:'',
+    vinculados:vinculadosSet, vinculoSearch:''
+  };
+  modalJustOpened = true;
+  App.render();
+};
+App.closeModal = function(){ draftModal=null; App.render(); };
+
+function captureModalTextFields(){
+  if(!draftModal) return;
+  var ids = ['numeroProtocolo','cliente','clienteTelefone','clienteEmail','outorgados','dataProtocolo','dataRecebimentoCompleto','novaObservacao'];
+  ids.forEach(function(id){
+    var el = document.getElementById('f_'+id);
+    if(el) draftModal[id]=el.value;
+  });
+}
+App.toggleCanal = function(c){
+  captureModalTextFields();
+  if(draftModal.canais[c]) delete draftModal.canais[c]; else draftModal.canais[c]=true;
+  App.render();
+};
+App.setPessoa = function(v){ captureModalTextFields(); draftModal.tipoPessoa=v; App.render(); };
+App.setResponsavel = function(v){ captureModalTextFields(); draftModal.responsavel=v; App.render(); };
+App.addResponsavelFromModal = function(){
+  captureModalTextFields();
+  var el = document.getElementById('novoResponsavelModalInput');
+  var v = el ? el.value.trim() : '';
+  if(!v) return;
+  if(state.responsaveis.indexOf(v)===-1) state.responsaveis.push(v);
+  draftModal.responsavel = v;
+  saveState();
+  App.render();
+};
+App.setDocsCompletos = function(v){
+  captureModalTextFields();
+  draftModal.docsCompletos = v;
+  if(v && !draftModal.dataRecebimentoCompleto){
+    draftModal.dataRecebimentoCompleto = draftModal.dataProtocolo || todayISO();
+  }
+  App.render();
+};
+App.setStatus = function(v){ captureModalTextFields(); draftModal.status=v; App.render(); };
+App.toggleTipo = function(t){
+  captureModalTextFields();
+  if(draftModal.tipos[t]) delete draftModal.tipos[t]; else draftModal.tipos[t]=true;
+  App.render();
+};
+App.addTipoFromModal = function(){
+  captureModalTextFields();
+  var el = document.getElementById('novoTipoModalInput');
+  var v = el ? el.value.trim() : '';
+  if(!v) return;
+  if(state.tiposAtos.indexOf(v)===-1) state.tiposAtos.push(v);
+  draftModal.tipos[v]=true;
+  saveState();
+  App.render();
+};
+App.toggleVinculo = function(id){
+  captureModalTextFields();
+  if(draftModal.vinculados[id]) delete draftModal.vinculados[id]; else draftModal.vinculados[id]=true;
+  App.render();
+};
+App.setField = function(name, value){
+  if(draftModal) draftModal[name] = value;
+};
+App.setVinculoSearch = function(v){
+  captureModalTextFields();
+  draftModal.vinculoSearch = v;
+  App.render();
+};
+App.refreshClienteVinculoCheck = function(v){
+  if(!draftModal) return;
+  draftModal.cliente = v;
+  var container = document.getElementById('vinculoSugestaoContainer');
+  if(container) container.innerHTML = computeVinculoSugestaoHtml(draftModal);
+};
+
+App.saveProtocolo = function(){
+  captureModalTextFields();
+  var d = draftModal;
+  var tiposArr = Object.keys(d.tipos);
+  var canaisArr = Object.keys(d.canais);
+  var dataProtocolo = d.dataProtocolo || todayISO();
+  var original = d.mode==='edit' ? state.protocolos.filter(function(p){return p.id===d.id;})[0] : null;
+  var statusFinal = d.status || (state.statusList[0] && state.statusList[0].key) || '';
+  var historico = original ? original.historico.slice() : [];
+  if(!original || original.status!==statusFinal){
+    historico.push({status:statusFinal, ts:Date.now()});
+  }
+  var observacoesHistorico = original ? original.observacoesHistorico.slice() : [];
+  var novaObs = (d.novaObservacao||'').trim();
+  if(novaObs) observacoesHistorico.push({texto:novaObs, ts:Date.now()});
+  var payload = {
+    id: d.id || uid(),
+    numeroProtocolo:(d.numeroProtocolo||'').trim(),
+    cliente:(d.cliente||'').trim(),
+    clienteTelefone:(d.clienteTelefone||'').trim(),
+    clienteEmail:(d.clienteEmail||'').trim(),
+    outorgados:(d.outorgados||'').trim(),
+    responsavel:(d.responsavel||'').trim(),
+    tipoPessoa: d.tipoPessoa || 'pf',
+    canais: canaisArr,
+    dataProtocolo: dataProtocolo,
+    docsCompletos: !!d.docsCompletos,
+    dataRecebimentoCompleto: d.docsCompletos ? (d.dataRecebimentoCompleto || dataProtocolo) : (d.dataRecebimentoCompleto || null),
+    status: statusFinal,
+    tipos: tiposArr,
+    observacoesHistorico: observacoesHistorico,
+    historico: historico,
+    rascunhoDigitalizado: original ? !!original.rascunhoDigitalizado : false,
+    dataDigitalizacao: original ? (original.dataDigitalizacao || null) : null,
+    createdAt: original ? original.createdAt : Date.now()
+  };
+
+  /* ---- Vínculo manual entre protocolos da mesma pessoa/empresa ---- */
+  var selectedVinculoIds = Object.keys(d.vinculados||{}).filter(function(vid){ return vid!==payload.id; });
+  var previousGroupId = original ? original.grupoVinculoId : null;
+  var previousMemberIds = previousGroupId ? state.protocolos.filter(function(p){ return p.grupoVinculoId===previousGroupId && p.id!==payload.id; }).map(function(p){return p.id;}) : [];
+  var removedIds = previousMemberIds.filter(function(id){ return selectedVinculoIds.indexOf(id)===-1; });
+
+  if(selectedVinculoIds.length===0){
+    payload.grupoVinculoId = null;
+  }else{
+    var candidateGroupIds = [];
+    var keepsAnOriginalMember = previousGroupId && selectedVinculoIds.some(function(id){ return previousMemberIds.indexOf(id)!==-1; });
+    if(keepsAnOriginalMember) candidateGroupIds.push(previousGroupId);
+    selectedVinculoIds.forEach(function(vid){
+      var vp = state.protocolos.filter(function(p){ return p.id===vid; })[0];
+      if(vp && vp.grupoVinculoId && candidateGroupIds.indexOf(vp.grupoVinculoId)===-1) candidateGroupIds.push(vp.grupoVinculoId);
+    });
+    var finalGroupId = candidateGroupIds.length ? candidateGroupIds[0] : uid();
+    payload.grupoVinculoId = finalGroupId;
+    // Traz para o grupo final: quem foi selecionado, e mescla por completo qualquer grupo antigo envolvido.
+    state.protocolos = state.protocolos.map(function(p){
+      if(selectedVinculoIds.indexOf(p.id)!==-1) p.grupoVinculoId = finalGroupId;
+      else if(candidateGroupIds.length>1 && candidateGroupIds.indexOf(p.grupoVinculoId)!==-1) p.grupoVinculoId = finalGroupId;
+      return p;
+    });
+  }
+  if(removedIds.length){
+    state.protocolos = state.protocolos.map(function(p){
+      if(removedIds.indexOf(p.id)!==-1) p.grupoVinculoId = null;
+      return p;
+    });
+  }
+
+  if(d.mode==='edit'){
+    state.protocolos = state.protocolos.map(function(p){ return p.id===payload.id ? payload : p; });
+  }else{
+    state.protocolos.push(payload);
+    justCreatedId = payload.id;
+  }
+  if(payload.responsavel) state.ultimoResponsavel = payload.responsavel;
+  saveState();
+  draftModal=null;
+  App.render();
+};
+App.deleteProtocolo = function(id){
+  if(!window.confirm('Mover este protocolo para a lixeira? Você pode restaurá-lo depois, em "Lixeira".')) return;
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id){ p.naLixeira=true; p.dataExclusao=Date.now(); }
+    return p;
+  });
+  saveState();
+  App.render();
+};
+App.restaurarProtocolo = function(id){
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id){ p.naLixeira=false; p.dataExclusao=null; }
+    return p;
+  });
+  saveState();
+  App.render();
+};
+App.excluirDefinitivamente = function(id){
+  if(!window.confirm('Excluir DEFINITIVAMENTE este protocolo? Ele será perdido para sempre, sem possibilidade de restaurar.')) return;
+  state.protocolos = state.protocolos.filter(function(p){ return p.id!==id; });
+  saveState();
+  App.render();
+};
+App.changeStatusQuick = function(id, newStatus){
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id && p.status!==newStatus){
+      p.status=newStatus;
+      p.historico = p.historico || [];
+      p.historico.push({status:newStatus, ts:Date.now()});
+    }
+    return p;
+  });
+  saveState();
+  App.render();
+};
+App.docInlineOpen = {};
+App.showDocDateField = function(id){ App.docInlineOpen[id]=true; justOpenedKey='docdate:'+id; App.render(); };
+App.markDocsComplete = function(id){
+  var input = document.getElementById('docdate_'+id);
+  var dataISO = input ? input.value : todayISO();
+  if(!dataISO) dataISO = todayISO();
+  var statusMap = getStatusMap();
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id){
+      p.docsCompletos=true;
+      p.dataRecebimentoCompleto=dataISO;
+      var st = statusMap[p.status];
+      if(st && !st.isFinal && (p.status===state.statusList[0].key)){
+        var next = state.statusList[1];
+        if(next){ p.status=next.key; p.historico.push({status:next.key, ts:Date.now()}); }
+      }
+    }
+    return p;
+  });
+  saveState();
+  App.render();
+};
+
+App.marcarRascunhoDigitalizado = function(id){
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id){
+      p.rascunhoDigitalizado = true;
+      p.dataDigitalizacao = todayISO();
+    }
+    return p;
+  });
+  saveState();
+  App.render();
+};
+
+/* ---- Observações (histórico datado) ---- */
+App.obsInlineOpen = {};
+App.toggleObsView = function(id){
+  var opening = !obsAbertos[id];
+  obsAbertos[id]=opening;
+  if(opening) justOpenedKey='obs:'+id;
+  App.render();
+};
+App.showObsField = function(id){ App.obsInlineOpen[id]=true; justOpenedKey='obsadd:'+id; App.render(); };
+App.addObservacaoQuick = function(id){
+  var ta = document.getElementById('obsnew_'+id);
+  var texto = ta ? ta.value.trim() : '';
+  if(!texto) return;
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id){
+      p.observacoesHistorico = p.observacoesHistorico || [];
+      p.observacoesHistorico.push({texto:texto, ts:Date.now()});
+    }
+    return p;
+  });
+  saveState();
+  App.obsInlineOpen[id]=false;
+  delete obsDraftText[id];
+  App.render();
+};
+App.updateObsDraft = function(id, v){ obsDraftText[id]=v; };
+
+/* ---- Kanban drag and drop ---- */
+App.dragStart = function(ev, id){ ev.dataTransfer.setData('text/plain', id); };
+App.dropOnColumn = function(ev, statusKey){
+  ev.preventDefault();
+  var id = ev.dataTransfer.getData('text/plain');
+  if(id) App.changeStatusQuick(id, statusKey);
+};
+
+/* ---- Cliente história ---- */
+App.showClienteHistory = function(nome){ clienteHistoryModal = nome; modalJustOpened=true; App.render(); };
+App.closeClienteHistory = function(){ clienteHistoryModal=null; App.render(); };
+
+/* ---- Relatório do dia ---- */
+App.openDailyReport = function(){ dailyReportOpen=true; modalJustOpened=true; App.render(); };
+App.closeDailyReport = function(){ dailyReportOpen=false; App.render(); };
+App.printDailyReport = function(){ window.print(); };
+
+/* ---- Atos de balcão (sem protocolo) ---- */
+App.openAtosBalcao = function(){ atosBalcaoModalOpen=true; modalJustOpened=true; App.render(); };
+App.closeAtosBalcao = function(){ atosBalcaoModalOpen=false; App.render(); };
+App.ajustarAtoBalcao = function(delta){
+  var hoje = todayISO();
+  var atual = state.atosBalcao[hoje] || 0;
+  var novo = Math.max(0, atual + delta);
+  state.atosBalcao[hoje] = novo;
+  saveState();
+  App.render();
+};
+App.adicionarQuantidadeBalcao = function(){
+  var el = document.getElementById('qtdBalcaoInput');
+  var n = el ? parseInt(el.value, 10) : NaN;
+  if(isNaN(n) || n===0) return;
+  var hoje = todayISO();
+  var atual = state.atosBalcao[hoje] || 0;
+  state.atosBalcao[hoje] = Math.max(0, atual + n);
+  saveState();
+  if(el) el.value='';
+  App.render();
+};
+App.exportAtosBalcaoCSV = function(){
+  var datas = Object.keys(state.atosBalcao).sort().reverse();
+  var rows = ['Data,Quantidade'];
+  datas.forEach(function(d){
+    rows.push(formatBR(d)+','+state.atosBalcao[d]);
+  });
+  var csvContent = '\uFEFF'+rows.join('\r\n');
+  var blob = new Blob([csvContent], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'atos-balcao_'+todayISO()+'.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+};
+
+/* ---- Exportar CSV ---- */
+App.exportCSV = function(){
+  var list = getFilteredSorted();
+  var statusMap = getStatusMap();
+  var headers = ['Nº Protocolo','Data do Protocolo','Tipo de Pessoa','Cliente/Outorgante','Telefone','E-mail','Outorgado(s)','Canais','Responsável','Documentos Completos','Data Recebimento Completo','Data do Prazo','Status','Tipos de Ato','Vinculado a','Observações (histórico)'];
+  function csvField(v){
+    v = (v==null?'':String(v));
+    if(/["\,\n;]/.test(v)) v = '"'+v.replace(/"/g,'""')+'"';
+    return v;
+  }
+  function canaisLabel(p){
+    return (p.canais||[]).map(function(c){ return (CANAL_MAP[c]||{label:c}).label; }).join('; ');
+  }
+  function vinculadosLabel(p){
+    return getVinculados(p).map(function(v){ return v.numeroProtocolo || v.cliente || v.id; }).join('; ');
+  }
+  function obsLabel(p){
+    return (p.observacoesHistorico||[]).map(function(o){
+      var d = new Date(o.ts);
+      return o.texto+' ['+formatBR(toISO(d))+' '+pad(d.getHours())+':'+pad(d.getMinutes())+']';
+    }).join(' | ');
+  }
+  var rows = [headers.map(csvField).join(',')];
+  list.forEach(function(p){
+    var info = computePrazo(p);
+    var st = statusMap[p.status];
+    rows.push([
+      p.numeroProtocolo, formatBR(p.dataProtocolo), p.tipoPessoa==='pj'?'Pessoa Jurídica':'Pessoa Física',
+      p.cliente, p.clienteTelefone, p.clienteEmail, p.outorgados, canaisLabel(p), p.responsavel,
+      p.docsCompletos?'Sim':'Não', p.dataRecebimentoCompleto?formatBR(p.dataRecebimentoCompleto):'',
+      info?formatBR(info.deadline):'',
+      st?st.label:p.status, p.tipos.join('; '), vinculadosLabel(p), obsLabel(p)
+    ].map(csvField).join(','));
+  });
+  var csvContent = '\uFEFF'+rows.join('\r\n');
+  var blob = new Blob([csvContent], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'protocolos_'+todayISO()+'.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+};
+
+/* ---- Backup completo (reserva de segurança, além da sincronização automática) ---- */
+App.exportBackup = function(){
+  var payload = JSON.stringify(state, null, 2);
+  var blob = new Blob([payload], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'backup-protocolos-'+todayISO()+'.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+};
+App.triggerImportBackup = function(){
+  var input = document.getElementById('backupFileInput');
+  if(input) input.click();
+};
+App.importBackupFile = function(inputEl){
+  var file = inputEl.files && inputEl.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var imported;
+    try{ imported = JSON.parse(e.target.result); }
+    catch(err){ window.alert('Não foi possível ler este arquivo. Verifique se é um backup válido gerado por esta ferramenta.'); inputEl.value=''; return; }
+    if(!imported || !Array.isArray(imported.protocolos)){
+      window.alert('Este arquivo não parece ser um backup válido desta ferramenta.');
+      inputEl.value='';
+      return;
+    }
+    if(!window.confirm('Isso vai SUBSTITUIR todos os protocolos e configurações atuais pelos dados deste arquivo de backup. Esta ação não pode ser desfeita. Deseja continuar?')){
+      inputEl.value='';
+      return;
+    }
+    state = migrate(imported);
+    holidayCache = {};
+    saveState();
+    inputEl.value='';
+    App.render();
+  };
+  reader.readAsText(file);
+};
+
+/* ---- Configurações: tipos de ato ---- */
+App.openSettings = function(){ settingsOpen=true; modalJustOpened=true; App.render(); };
+App.closeSettings = function(){ settingsOpen=false; App.render(); };
+App.addTipoSettings = function(){
+  var el = document.getElementById('settingsNovoTipo');
+  var v = el ? el.value.trim() : '';
+  if(!v) return;
+  if(state.tiposAtos.indexOf(v)===-1){ state.tiposAtos.push(v); saveState(); }
+  App.render();
+};
+App.removeTipoSettings = function(t){
+  state.tiposAtos = state.tiposAtos.filter(function(x){ return x!==t; });
+  saveState();
+  App.render();
+};
+
+/* ---- Configurações: responsáveis internos ---- */
+App.addResponsavelSettings = function(){
+  var el = document.getElementById('settingsNovoResponsavel');
+  var v = el ? el.value.trim() : '';
+  if(!v) return;
+  if(state.responsaveis.indexOf(v)===-1){ state.responsaveis.push(v); saveState(); }
+  App.render();
+};
+App.renameResponsavel = function(oldVal, newVal){
+  newVal = (newVal||'').trim();
+  if(!newVal) return;
+  state.responsaveis = state.responsaveis.map(function(r){ return r===oldVal ? newVal : r; });
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.responsavel===oldVal) p.responsavel=newVal;
+    return p;
+  });
+  saveState();
+  App.render();
+};
+App.removeResponsavelSettings = function(nome){
+  var inUse = state.protocolos.some(function(p){ return p.responsavel===nome; });
+  if(inUse){ window.alert('Não é possível remover: existem protocolos com este responsável. Mude o responsável deles primeiro.'); return; }
+  state.responsaveis = state.responsaveis.filter(function(r){ return r!==nome; });
+  saveState();
+  App.render();
+};
+App.removeResponsavel = function(name){
+  state.responsaveis = state.responsaveis.filter(function(x){ return x!==name; });
+  saveState();
+  App.render();
+};
+
+/* ---- Configurações: status de andamento ---- */
+App.addStatusType = function(){
+  var labelEl = document.getElementById('settingsNovoStatusLabel');
+  var corEl = document.getElementById('settingsNovoStatusCor');
+  var finalEl = document.getElementById('settingsNovoStatusFinal');
+  var label = labelEl ? labelEl.value.trim() : '';
+  if(!label) return;
+  var cor = corEl ? corEl.value : 'gray';
+  var isFinal = finalEl ? finalEl.checked : false;
+  var key = slugify(label)+'_'+Math.random().toString(36).slice(2,6);
+  state.statusList.push({key:key, label:label, cor:cor, isFinal:isFinal, requerDigitalizacao:false});
+  saveState();
+  labelEl.value='';
+  App.render();
+};
+App.removeStatusType = function(key){
+  var inUse = state.protocolos.some(function(p){ return p.status===key; });
+  if(inUse){ window.alert('Não é possível remover: existem protocolos usando esta fase. Mude o status deles primeiro.'); return; }
+  if(state.statusList.length<=1){ window.alert('É necessário manter ao menos uma fase de andamento.'); return; }
+  if(!window.confirm('Remover esta fase de andamento?')) return;
+  state.statusList = state.statusList.filter(function(s){ return s.key!==key; });
+  saveState();
+  App.render();
+};
+App.moveStatus = function(key, dir){
+  var idx=-1;
+  state.statusList.forEach(function(s,i){ if(s.key===key) idx=i; });
+  var newIdx = idx+dir;
+  if(idx<0 || newIdx<0 || newIdx>=state.statusList.length) return;
+  var arr = state.statusList;
+  var tmp = arr[idx]; arr[idx]=arr[newIdx]; arr[newIdx]=tmp;
+  saveState();
+  App.render();
+};
+App.updateStatusLabel = function(key, val){
+  state.statusList = state.statusList.map(function(s){ if(s.key===key) s.label=val; return s; });
+  saveState();
+  App.render();
+};
+App.updateStatusColor = function(key, val){
+  state.statusList = state.statusList.map(function(s){ if(s.key===key) s.cor=val; return s; });
+  saveState();
+  App.render();
+};
+App.updateStatusFinal = function(key, val){
+  state.statusList = state.statusList.map(function(s){ if(s.key===key) s.isFinal=val; return s; });
+  saveState();
+  App.render();
+};
+App.updateStatusRequerDigitalizacao = function(key, val){
+  state.statusList = state.statusList.map(function(s){ if(s.key===key) s.requerDigitalizacao=val; return s; });
+  saveState();
+  App.render();
+};
+
+/* ---- Configurações: feriados ---- */
+App.addFeriadoExtra = function(){
+  var dEl = document.getElementById('settingsFeriadoData');
+  var lEl = document.getElementById('settingsFeriadoLabel');
+  var data = dEl ? dEl.value : '';
+  var label = lEl ? lEl.value.trim() : '';
+  if(!data) return;
+  state.feriadosExtras.push({date:data, label: label || 'Feriado local'});
+  holidayCache={};
+  saveState();
+  App.render();
+};
+App.removeFeriadoExtra = function(idx){
+  state.feriadosExtras.splice(idx,1);
+  holidayCache={};
+  saveState();
+  App.render();
+};
+App.toggleFeriadoMovel = function(key){
+  state.feriadosMoveis[key] = !state.feriadosMoveis[key];
+  holidayCache={};
+  saveState();
+  App.render();
+};
+
+/* ===================== Render ===================== */
+function renderAll(){
+  var app = document.getElementById('app');
+  var html =
+    (storageAvailable ? '' : '<div class="banner-warning">Atenção: o armazenamento do Claude não está disponível aqui — os dados desta sessão não serão salvos permanentemente. Isso costuma acontecer se o artifact ainda não foi publicado, ou se a ferramenta foi aberta fora do Claude.ai. Publique o artifact (ou reabra dentro do Claude.ai) para manter os protocolos salvos entre acessos.</div>') +
+    renderHeader() +
+    renderStats() +
+    renderFiltersBar() +
+    '<div class="'+(justSwitchedView?'anim-in':'')+'">'+renderListArea()+'</div>' +
+    (draftModal ? renderModal() : '') +
+    (settingsOpen ? renderSettingsModal() : '') +
+    (clienteHistoryModal ? renderClienteHistoryModal() : '') +
+    (dailyReportOpen ? renderDailyReportModal() : '')+
+    (atosBalcaoModalOpen ? renderAtosBalcaoModal() : '');
+  app.innerHTML = html;
+  justOpenedKey = null;
+  justCreatedId = null;
+  justSwitchedView = false;
+  modalJustOpened = false;
+}
+
+function renderHeader(){
+  var hoje = new Date();
+  var dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  var meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  var extenso = dias[hoje.getDay()]+', '+hoje.getDate()+' de '+meses[hoje.getMonth()]+' de '+hoje.getFullYear();
+  return ''+
+  '<div class="letterhead">'+
+    '<div>'+
+      '<div class="eyebrow">Cartório de Notas — Controle de Atos</div>'+
+      '<h1>Livro de Protocolos</h1>'+
+    '</div>'+
+    '<div class="header-actions no-print">'+
+      '<button class="icon-btn" onclick="App.openSettings()" title="Configurações">&#9881;</button>'+
+      '<button class="btn-ghost outlined" onclick="App.openAtosBalcao()">Atos de balcão ('+(state.atosBalcao[todayISO()]||0)+')</button>'+
+      '<button class="btn-ghost outlined" onclick="App.openDailyReport()">Relatório do dia</button>'+
+      '<button class="btn-ghost outlined" onclick="App.exportCSV()">Exportar CSV</button>'+
+      '<button class="btn btn-primary" onclick="App.openNew()">+ Novo Protocolo</button>'+
+    '</div>'+
+  '</div>'+
+  '<div class="header-rule2 no-print"></div>'+
+  '<div class="today-line no-print">'+esc(extenso)+'</div>';
+}
+
+function renderStats(){
+  var all = state.protocolos.filter(function(p){ return !p.naLixeira; });
+  var ativos = all.filter(function(p){ return !isArquivado(p); });
+  var aguardandoDocs = ativos.filter(function(p){ return !p.docsCompletos; }).length;
+  var overdue=0, dueToday=0;
+  ativos.forEach(function(p){
+    var info = computePrazo(p);
+    if(info){ if(info.isOverdue) overdue++; else if(info.isDueToday) dueToday++; }
+  });
+  var arquivados = all.filter(isArquivado).length;
+  var pf = all.filter(function(p){ return p.tipoPessoa==='pf'; }).length;
+  var pj = all.filter(function(p){ return p.tipoPessoa==='pj'; }).length;
+  function stat(num, lbl, alert){
+    return '<div class="stat'+(alert?' alert':'')+'"><div class="num">'+num+'</div><div class="lbl">'+lbl+'</div></div>';
+  }
+  return '<div class="stats-bar no-print">'+
+    stat(ativos.length,'Ativos')+
+    stat(aguardandoDocs,'Aguard. docs')+
+    stat(dueToday,'Vencem hoje', dueToday>0)+
+    stat(overdue,'Atrasados', overdue>0)+
+    stat(arquivados,'Arquivados')+
+    stat(pf,'Pessoa física')+
+    stat(pj,'Pessoa jurídica')+
+  '</div>';
+}
+
+function renderFiltersBar(){
+  var statusPills = '';
+  if(ui.viewMode==='lista' || ui.viewMode==='arquivados'){
+    statusPills += '<button class="pill'+(ui.statusFilter==='all'?' active':'')+'" onclick="App.setStatusFilter(\'all\')">Todos os status</button>';
+    state.statusList.forEach(function(s){
+      statusPills += '<button class="pill'+(ui.statusFilter===s.key?' active':'')+'" onclick="App.setStatusFilter(\''+jsAttr(s.key)+'\')">'+esc(s.label)+'</button>';
+    });
+  }
+  var canalPills = '<button class="pill'+(ui.canalFilter==='all'?' active':'')+'" onclick="App.setCanalFilter(\'all\')">Todos os canais</button>';
+  CANAIS.forEach(function(c){
+    canalPills += '<button class="pill'+(ui.canalFilter===c.key?' active':'')+'" onclick="App.setCanalFilter(\''+c.key+'\')">'+esc(c.label)+'</button>';
+  });
+  var pessoaPills = ''+
+    '<button class="pill'+(ui.pessoaFilter==='all'?' active':'')+'" onclick="App.setPessoaFilter(\'all\')">PF + PJ</button>'+
+    '<button class="pill'+(ui.pessoaFilter==='pf'?' active':'')+'" onclick="App.setPessoaFilter(\'pf\')">Pessoa Física</button>'+
+    '<button class="pill'+(ui.pessoaFilter==='pj'?' active':'')+'" onclick="App.setPessoaFilter(\'pj\')">Pessoa Jurídica</button>';
+  var agruparBtn = (ui.viewMode==='lista' || ui.viewMode==='arquivados') ? '<button class="pill'+(ui.agruparPessoa?' active':'')+'" onclick="App.toggleAgrupar()">Agrupar em seções PF/PJ</button>' : '';
+  var arquivadosCount = state.protocolos.filter(isArquivado).length;
+  var lixeiraCount = state.protocolos.filter(function(p){ return p.naLixeira; }).length;
+  var isLixeira = ui.viewMode==='lixeira';
+
+  return ''+
+  '<div class="filters-bar no-print">'+
+    '<input id="searchInput" class="search-input" type="text" placeholder="Buscar por cliente, outorgado, nº de protocolo ou tipo de ato…" value="'+esc(ui.search)+'" oninput="App.setSearch(this.value)">'+
+    '<select class="sortsel" onchange="App.setSort(this.value)">'+
+      '<option value="prazo"'+(ui.sortBy==='prazo'?' selected':'')+'>Ordenar: prazo mais urgente</option>'+
+      '<option value="data"'+(ui.sortBy==='data'?' selected':'')+'>Ordenar: protocolo mais recente</option>'+
+    '</select>'+
+    '<div class="segmented">'+
+      '<button class="seg-btn'+(ui.viewMode==='lista'?' active':'')+'" onclick="App.setViewMode(\'lista\')">Lista</button>'+
+      '<button class="seg-btn'+(ui.viewMode==='quadro'?' active':'')+'" onclick="App.setViewMode(\'quadro\')">Quadro</button>'+
+      '<button class="seg-btn'+(ui.viewMode==='arquivados'?' active':'')+'" onclick="App.setViewMode(\'arquivados\')">Arquivados ('+arquivadosCount+')</button>'+
+      '<button class="seg-btn'+(isLixeira?' active':'')+'" onclick="App.setViewMode(\'lixeira\')">Lixeira ('+lixeiraCount+')</button>'+
+    '</div>'+
+  '</div>'+
+  (statusPills ? '<div class="filters-bar no-print"><div class="pill-group">'+statusPills+'</div></div>' : '')+
+  (isLixeira ? '' :
+    '<div class="filters-bar no-print">'+
+      '<div class="pill-group">'+canalPills+'</div>'+
+    '</div>'+
+    '<div class="filters-bar no-print">'+
+      '<div class="pill-group">'+pessoaPills+
+        '<button class="pill'+(ui.onlyOverdue?' active':'')+'" onclick="App.toggleOverdue()">Somente atrasados</button>'+
+        agruparBtn+
+      '</div>'+
+    '</div>'
+  )+
+  (ui.viewMode==='quadro' ? '<div class="kanban-hint no-print">Arraste um cartão para outra coluna para mudar o status. Clique no cartão para editar os detalhes.</div>' : '')+
+  (ui.viewMode==='arquivados' ? '<div class="kanban-hint no-print">Protocolos finalizados (já digitalizados) ou com cliente desistente. Mude o status na ficha para reabrir, se precisar.</div>' : '')+
+  (isLixeira ? '<div class="kanban-hint no-print">Protocolos excluídos ficam aqui até você restaurar ou excluir definitivamente — não somem sozinhos.</div>' : '');
+}
+
+function renderDots(info){
+  var html = '<div class="dots">';
+  for(var i=1;i<=PRAZO_DIAS_UTEIS;i++){
+    var filled = info && i<=info.elapsedCapped;
+    html += '<div class="dot'+(filled?' filled'+(info.isOverdue?' late':''):'')+'"></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderFichaPrazo(p){
+  if(!p.docsCompletos || !p.dataRecebimentoCompleto){
+    var isOpen = App.docInlineOpen[p.id];
+    return '<div class="docs-pending">'+
+      '<span>Documentação incompleta desde o protocolo.</span>'+
+      (isOpen ?
+        '<input type="date" id="docdate_'+p.id+'" class="'+(justOpenedKey==='docdate:'+p.id?'anim-in':'')+'" value="'+esc(todayISO())+'" style="font-family:var(--font-mono);font-size:12px;padding:4px 6px;border:1px solid var(--line);border-radius:3px;">'+
+        '<button class="btn-ghost outlined" onclick="App.markDocsComplete(\''+p.id+'\')">Confirmar recebimento</button>'
+        :
+        '<button class="btn-ghost" onclick="App.showDocDateField(\''+p.id+'\')">Marcar documentação completa</button>'
+      )+
+    '</div><div></div>';
+  }
+  var info = computePrazo(p);
+  if(!info){
+    return '<div class="docs-pending"><span>Documentação completa em '+esc(formatBR(p.dataRecebimentoCompleto))+'.</span></div><div></div>';
+  }
+  var cls = info.isOverdue ? 'late' : (info.isDueToday ? 'warn' : 'ok');
+  var text;
+  if(info.isOverdue){
+    text = 'Atrasado há '+info.diasAtraso+' dia(s) útil(eis) — prazo era '+formatBR(info.deadline);
+  }else if(info.isDueToday){
+    text = 'Vence hoje ('+formatBR(info.deadline)+')';
+  }else{
+    text = 'Faltam '+(PRAZO_DIAS_UTEIS-info.elapsedCapped)+' dia(s) útil(eis) — prazo '+formatBR(info.deadline);
+  }
+  return '<div class="prazo-info"><span class="prazo-text '+cls+'">'+esc(text)+'</span>'+renderDots(info)+'</div>';
+}
+
+function renderHistorico(p){
+  var isOpen = historicoAbertos[p.id];
+  var statusMap = getStatusMap();
+  var toggle = '<button class="hist-toggle" onclick="App.toggleHistorico(\''+p.id+'\')">'+(isOpen?'Ocultar histórico':'Ver histórico (' + p.historico.length + ')')+'</button>';
+  if(!isOpen) return toggle;
+  var rows = p.historico.map(function(h,idx){
+    var st = statusMap[h.status] || {label:h.status};
+    var d = new Date(h.ts);
+    var dstr = pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+    var dur = '';
+    var endTs = (idx+1<p.historico.length) ? p.historico[idx+1].ts : Date.now();
+    var diasCorridos = Math.max(0, Math.round((endTs-h.ts)/86400000));
+    dur = (idx+1<p.historico.length) ? (diasCorridos+' dia(s) nesta fase') : (diasCorridos+' dia(s) até agora');
+    return '<div class="hist-row"><span>'+esc(st.label)+'</span><span class="hd">'+esc(dstr)+' — '+dur+'</span></div>';
+  }).reverse().join('');
+  return toggle+'<div class="hist-box'+(justOpenedKey==='hist:'+p.id?' anim-in':'')+'">'+rows+'</div>';
+}
+
+function renderObservacoes(p){
+  var list = p.observacoesHistorico || [];
+  var isOpen = obsAbertos[p.id];
+  var toggle = list.length ? '<button class="hist-toggle" onclick="App.toggleObsView(\''+p.id+'\')">'+(isOpen?'Ocultar observações':'Ver observações (' + list.length + ')')+'</button>' : '';
+  var box = '';
+  if(isOpen && list.length){
+    var rows = list.slice().reverse().map(function(o){
+      var d = new Date(o.ts);
+      var dstr = pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+      return '<div class="hist-row" style="display:block;"><div class="hd">'+esc(dstr)+'</div><div>'+esc(o.texto)+'</div></div>';
+    }).join('');
+    box = '<div class="hist-box'+(justOpenedKey==='obs:'+p.id?' anim-in':'')+'">'+rows+'</div>';
+  }
+  var addUi;
+  if(App.obsInlineOpen[p.id]){
+    addUi = '<div class="'+(justOpenedKey==='obsadd:'+p.id?'anim-in':'')+'" style="margin-top:6px;"><textarea id="obsnew_'+p.id+'" placeholder="Nova observação… (Enter salva, Shift+Enter quebra linha)" oninput="App.updateObsDraft(\''+p.id+'\', this.value)" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();App.addObservacaoQuick(\''+p.id+'\');}" style="width:100%;min-height:50px;padding:7px 9px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;font-family:var(--font-body);">'+esc(obsDraftText[p.id]||'')+'</textarea><button class="btn-ghost outlined" style="margin-top:4px;" onclick="App.addObservacaoQuick(\''+p.id+'\')">Salvar observação</button></div>';
+  }else{
+    addUi = '<button class="btn-ghost" onclick="App.showObsField(\''+p.id+'\')">+ Adicionar observação</button>';
+  }
+  return '<div style="margin-top:8px;">'+toggle+box+'<div style="margin-top:6px;">'+addUi+'</div></div>';
+}
+
+function renderGateDigitalizacao(p){
+  if(!needsDigitalizacaoGate(p)) return '';
+  return '<div class="docs-pending" style="border-top:1px dashed var(--line);padding-top:8px;margin-top:8px;">'+
+    '<span>Aguardando digitalização do rascunho para poder arquivar.</span>'+
+    '<button class="btn-ghost outlined" onclick="App.marcarRascunhoDigitalizado(\''+p.id+'\')">Marcar rascunho digitalizado</button>'+
+  '</div>';
+}
+
+function renderVinculados(p){
+  var vinculados = getVinculados(p);
+  if(!vinculados.length) return '';
+  var isOpen = vinculadosAbertos[p.id];
+  var toggle = '<button class="hist-toggle" onclick="App.toggleVinculadosView(\''+p.id+'\')">'+(isOpen?'Ocultar protocolos vinculados':'Ver protocolos vinculados (' + vinculados.length + ')')+'</button>';
+  if(!isOpen) return '<div style="margin-top:8px;">'+toggle+'</div>';
+  var statusMap = getStatusMap();
+  var rows = vinculados.slice().sort(function(a,b){ return a.dataProtocolo<b.dataProtocolo?1:-1; }).map(function(v){
+    var st = statusMap[v.status] || {label:v.status, cor:'gray'};
+    return '<div class="hist-row"><span style="cursor:pointer;text-decoration:underline;" onclick="App.openEdit(\''+v.id+'\')">'+esc(formatBR(v.dataProtocolo))+(v.numeroProtocolo?(' — nº '+esc(v.numeroProtocolo)):'')+' — '+esc(v.cliente||'Sem identificação')+'</span><span class="stamp '+st.cor+'" style="transform:none;">'+esc(st.label)+'</span></div>';
+  }).join('');
+  return '<div style="margin-top:8px;">'+toggle+'<div class="hist-box'+(justOpenedKey==='vinc:'+p.id?' anim-in':'')+'">'+rows+'</div></div>';
+}
+
+function renderLixeiraItem(p){
+  var st = getStatusOf(p);
+  var dataExcStr = p.dataExclusao ? formatBR(toISO(new Date(p.dataExclusao))) : '';
+  return ''+
+  '<div class="ficha">'+
+    '<div class="ficha-bar" style="background:var(--stamp-red);"></div>'+
+    '<div class="ficha-body">'+
+      '<div class="ficha-top">'+
+        '<div class="ficha-ident">'+
+          '<span class="ficha-date">'+esc(formatBR(p.dataProtocolo))+'</span>'+
+          (p.numeroProtocolo ? '<span class="ficha-num">Protocolo nº '+esc(p.numeroProtocolo)+'</span>' : '')+
+          '<span class="ficha-cliente empty">'+esc(p.cliente||'Sem identificação')+'</span>'+
+          '<span class="ficha-sub">Excluído em '+esc(dataExcStr)+'</span>'+
+        '</div>'+
+        '<div class="ficha-actions">'+
+          '<span class="stamp '+st.cor+'" style="transform:none;">'+esc(st.label)+'</span>'+
+          '<button class="btn-ghost outlined" onclick="App.restaurarProtocolo(\''+p.id+'\')">Restaurar</button>'+
+          '<button class="btn-danger" onclick="App.excluirDefinitivamente(\''+p.id+'\')">Excluir definitivamente</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function renderFicha(p){
+  var st = getStatusOf(p);
+  var canaisHtml = (p.canais||[]).map(function(c){
+    var cm = CANAL_MAP[c] || {label:c};
+    return '<span class="tag canal-tag">'+esc(cm.label)+'</span>';
+  }).join('');
+  var tagsHtml = p.tipos.map(function(t){ return '<span class="tag">'+esc(t)+'</span>'; }).join('');
+  var statusOptions = state.statusList.map(function(s){
+    return '<option value="'+esc(s.key)+'"'+(s.key===p.status?' selected':'')+'>'+esc(s.label)+'</option>';
+  }).join('');
+  var subLine = '';
+  if(p.clienteTelefone) subLine += 'Tel: '+esc(p.clienteTelefone);
+  if(p.clienteEmail) subLine += (subLine?' · ':'')+'E-mail: '+esc(p.clienteEmail);
+  if(p.outorgados) subLine += (subLine?' · ':'')+'Outorgado(s): '+esc(p.outorgados);
+  if(p.responsavel) subLine += (subLine?' · ':'')+'Responsável: '+esc(p.responsavel);
+  if(p.rascunhoDigitalizado && p.dataDigitalizacao) subLine += (subLine?' · ':'')+'Rascunho digitalizado em '+esc(formatBR(p.dataDigitalizacao));
+  return ''+
+  '<div class="ficha'+(justCreatedId===p.id?' ficha-new':'')+'">'+
+    '<div class="ficha-bar" style="background:var(--'+st.cor+');"></div>'+
+    '<div class="ficha-body">'+
+      '<div class="ficha-top">'+
+        '<div class="ficha-ident">'+
+          '<span class="ficha-date">'+esc(formatBR(p.dataProtocolo))+'</span>'+
+          (p.numeroProtocolo ? '<span class="ficha-num">Protocolo nº '+esc(p.numeroProtocolo)+'</span>' : '')+
+          (p.cliente ? '<span class="ficha-cliente" title="Ver histórico deste cliente" onclick="App.showClienteHistory(\''+jsAttr(p.cliente)+'\')">'+esc(p.cliente)+'</span>' : '<span class="ficha-cliente empty">Sem identificação de cliente</span>')+
+          (subLine ? '<span class="ficha-sub">'+subLine+'</span>' : '')+
+        '</div>'+
+        '<div class="ficha-actions">'+
+          '<select class="status-select stamp '+st.cor+'" onchange="App.changeStatusQuick(\''+p.id+'\', this.value)">'+statusOptions+'</select>'+
+          '<button class="icon-btn" title="Editar" onclick="App.openEdit(\''+p.id+'\')">&#9998;</button>'+
+          '<button class="icon-btn" title="Excluir" onclick="App.deleteProtocolo(\''+p.id+'\')">&times;</button>'+
+        '</div>'+
+      '</div>'+
+      '<div class="ficha-mid">'+
+        '<span class="tag pessoa-tag '+(p.tipoPessoa==='pj'?'pj':'pf')+'">'+(p.tipoPessoa==='pj'?'PJ':'PF')+'</span>'+
+        canaisHtml+
+        tagsHtml+
+      '</div>'+
+      '<div class="ficha-bottom">'+renderFichaPrazo(p)+'</div>'+
+      renderGateDigitalizacao(p)+
+      renderVinculados(p)+
+      renderObservacoes(p)+
+      renderHistorico(p)+
+    '</div>'+
+  '</div>';
+}
+
+function groupHeader(title, count){
+  return '<div class="group-header"><span>'+esc(title)+'</span><span class="cnt">'+count+'</span></div>';
+}
+
+function renderListArea(){
+  if(state.protocolos.length===0){
+    return '<div class="empty-state">'+
+      '<div class="big">Nenhum protocolo registrado ainda</div>Clique em "+ Novo Protocolo" para começar o controle.'+
+    '</div>';
+  }
+  var list = getFilteredSorted();
+  if(ui.viewMode==='quadro'){
+    return renderKanban(list);
+  }
+  if(ui.viewMode==='lixeira'){
+    if(list.length===0) return '<div class="empty-state">A lixeira está vazia.</div>';
+    return list.map(renderLixeiraItem).join('');
+  }
+  if(list.length===0){
+    return '<div class="empty-state">Nenhum protocolo encontrado com os filtros atuais.</div>';
+  }
+  if(ui.agruparPessoa){
+    var pf = list.filter(function(p){ return p.tipoPessoa==='pf'; });
+    var pj = list.filter(function(p){ return p.tipoPessoa==='pj'; });
+    return groupHeader('Pessoa Física', pf.length)+
+      (pf.length ? pf.map(renderFicha).join('') : '<div class="empty-state">Nenhum protocolo de pessoa física com os filtros atuais.</div>')+
+      groupHeader('Pessoa Jurídica', pj.length)+
+      (pj.length ? pj.map(renderFicha).join('') : '<div class="empty-state">Nenhum protocolo de pessoa jurídica com os filtros atuais.</div>');
+  }
+  return list.map(renderFicha).join('');
+}
+
+function renderKanbanCard(p){
+  var info = computePrazo(p);
+  var tag = '';
+  if(!p.docsCompletos){ tag='<span class="k-tag warn">Docs pendentes</span>'; }
+  else if(info){
+    if(info.isOverdue) tag='<span class="k-tag late">Atrasado '+info.diasAtraso+'d</span>';
+    else if(info.isDueToday) tag='<span class="k-tag warn">Vence hoje</span>';
+    else tag='<span class="k-tag ok">'+(PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d restantes</span>';
+  }
+  return '<div class="kanban-card" draggable="true" ondragstart="App.dragStart(event,\''+p.id+'\')" onclick="App.openEdit(\''+p.id+'\')">'+
+    '<div class="k-top"><span>'+esc(formatBR(p.dataProtocolo))+'</span><span>'+(p.tipoPessoa==='pj'?'PJ':'PF')+'</span></div>'+
+    '<div class="k-cliente">'+esc(p.cliente||'Sem identificação')+'</div>'+
+    tag+
+  '</div>';
+}
+function renderKanban(list){
+  var cols = state.statusList.map(function(s){
+    var items = list.filter(function(p){ return p.status===s.key; });
+    var cardsHtml = items.map(renderKanbanCard).join('') || '<div class="kanban-empty">Vazio</div>';
+    return '<div class="kanban-col" ondragover="event.preventDefault()" ondrop="App.dropOnColumn(event,\''+jsAttr(s.key)+'\')">'+
+      '<div class="kanban-col-header stamp '+s.cor+'" style="transform:none;">'+esc(s.label)+' · '+items.length+'</div>'+
+      '<div class="kanban-col-body">'+cardsHtml+'</div>'+
+    '</div>';
+  }).join('');
+  return '<div class="kanban-board">'+cols+'</div>';
+}
+
+/* ---- Modal novo/editar ---- */
+function computeVinculoSugestaoHtml(d){
+  if(d.mode!=='new' || !d.cliente || !d.cliente.trim()) return '';
+  var nomeNorm = d.cliente.trim().toLowerCase();
+  var sugestoes = state.protocolos.filter(function(p){
+    return !p.naLixeira && !isArquivado(p) && (p.cliente||'').trim().toLowerCase()===nomeNorm && !d.vinculados[p.id];
+  });
+  if(!sugestoes.length) return '';
+  return '<div class="hint" style="background:var(--gold-soft);color:var(--gold);padding:8px 10px;border-radius:3px;margin-bottom:6px;">'+
+    'Encontrei '+sugestoes.length+' protocolo(s) ativo(s) para "'+esc(d.cliente.trim())+'": '+
+    sugestoes.map(function(p){
+      return '<button type="button" class="btn-ghost" style="text-decoration:underline;padding:2px 4px;color:var(--gold);" onclick="App.toggleVinculo(\''+p.id+'\')">+ '+esc(formatBR(p.dataProtocolo))+(p.numeroProtocolo?(' nº '+esc(p.numeroProtocolo)):'')+'</button>';
+    }).join(' ')+
+  '</div>';
+}
+
+function renderModal(){
+  var d = draftModal;
+  var canalBtns = CANAIS.map(function(c){
+    return '<button type="button" class="seg-btn'+(d.canais[c.key]?' active':'')+'" onclick="App.toggleCanal(\''+c.key+'\')">'+esc(c.label)+'</button>';
+  }).join('');
+  var pessoaBtns = ''+
+    '<button type="button" class="seg-btn'+(d.tipoPessoa==='pf'?' active':'')+'" onclick="App.setPessoa(\'pf\')">Pessoa Física</button>'+
+    '<button type="button" class="seg-btn'+(d.tipoPessoa==='pj'?' active':'')+'" onclick="App.setPessoa(\'pj\')">Pessoa Jurídica</button>';
+  var docsBtns = ''+
+    '<button type="button" class="seg-btn'+(d.docsCompletos?' active':'')+'" onclick="App.setDocsCompletos(true)">Sim, já recebi tudo</button>'+
+    '<button type="button" class="seg-btn'+(!d.docsCompletos?' active':'')+'" onclick="App.setDocsCompletos(false)">Não, falta documentação</button>';
+  var tiposHtml = getTiposOrdenadosPorUso().map(function(t){
+    var checked = d.tipos[t] ? ' checked' : '';
+    return '<label><input type="checkbox"'+checked+' onchange="App.toggleTipo(\''+jsAttr(t)+'\')"> '+esc(t)+'</label>';
+  }).join('');
+  var statusOptions = state.statusList.map(function(s){
+    return '<option value="'+esc(s.key)+'"'+(s.key===d.status?' selected':'')+'>'+esc(s.label)+'</option>';
+  }).join('');
+  var responsavelOptions = '<option value=""'+(d.responsavel?'':' selected')+'>— Selecionar —</option>'+
+    state.responsaveis.map(function(r){
+      return '<option value="'+esc(r)+'"'+(r===d.responsavel?' selected':'')+'>'+esc(r)+'</option>';
+    }).join('');
+
+  var original = d.mode==='edit' ? state.protocolos.filter(function(p){return p.id===d.id;})[0] : null;
+  var obsHistoricoHtml = '';
+  if(original && original.observacoesHistorico && original.observacoesHistorico.length){
+    var obsRows = original.observacoesHistorico.slice().reverse().map(function(o){
+      var dt = new Date(o.ts);
+      var dstr = pad(dt.getDate())+'/'+pad(dt.getMonth()+1)+'/'+dt.getFullYear()+' '+pad(dt.getHours())+':'+pad(dt.getMinutes());
+      return '<div class="hist-row" style="display:block;"><div class="hd">'+esc(dstr)+'</div><div>'+esc(o.texto)+'</div></div>';
+    }).join('');
+    obsHistoricoHtml = '<div class="hist-box" style="margin-bottom:8px;max-height:150px;overflow-y:auto;">'+obsRows+'</div>';
+  }
+
+  var vinculoSugestaoHtml = computeVinculoSugestaoHtml(d);
+  var selectedVinculoChipsHtml = '';
+  var vinculoIdsAtuais = Object.keys(d.vinculados||{});
+  if(vinculoIdsAtuais.length){
+    selectedVinculoChipsHtml = '<div style="margin-bottom:6px;">'+vinculoIdsAtuais.map(function(id){
+      var p = state.protocolos.filter(function(x){return x.id===id;})[0];
+      if(!p) return '';
+      return '<span class="tag" style="cursor:pointer;" onclick="App.toggleVinculo(\''+id+'\')" title="Clique para remover o vínculo">'+esc(p.cliente||p.numeroProtocolo||'(sem nome)')+' &times;</span> ';
+    }).join('')+'</div>';
+  }
+  var vinculoResultsHtml = '';
+  var vq = (d.vinculoSearch||'').trim().toLowerCase();
+  if(vq){
+    var candidatos = state.protocolos.filter(function(p){
+      if(p.id===d.id || p.naLixeira) return false;
+      var hay = ((p.cliente||'')+' '+(p.numeroProtocolo||'')).toLowerCase();
+      return hay.indexOf(vq)!==-1;
+    }).slice(0,8);
+    vinculoResultsHtml = candidatos.map(function(p){
+      var checked = d.vinculados[p.id] ? ' checked' : '';
+      return '<label><input type="checkbox"'+checked+' onchange="App.toggleVinculo(\''+p.id+'\')"> '+esc(formatBR(p.dataProtocolo))+' — '+esc(p.cliente||'Sem identificação')+(p.numeroProtocolo?(' — nº '+esc(p.numeroProtocolo)):'')+'</label>';
+    }).join('');
+    if(!candidatos.length) vinculoResultsHtml = '<div class="hint">Nenhum protocolo encontrado.</div>';
+  }
+
+  return ''+
+  '<div class="overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeModal()">'+
+    '<div class="modal wide'+(modalJustOpened?' entering':'')+'">'+
+      '<h2>'+(d.mode==='edit'?'Editar protocolo':'Novo protocolo')+'</h2>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>Nº do protocolo (opcional)</label><input type="text" id="f_numeroProtocolo" value="'+esc(d.numeroProtocolo||'')+'" placeholder="Ex: 12345/2026" oninput="App.setField(\'numeroProtocolo\', this.value)"></div>'+
+        '<div class="field"><label>Data do protocolo</label><input type="date" id="f_dataProtocolo" value="'+esc(d.dataProtocolo||todayISO())+'" oninput="App.setField(\'dataProtocolo\', this.value)"></div>'+
+      '</div>'+
+      '<div class="field"><label>Tipo de pessoa</label><div class="segmented">'+pessoaBtns+'</div></div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>Cliente / outorgante (opcional)</label><input type="text" id="f_cliente" value="'+esc(d.cliente||'')+'" placeholder="Nome do cliente" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)"></div>'+
+        '<div class="field"><label>Telefone (opcional)</label><input type="text" id="f_clienteTelefone" value="'+esc(d.clienteTelefone||'')+'" placeholder="(00) 00000-0000" oninput="App.setField(\'clienteTelefone\', this.value)"></div>'+
+        '<div class="field"><label>E-mail (opcional)</label><input type="text" id="f_clienteEmail" value="'+esc(d.clienteEmail||'')+'" placeholder="nome@exemplo.com" oninput="App.setField(\'clienteEmail\', this.value)"></div>'+
+      '</div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>Outorgado(s) (opcional)</label><input type="text" id="f_outorgados" value="'+esc(d.outorgados||'')+'" placeholder="Quem recebe os poderes" oninput="App.setField(\'outorgados\', this.value)"></div>'+
+        '<div class="field"><label>Responsável interno (opcional)</label><select onchange="App.setResponsavel(this.value)">'+responsavelOptions+'</select>'+
+          '<div class="add-tipo-row"><input type="text" id="novoResponsavelModalInput" placeholder="Adicionar novo responsável…"><button type="button" class="btn-ghost outlined" onclick="App.addResponsavelFromModal()">Adicionar</button></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="field"><label>Vincular a outro(s) protocolo(s) da mesma pessoa/empresa (opcional)</label>'+
+        '<div id="vinculoSugestaoContainer">'+vinculoSugestaoHtml+'</div>'+
+        selectedVinculoChipsHtml+
+        '<input type="text" id="vinculoSearchInput" placeholder="Buscar por cliente ou nº de protocolo…" value="'+esc(d.vinculoSearch||'')+'" oninput="App.setVinculoSearch(this.value)">'+
+        (vinculoResultsHtml ? '<div class="checklist" style="max-height:140px;margin-top:6px;">'+vinculoResultsHtml+'</div>' : '')+
+        '<div class="hint">Isso só serve para ver os protocolos juntos depois — não muda nada nos dados de cada um.</div>'+
+      '</div>'+
+      '<div class="field"><label>Canal de atendimento (selecione um ou mais)</label><div class="segmented">'+canalBtns+'</div></div>'+
+      '<div class="field"><label>Documentação completa?</label><div class="segmented">'+docsBtns+'</div>'+
+        (d.docsCompletos ? '<div class="field" style="margin-top:8px;"><label>Data do recebimento completo</label><input type="date" id="f_dataRecebimentoCompleto" value="'+esc(d.dataRecebimentoCompleto||todayISO())+'" oninput="App.setField(\'dataRecebimentoCompleto\', this.value)"></div>' : '<div class="hint">O prazo de '+PRAZO_DIAS_UTEIS+' dias úteis começa a contar quando você marcar a documentação como completa (pelo botão na ficha, ou aqui).</div>')+
+      '</div>'+
+      '<div class="field"><label>Tipos de ato (selecione um ou mais)</label>'+
+        '<div class="checklist">'+tiposHtml+'</div>'+
+        '<div class="add-tipo-row"><input type="text" id="novoTipoModalInput" placeholder="Adicionar novo tipo de ato…"><button type="button" class="btn-ghost outlined" onclick="App.addTipoFromModal()">Adicionar</button></div>'+
+      '</div>'+
+      '<div class="field"><label>Status inicial / andamento</label><select id="f_status" onchange="App.setStatus(this.value)">'+statusOptions+'</select></div>'+
+      '<div class="field"><label>Observações</label>'+
+        obsHistoricoHtml+
+        '<textarea id="f_novaObservacao" placeholder="Nova observação (opcional) — fica registrada com data e hora, mantendo o histórico anterior" oninput="App.setField(\'novaObservacao\', this.value)">'+esc(d.novaObservacao||'')+'</textarea>'+
+      '</div>'+
+      '<div class="modal-actions">'+
+        '<button class="btn-ghost" onclick="App.closeModal()">Cancelar</button>'+
+        '<div class="modal-actions-right">'+
+          '<button class="btn btn-primary" onclick="App.saveProtocolo()">'+(d.mode==='edit'?'Salvar alterações':'Salvar protocolo')+'</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+/* ---- Modal configurações ---- */
+function renderSettingsModal(){
+  var tiposRows = state.tiposAtos.map(function(t){
+    return '<div class="list-row"><span>'+esc(t)+'</span><button class="remove-x" onclick="App.removeTipoSettings(\''+jsAttr(t)+'\')" title="Remover">&times;</button></div>';
+  }).join('') || '<div class="hint">Nenhum tipo cadastrado.</div>';
+
+  var statusRows = state.statusList.map(function(s, idx){
+    var inUse = state.protocolos.some(function(p){ return p.status===s.key; });
+    var colorOptions = PALETTE.map(function(c){ return '<option value="'+c.key+'"'+(c.key===s.cor?' selected':'')+'>'+esc(c.name)+'</option>'; }).join('');
+    var digitalizacaoCheckbox = s.isFinal ? ('<label class="final-lbl"><input type="checkbox" '+(s.requerDigitalizacao?'checked':'')+' onchange="App.updateStatusRequerDigitalizacao(\''+jsAttr(s.key)+'\', this.checked)"> Exige digitalização antes de arquivar</label>') : '';
+    return '<div class="status-row">'+
+      '<span class="swatch" style="background:var(--'+s.cor+');"></span>'+
+      '<input type="text" value="'+esc(s.label)+'" onchange="App.updateStatusLabel(\''+jsAttr(s.key)+'\', this.value)">'+
+      '<select onchange="App.updateStatusColor(\''+jsAttr(s.key)+'\', this.value)">'+colorOptions+'</select>'+
+      '<label class="final-lbl"><input type="checkbox" '+(s.isFinal?'checked':'')+' onchange="App.updateStatusFinal(\''+jsAttr(s.key)+'\', this.checked)"> Fase final</label>'+
+      digitalizacaoCheckbox+
+      '<button class="mini-btn" '+(idx===0?'disabled':'')+' onclick="App.moveStatus(\''+jsAttr(s.key)+'\', -1)" title="Mover para cima">&#9650;</button>'+
+      '<button class="mini-btn" '+(idx===state.statusList.length-1?'disabled':'')+' onclick="App.moveStatus(\''+jsAttr(s.key)+'\', 1)" title="Mover para baixo">&#9660;</button>'+
+      '<button class="remove-x" '+(inUse?'disabled title="Em uso por protocolo(s)"':'') +' onclick="App.removeStatusType(\''+jsAttr(s.key)+'\')">&times;</button>'+
+    '</div>';
+  }).join('');
+  var newStatusColorOptions = PALETTE.map(function(c){ return '<option value="'+c.key+'">'+esc(c.name)+'</option>'; }).join('');
+
+  var feriadosRows = state.feriadosExtras.map(function(f,idx){
+    return '<div class="list-row"><span>'+esc(formatBR(f.date))+' — '+esc(f.label)+'</span><button class="remove-x" onclick="App.removeFeriadoExtra('+idx+')" title="Remover">&times;</button></div>';
+  }).join('') || '<div class="hint">Nenhum feriado municipal cadastrado.</div>';
+
+  var responsaveisRows = state.responsaveis.map(function(r){
+    return '<div class="list-row">'+
+      '<input type="text" value="'+esc(r)+'" style="flex:1;padding:5px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;" onchange="App.renameResponsavel(\''+jsAttr(r)+'\', this.value)">'+
+      '<button class="remove-x" onclick="App.removeResponsavelSettings(\''+jsAttr(r)+'\')" title="Remover">&times;</button>'+
+    '</div>';
+  }).join('') || '<div class="hint">Nenhum responsável cadastrado ainda.</div>';
+
+  var fm = state.feriadosMoveis;
+  return ''+
+  '<div class="overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeSettings()">'+
+    '<div class="modal wide'+(modalJustOpened?' entering':'')+'">'+
+      '<h2>Configurações</h2>'+
+
+      '<div class="settings-section">'+
+        '<h3>Backup (reserva de segurança)</h3>'+
+        '<div class="hint">Os protocolos já sincronizam automaticamente pela sua conta Claude. Ainda assim, baixe um backup de vez em quando: se este artifact for despublicado por qualquer motivo, os dados salvos são apagados permanentemente e não é possível publicar o mesmo artifact de novo — um backup é sua única rede de segurança contra isso.</div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
+          '<button type="button" class="btn-ghost outlined" onclick="App.exportBackup()">Baixar backup completo</button>'+
+          '<button type="button" class="btn-ghost outlined" onclick="App.triggerImportBackup()">Restaurar de um backup</button>'+
+          '<input type="file" id="backupFileInput" accept="application/json" style="display:none;" onchange="App.importBackupFile(this)">'+
+        '</div>'+
+        '<div class="hint" style="margin-top:8px;">Restaurar um backup substitui todos os protocolos e configurações atuais — use com cuidado.</div>'+
+      '</div>'+
+
+      '<div class="settings-section">'+
+        '<h3>Responsáveis internos</h3>'+
+        '<div class="hint">Nomes disponíveis para selecionar como responsável em cada protocolo. Edite o nome direto no campo para renomear.</div>'+
+        '<div class="checklist" style="max-height:150px;">'+responsaveisRows+'</div>'+
+        '<div class="add-tipo-row"><input type="text" id="settingsNovoResponsavel" placeholder="Novo responsável…"><button type="button" class="btn-ghost outlined" onclick="App.addResponsavelSettings()">Adicionar</button></div>'+
+      '</div>'+
+
+      '<div class="settings-section">'+
+        '<h3>Fases de andamento</h3>'+
+        '<div class="hint">Adicione, edite, reordene ou remova as fases do fluxo. Uma fase marcada como "final" encerra o prazo e sai da contagem de protocolos ativos. Se além disso exigir digitalização, o protocolo só vai para "Arquivados" depois que você confirmar o rascunho digitalizado na ficha.</div>'+
+        '<div>'+statusRows+'</div>'+
+        '<div class="new-status-form">'+
+          '<input type="text" id="settingsNovoStatusLabel" placeholder="Nome da nova fase…" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+
+          '<select id="settingsNovoStatusCor" style="padding:7px 8px;border:1px solid var(--line);border-radius:3px;font-size:12px;">'+newStatusColorOptions+'</select>'+
+          '<label class="final-lbl"><input type="checkbox" id="settingsNovoStatusFinal"> Fase final</label>'+
+          '<button type="button" class="btn-ghost outlined" onclick="App.addStatusType()">Adicionar fase</button>'+
+        '</div>'+
+      '</div>'+
+
+      '<div class="settings-section">'+
+        '<h3>Tipos de procuração / escritura</h3>'+
+        '<div class="checklist" style="max-height:150px;">'+tiposRows+'</div>'+
+        '<div class="add-tipo-row"><input type="text" id="settingsNovoTipo" placeholder="Novo tipo de ato…"><button type="button" class="btn-ghost outlined" onclick="App.addTipoSettings()">Adicionar</button></div>'+
+      '</div>'+
+
+      '<div class="settings-section">'+
+        '<h3>Cálculo do prazo (dias úteis)</h3>'+
+        '<div class="hint">O prazo de '+PRAZO_DIAS_UTEIS+' dias úteis desconsidera sábados, domingos, feriados nacionais fixos e os feriados móveis abaixo.</div>'+
+        '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:4px;"><input type="checkbox" '+(fm.sextaSanta?'checked':'')+' onchange="App.toggleFeriadoMovel(\'sextaSanta\')"> Sexta-feira Santa</label>'+
+        '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:4px;"><input type="checkbox" '+(fm.carnaval?'checked':'')+' onchange="App.toggleFeriadoMovel(\'carnaval\')"> Carnaval (terça-feira)</label>'+
+        '<label style="display:flex;gap:8px;align-items:center;font-size:13px;"><input type="checkbox" '+(fm.corpusChristi?'checked':'')+' onchange="App.toggleFeriadoMovel(\'corpusChristi\')"> Corpus Christi</label>'+
+      '</div>'+
+
+      '<div class="settings-section">'+
+        '<h3>Feriados municipais / locais adicionais</h3>'+
+        '<div class="checklist" style="max-height:120px;">'+feriadosRows+'</div>'+
+        '<div class="field-row" style="margin-top:8px;">'+
+          '<div class="field" style="flex:0 0 150px;"><input type="date" id="settingsFeriadoData"></div>'+
+          '<div class="field"><input type="text" id="settingsFeriadoLabel" placeholder="Descrição (ex: aniversário da cidade)"></div>'+
+        '</div>'+
+        '<button type="button" class="btn-ghost outlined" onclick="App.addFeriadoExtra()">Adicionar feriado</button>'+
+      '</div>'+
+
+      '<div class="modal-actions"><div></div><div class="modal-actions-right"><button class="btn btn-primary" onclick="App.closeSettings()">Concluído</button></div></div>'+
+    '</div>'+
+  '</div>';
+}
+
+/* ---- Cliente história modal ---- */
+function renderClienteHistoryModal(){
+  var nome = clienteHistoryModal;
+  var statusMap = getStatusMap();
+  var items = state.protocolos.filter(function(p){
+    return !p.naLixeira && (p.cliente||'').trim().toLowerCase()===nome.trim().toLowerCase();
+  }).sort(function(a,b){ return a.dataProtocolo<b.dataProtocolo?1:-1; });
+  var rows = items.map(function(p){
+    var st = statusMap[p.status] || {label:p.status, cor:'gray'};
+    return '<div class="list-row"><span>'+esc(formatBR(p.dataProtocolo))+(p.numeroProtocolo?(' — nº '+esc(p.numeroProtocolo)):'')+' — '+esc(p.tipos.join(', ') || 'sem tipo definido')+'</span><span class="stamp '+st.cor+'" style="transform:none;">'+esc(st.label)+'</span></div>';
+  }).join('');
+  return '<div class="overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeClienteHistory()">'+
+    '<div class="modal'+(modalJustOpened?' entering':'')+'">'+
+      '<h2>Histórico — '+esc(nome)+'</h2>'+
+      '<div class="hint">'+items.length+' protocolo(s) encontrado(s) para este nome.</div>'+
+      '<div class="checklist" style="max-height:340px;">'+(rows||'<div class="hint">Nada encontrado.</div>')+'</div>'+
+      '<div class="modal-actions"><div></div><div class="modal-actions-right"><button class="btn btn-primary" onclick="App.closeClienteHistory()">Fechar</button></div></div>'+
+    '</div>'+
+  '</div>';
+}
+
+/* ---- Relatório do dia ---- */
+function computeDailyReport(){
+  var today = todayISO();
+  var novos=[], venceHoje=[], atrasados=[], aguardDocs=[], arquivadosHoje=[];
+  state.protocolos.forEach(function(p){
+    if(p.naLixeira) return;
+    var st = getStatusOf(p);
+    if(p.dataProtocolo===today) novos.push(p);
+    if(!isArquivado(p) && !p.docsCompletos) aguardDocs.push(p);
+    var info = computePrazo(p);
+    if(info){
+      if(info.isOverdue) atrasados.push(p);
+      else if(info.isDueToday) venceHoje.push(p);
+    }
+    if(isArquivado(p)){
+      if(st.requerDigitalizacao){
+        if(p.dataDigitalizacao===today) arquivadosHoje.push(p);
+      }else if(p.historico && p.historico.length){
+        var last = p.historico[p.historico.length-1];
+        if(last.status===p.status && sameDay(last.ts, today)) arquivadosHoje.push(p);
+      }
+    }
+  });
+  return {novos:novos, venceHoje:venceHoje, atrasados:atrasados, aguardDocs:aguardDocs, finalizadosHoje:arquivadosHoje};
+}
+function reportRows(list, emptyMsg){
+  if(!list.length) return '<div class="report-empty">'+emptyMsg+'</div>';
+  return list.map(function(p){
+    return '<div class="report-row"><span>'+esc(p.cliente||'Sem identificação')+(p.numeroProtocolo?(' — nº '+esc(p.numeroProtocolo)):'')+'</span><span style="font-family:var(--font-mono);color:var(--ink-soft);">'+esc(formatBR(p.dataProtocolo))+'</span></div>';
+  }).join('');
+}
+function renderDailyReportModal(){
+  var r = computeDailyReport();
+  var hoje = new Date();
+  var dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  var meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  var extenso = dias[hoje.getDay()]+', '+hoje.getDate()+' de '+meses[hoje.getMonth()]+' de '+hoje.getFullYear();
+  return '<div class="overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeDailyReport()">'+
+    '<div class="modal wide'+(modalJustOpened?' entering':'')+'">'+
+      '<div id="dailyReportPrint">'+
+        '<div class="eyebrow" style="margin-bottom:4px;">Cartório de Notas — Controle de Atos</div>'+
+        '<h2>Relatório do dia — '+esc(extenso)+'</h2>'+
+        '<div class="report-section"><h3>Atrasados <span class="count">'+r.atrasados.length+'</span></h3>'+reportRows(r.atrasados,'Nenhum protocolo atrasado.')+'</div>'+
+        '<div class="report-section"><h3>Vencem hoje <span class="count">'+r.venceHoje.length+'</span></h3>'+reportRows(r.venceHoje,'Nenhum protocolo vence hoje.')+'</div>'+
+        '<div class="report-section"><h3>Aguardando documentos <span class="count">'+r.aguardDocs.length+'</span></h3>'+reportRows(r.aguardDocs,'Nenhum protocolo pendente de documentos.')+'</div>'+
+        '<div class="report-section"><h3>Novos protocolos hoje <span class="count">'+r.novos.length+'</span></h3>'+reportRows(r.novos,'Nenhum protocolo aberto hoje.')+'</div>'+
+        '<div class="report-section"><h3>Arquivados hoje <span class="count">'+r.finalizadosHoje.length+'</span></h3>'+reportRows(r.finalizadosHoje,'Nenhum protocolo arquivado hoje.')+'</div>'+
+      '</div>'+
+      '<div class="modal-actions no-print"><button class="btn-ghost" onclick="App.closeDailyReport()">Fechar</button><div class="modal-actions-right"><button class="btn btn-primary" onclick="App.printDailyReport()">Imprimir relatório</button></div></div>'+
+    '</div>'+
+  '</div>';
+}
+
+function renderAtosBalcaoModal(){
+  var hoje = todayISO();
+  var anoMes = hoje.slice(0,7);
+  var ano = hoje.slice(0,4);
+  var totalHoje = state.atosBalcao[hoje] || 0;
+  var totalMes = 0, totalAno = 0;
+  var datas = Object.keys(state.atosBalcao).sort().reverse();
+  datas.forEach(function(d){
+    var v = state.atosBalcao[d] || 0;
+    if(d.slice(0,7)===anoMes) totalMes += v;
+    if(d.slice(0,4)===ano) totalAno += v;
+  });
+  var historicoRows = datas.filter(function(d){ return state.atosBalcao[d]>0; }).map(function(d){
+    return '<div class="report-row"><span>'+esc(formatBR(d))+'</span><span style="font-family:var(--font-mono);">'+state.atosBalcao[d]+'</span></div>';
+  }).join('') || '<div class="report-empty">Nenhum registro ainda.</div>';
+
+  return '<div class="overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeAtosBalcao()">'+
+    '<div class="modal'+(modalJustOpened?' entering':'')+'">'+
+      '<h2>Atos de balcão (sem protocolo)</h2>'+
+      '<div class="hint">Para atos que você atende só no balcão e não abrem protocolo — apenas uma contagem, sem prazo nem status.</div>'+
+      '<div style="text-align:center;padding:16px 0;">'+
+        '<div style="font-family:var(--font-mono);font-size:42px;font-weight:700;">'+totalHoje+'</div>'+
+        '<div class="eyebrow">Hoje</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;">'+
+        '<button class="btn btn-primary" onclick="App.ajustarAtoBalcao(1)" style="font-size:18px;padding:10px 22px;">+1</button>'+
+        '<button class="btn-ghost outlined" onclick="App.ajustarAtoBalcao(-1)" style="font-size:18px;padding:10px 22px;">-1</button>'+
+      '</div>'+
+      '<div class="field-row" style="align-items:flex-end;">'+
+        '<div class="field"><label>Somar quantidade (use negativo para corrigir)</label><input type="text" id="qtdBalcaoInput" placeholder="Ex: 5 ou -2" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.adicionarQuantidadeBalcao();}"></div>'+
+        '<button type="button" class="btn-ghost outlined" style="margin-bottom:15px;" onclick="App.adicionarQuantidadeBalcao()">Adicionar</button>'+
+      '</div>'+
+      '<div class="stats-bar" style="margin:16px 0;">'+
+        '<div class="stat"><div class="num">'+totalMes+'</div><div class="lbl">Este mês</div></div>'+
+        '<div class="stat"><div class="num">'+totalAno+'</div><div class="lbl">Este ano</div></div>'+
+      '</div>'+
+      '<div class="report-section"><h3>Histórico por dia</h3><div style="max-height:220px;overflow-y:auto;">'+historicoRows+'</div></div>'+
+      '<div class="modal-actions">'+
+        '<button class="btn-ghost" onclick="App.closeAtosBalcao()">Fechar</button>'+
+        '<div class="modal-actions-right"><button class="btn-ghost outlined" onclick="App.exportAtosBalcaoCSV()">Exportar CSV</button></div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+/* ===================== Início ===================== */
+ensureStorage();
+loadState().then(function(s){
+  state = s;
+  renderAll();
+});
+
+})();
+</script>
+</body>
+</html>
