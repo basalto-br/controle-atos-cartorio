@@ -400,6 +400,7 @@ var atosBalcaoModalOpen = false;
 var historicoAbertos = {};
 var obsAbertos = {};
 var vinculadosAbertos = {};
+var documentosAbertos = {};
 var justOpenedKey = null;
 var justCreatedId = null;
 var justSwitchedView = false;
@@ -699,6 +700,24 @@ App.toggleVinculadosView = function(id){
   var opening = !vinculadosAbertos[id];
   vinculadosAbertos[id]=opening;
   if(opening) justOpenedKey='vinc:'+id;
+  App.render();
+};
+App.toggleDocumentosView = function(id){
+  var opening = !documentosAbertos[id];
+  documentosAbertos[id]=opening;
+  if(opening) justOpenedKey='docs:'+id;
+  App.render();
+};
+App.toggleDocumentoMarcado = function(id, doc){
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id){
+      p.documentosMarcados = p.documentosMarcados || {};
+      if(p.documentosMarcados[doc]) delete p.documentosMarcados[doc];
+      else p.documentosMarcados[doc]=true;
+    }
+    return p;
+  });
+  saveState();
   App.render();
 };
 
@@ -1187,6 +1206,34 @@ App.removeTipoSettings = function(t){
   App.render();
 };
 
+/* ---- Configurações: documentos do checklist ---- */
+App.addDocumentoSettings = function(){
+  var el = document.getElementById('settingsNovoDocumento');
+  var v = el ? el.value.trim() : '';
+  if(!v) return;
+  if(state.documentosChecklist.indexOf(v)===-1){ state.documentosChecklist.push(v); saveState(); }
+  App.render();
+};
+App.renameDocumentoSettings = function(oldVal, newVal){
+  newVal = (newVal||'').trim();
+  if(!newVal || newVal===oldVal) return;
+  state.documentosChecklist = state.documentosChecklist.map(function(x){ return x===oldVal ? newVal : x; });
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.documentosMarcados && p.documentosMarcados[oldVal]){
+      delete p.documentosMarcados[oldVal];
+      p.documentosMarcados[newVal]=true;
+    }
+    return p;
+  });
+  saveState();
+  App.render();
+};
+App.removeDocumentoSettings = function(doc){
+  state.documentosChecklist = state.documentosChecklist.filter(function(x){ return x!==doc; });
+  saveState();
+  App.render();
+};
+
 /* ---- Configurações: responsáveis internos ---- */
 App.addResponsavelSettings = function(){
   var el = document.getElementById('settingsNovoResponsavel');
@@ -1522,6 +1569,21 @@ function renderVinculados(p){
   return '<div style="margin-top:8px;">'+toggle+'<div class="hist-box'+(justOpenedKey==='vinc:'+p.id?' anim-in':'')+'">'+rows+'</div></div>';
 }
 
+function renderDocumentosChecklist(p){
+  var docs = state.documentosChecklist || [];
+  if(!docs.length) return '';
+  var marcados = p.documentosMarcados || {};
+  var qtd = docs.filter(function(doc){ return marcados[doc]; }).length;
+  var isOpen = documentosAbertos[p.id];
+  var toggle = '<button class="hist-toggle" onclick="App.toggleDocumentosView(\''+p.id+'\')">'+(isOpen?'Ocultar checklist de documentos':'Checklist de documentos ('+qtd+'/'+docs.length+')')+'</button>';
+  if(!isOpen) return '<div style="margin-top:8px;">'+toggle+'</div>';
+  var rows = docs.map(function(doc){
+    var checked = marcados[doc] ? ' checked' : '';
+    return '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;"><input type="checkbox"'+checked+' onchange="App.toggleDocumentoMarcado(\''+p.id+'\', \''+jsAttr(doc)+'\')"> '+esc(doc)+'</label>';
+  }).join('');
+  return '<div style="margin-top:8px;">'+toggle+'<div class="hist-box'+(justOpenedKey==='docs:'+p.id?' anim-in':'')+'">'+rows+'</div></div>';
+}
+
 function renderLixeiraItem(p){
   var st = getStatusOf(p);
   var dataExcStr = p.dataExclusao ? formatBR(toISO(new Date(p.dataExclusao))) : '';
@@ -1585,6 +1647,7 @@ function renderFicha(p){
         tagsHtml+
       '</div>'+
       '<div class="ficha-bottom">'+renderFichaPrazo(p)+'</div>'+
+      renderDocumentosChecklist(p)+
       renderGateDigitalizacao(p)+
       renderVinculados(p)+
       renderObservacoes(p)+
@@ -1811,6 +1874,13 @@ function renderSettingsModal(){
     '</div>';
   }).join('') || '<div class="hint">Nenhum responsável cadastrado ainda.</div>';
 
+  var documentosRows = state.documentosChecklist.map(function(doc){
+    return '<div class="list-row">'+
+      '<input type="text" value="'+esc(doc)+'" style="flex:1;padding:5px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;" onchange="App.renameDocumentoSettings(\''+jsAttr(doc)+'\', this.value)">'+
+      '<button class="remove-x" onclick="App.removeDocumentoSettings(\''+jsAttr(doc)+'\')" title="Remover">&times;</button>'+
+    '</div>';
+  }).join('') || '<div class="hint">Nenhum documento cadastrado ainda.</div>';
+
   var fm = state.feriadosMoveis;
   return ''+
   '<div class="overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeSettings()">'+
@@ -1851,6 +1921,13 @@ function renderSettingsModal(){
         '<h3>Tipos de procuração / escritura</h3>'+
         '<div class="checklist" style="max-height:150px;">'+tiposRows+'</div>'+
         '<div class="add-tipo-row"><input type="text" id="settingsNovoTipo" placeholder="Novo tipo de ato…"><button type="button" class="btn-ghost outlined" onclick="App.addTipoSettings()">Adicionar</button></div>'+
+      '</div>'+
+
+      '<div class="settings-section">'+
+        '<h3>Documentos do checklist</h3>'+
+        '<div class="hint">Lista de documentos que você pode marcar como entregues em cada protocolo, direto na ficha. Edite o nome no campo para renomear. É complementar ao campo geral "documentação completa", não o substitui.</div>'+
+        '<div class="checklist" style="max-height:150px;">'+documentosRows+'</div>'+
+        '<div class="add-tipo-row"><input type="text" id="settingsNovoDocumento" placeholder="Novo documento…"><button type="button" class="btn-ghost outlined" onclick="App.addDocumentoSettings()">Adicionar</button></div>'+
       '</div>'+
 
       '<div class="settings-section">'+
