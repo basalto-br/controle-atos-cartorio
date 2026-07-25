@@ -64,6 +64,18 @@ body{
   background:var(--gold-soft);color:var(--gold);border:1px solid var(--gold);
   padding:10px 14px;border-radius:var(--radius);font-size:12.5px;margin-bottom:16px;
 }
+.banner-ok{
+  background:var(--green-soft);color:var(--green);border:1px solid var(--green);
+  padding:10px 14px;border-radius:var(--radius);font-size:12.5px;margin-bottom:16px;
+}
+.banner-info{
+  background:var(--blue-soft);color:var(--blue);border:1px solid var(--blue);
+  padding:10px 14px;border-radius:var(--radius);font-size:12.5px;margin-bottom:16px;
+}
+.banner-link{
+  background:none;border:none;color:inherit;text-decoration:underline;
+  font-size:12.5px;cursor:pointer;padding:0;font-family:var(--font-body);
+}
 
 /* ---------- Buttons ---------- */
 button{font-family:var(--font-body);cursor:pointer;}
@@ -383,11 +395,23 @@ var DEFAULT_DOCUMENTOS_CHECKLIST = [
 
 var PRAZO_DIAS_UTEIS = 5;
 var STORAGE_KEY = 'cartorio-data';
+var FS_IDB_NAME = 'cartorio-fs';
+var FS_IDB_STORE = 'handles';
+var FS_HANDLE_KEY = 'dataFile';
+var FS_DEFAULT_NAME = 'controle-atos-dados.json';
 
 /* ===================== Estado ===================== */
 var state = null;
 var storageAvailable = true;
 var memoryFallback = {};
+var fsSupported = (typeof window !== 'undefined' && 'showSaveFilePicker' in window && 'showOpenFilePicker' in window);
+var fileMode = false;
+var fileHandle = null;
+var fsPendingHandle = null;
+var fsStatus = 'init';   /* init | connected | reconnect | error | offer | unsupported */
+var fsFileName = '';
+var fsWriting = false;
+var fsPending = false;
 var ui = {
   search:'', statusFilter:'all', canalFilter:'all', pessoaFilter:'all',
   onlyOverdue:false, sortBy:'prazo', viewMode:'lista', agruparPessoa:false
@@ -509,8 +533,92 @@ function loadState(){
   }).catch(function(){ return defaultState(); });
 }
 function saveState(){
+  if(fileMode && fileHandle){
+    return fsFlush();
+  }
   return window.storage.set(STORAGE_KEY, JSON.stringify(state), false).catch(function(e){
     console.error('Falha ao salvar dados', e);
+  });
+}
+
+/* ===================== Armazenamento em arquivo (File System Access) =====================
+   Persistencia opcional num arquivo .json escolhido pelo usuario. Se esse arquivo ficar
+   dentro de uma pasta sincronizada (Google Drive para Desktop, OneDrive, etc.), o backup
+   na nuvem e a sincronizacao entre maquinas ficam por conta dela. Convive com o backup
+   manual e com o window.storage do artifact — nao substitui nenhum. So funciona em
+   navegadores Chromium (Chrome/Edge), por isso ha deteccao e degradacao graciosa. */
+
+function idbOpen(){
+  return new Promise(function(resolve, reject){
+    var req = indexedDB.open(FS_IDB_NAME, 1);
+    req.onupgradeneeded = function(){ req.result.createObjectStore(FS_IDB_STORE); };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error); };
+  });
+}
+function idbHandleGet(){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve, reject){
+      var r = db.transaction(FS_IDB_STORE, 'readonly').objectStore(FS_IDB_STORE).get(FS_HANDLE_KEY);
+      r.onsuccess = function(){ resolve(r.result || null); };
+      r.onerror = function(){ reject(r.error); };
+    });
+  });
+}
+function idbHandleSet(handle){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve, reject){
+      var r = db.transaction(FS_IDB_STORE, 'readwrite').objectStore(FS_IDB_STORE).put(handle, FS_HANDLE_KEY);
+      r.onsuccess = function(){ resolve(); };
+      r.onerror = function(){ reject(r.error); };
+    });
+  });
+}
+function idbHandleClear(){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve, reject){
+      var r = db.transaction(FS_IDB_STORE, 'readwrite').objectStore(FS_IDB_STORE).delete(FS_HANDLE_KEY);
+      r.onsuccess = function(){ resolve(); };
+      r.onerror = function(){ reject(r.error); };
+    });
+  });
+}
+
+function fsVerifyPermission(handle){
+  if(!handle.queryPermission) return Promise.resolve(true);
+  var opts = {mode:'readwrite'};
+  return handle.queryPermission(opts).then(function(p){
+    if(p==='granted') return true;
+    return handle.requestPermission(opts).then(function(p2){ return p2==='granted'; });
+  });
+}
+function fsQueryGranted(handle){
+  if(!handle.queryPermission) return Promise.resolve(false);
+  return handle.queryPermission({mode:'readwrite'}).then(function(p){ return p==='granted'; }).catch(function(){ return false; });
+}
+function fsReadHandle(handle){
+  return handle.getFile().then(function(f){ return f.text(); });
+}
+function fsWriteHandle(handle, text){
+  return handle.createWritable().then(function(w){
+    return Promise.resolve(w.write(text)).then(function(){ return w.close(); });
+  });
+}
+
+/* Grava o estado no arquivo, coalescendo gravacoes sobrepostas: varias acoes rapidas nao
+   devem abrir writables concorrentes, e a ultima gravacao sempre reflete o estado atual. */
+function fsFlush(){
+  if(!fileHandle) return Promise.resolve();
+  if(fsWriting){ fsPending = true; return Promise.resolve(); }
+  fsWriting = true;
+  return fsWriteHandle(fileHandle, JSON.stringify(state)).then(function(){
+    fsWriting = false;
+    if(fsPending){ fsPending = false; return fsFlush(); }
+  }).catch(function(e){
+    fsWriting = false;
+    console.error('Falha ao salvar no arquivo', e);
+    fsStatus = 'error';
+    App.render();
   });
 }
 
@@ -1190,6 +1298,74 @@ App.importBackupFile = function(inputEl){
   reader.readAsText(file);
 };
 
+/* ---- Armazenamento em arquivo: conectar / abrir / reconectar / desconectar ---- */
+App.conectarNovoArquivo = function(){
+  if(!fsSupported){ window.alert('Este navegador não permite salvar em arquivo local. Abra a ferramenta no Google Chrome ou no Microsoft Edge.'); return Promise.resolve(); }
+  return window.showSaveFilePicker({
+    suggestedName: FS_DEFAULT_NAME,
+    types: [{description:'Dados do Controle de Atos', accept:{'application/json':['.json']}}]
+  }).then(function(handle){
+    return fsVerifyPermission(handle).then(function(ok){
+      if(!ok){ window.alert('Permissão de escrita negada para o arquivo.'); return; }
+      return fsWriteHandle(handle, JSON.stringify(state)).then(function(){
+        fileHandle = handle; fileMode = true; fsStatus = 'connected'; fsFileName = handle.name; fsPendingHandle = null;
+        return idbHandleSet(handle);
+      }).then(function(){ App.render(); });
+    });
+  }).catch(function(err){
+    if(err && err.name==='AbortError') return;
+    console.error(err); window.alert('Não foi possível conectar o arquivo: '+(err && err.message ? err.message : err));
+  });
+};
+App.abrirArquivoExistente = function(){
+  if(!fsSupported){ window.alert('Este navegador não permite abrir arquivo local. Abra a ferramenta no Google Chrome ou no Microsoft Edge.'); return Promise.resolve(); }
+  return window.showOpenFilePicker({
+    multiple: false,
+    types: [{description:'Dados do Controle de Atos', accept:{'application/json':['.json']}}]
+  }).then(function(handles){
+    var handle = handles[0];
+    if(!handle) return;
+    return fsVerifyPermission(handle).then(function(ok){
+      if(!ok){ window.alert('Permissão negada para o arquivo.'); return; }
+      return fsReadHandle(handle).then(function(text){
+        var imported;
+        try{ imported = JSON.parse(text); }catch(e){ window.alert('Este arquivo não é um JSON válido desta ferramenta.'); return; }
+        if(!imported || !Array.isArray(imported.protocolos)){ window.alert('Este arquivo não parece conter dados desta ferramenta.'); return; }
+        state = migrate(imported); holidayCache = {};
+        fileHandle = handle; fileMode = true; fsStatus = 'connected'; fsFileName = handle.name; fsPendingHandle = null;
+        return idbHandleSet(handle).then(function(){ App.render(); });
+      });
+    });
+  }).catch(function(err){
+    if(err && err.name==='AbortError') return;
+    console.error(err); window.alert('Não foi possível abrir o arquivo: '+(err && err.message ? err.message : err));
+  });
+};
+App.reconectarArquivo = function(){
+  if(!fsPendingHandle) return Promise.resolve();
+  var handle = fsPendingHandle;
+  return fsVerifyPermission(handle).then(function(ok){
+    if(!ok){ window.alert('Permissão negada para o arquivo.'); return; }
+    return fsReadHandle(handle).then(function(text){
+      var imported = null;
+      try{ imported = JSON.parse(text); }catch(e){ imported = null; }
+      if(imported && Array.isArray(imported.protocolos)){ state = migrate(imported); holidayCache = {}; }
+      fileHandle = handle; fileMode = true; fsStatus = 'connected'; fsFileName = handle.name; fsPendingHandle = null;
+      App.render();
+    });
+  }).catch(function(err){
+    console.error(err); window.alert('Não foi possível reconectar o arquivo: '+(err && err.message ? err.message : err));
+  });
+};
+App.desconectarArquivo = function(){
+  if(!window.confirm('Desconectar o arquivo? O app volta a salvar no armazenamento padrão do navegador. O arquivo NÃO é apagado — seus dados continuam nele e você pode reconectar depois.')) return Promise.resolve();
+  return idbHandleClear().then(function(){
+    fileHandle = null; fileMode = false; fsPendingHandle = null;
+    fsStatus = fsSupported ? 'offer' : 'unsupported';
+    App.render();
+  });
+};
+
 /* ---- Configurações: tipos de ato ---- */
 App.openSettings = function(){ settingsOpen=true; modalJustOpened=true; App.render(); };
 App.closeSettings = function(){ settingsOpen=false; App.render(); };
@@ -1347,10 +1523,28 @@ App.toggleFeriadoMovel = function(key){
 };
 
 /* ===================== Render ===================== */
+function renderFsBanner(){
+  if(fileMode && fsStatus==='connected'){
+    return '<div class="banner-ok no-print">Salvando automaticamente no arquivo <strong>'+esc(fsFileName)+'</strong>. Uma pasta sincronizada (Google Drive/OneDrive) cuida do backup na nuvem e da sincronização. <button class="banner-link" onclick="App.desconectarArquivo()">desconectar</button></div>';
+  }
+  if(fsStatus==='reconnect'){
+    return '<div class="banner-warning no-print"><strong>Reconecte seu arquivo de dados</strong> para carregar e salvar seus protocolos neste computador. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.reconectarArquivo()">Reconectar arquivo</button></div>';
+  }
+  if(fsStatus==='error'){
+    return '<div class="banner-warning no-print"><strong>Falha ao salvar no arquivo.</strong> Verifique se ele ainda existe e reconecte, ou use o backup manual em Configurações. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.abrirArquivoExistente()">Reabrir arquivo</button></div>';
+  }
+  if(fsSupported && !storageAvailable){
+    return '<div class="banner-info no-print"><strong>Salvar automaticamente num arquivo (recomendado).</strong> Escolha um arquivo — de preferência dentro de uma pasta do Google Drive ou OneDrive — e seus protocolos passam a salvar e sincronizar sozinhos, sem depender de backup manual o tempo todo. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.conectarNovoArquivo()">Criar arquivo de dados</button> <button class="btn-ghost outlined" onclick="App.abrirArquivoExistente()">Abrir arquivo existente</button></div>';
+  }
+  if(!fsSupported && !storageAvailable){
+    return '<div class="banner-warning no-print">Para salvar automaticamente, abra a ferramenta no <strong>Google Chrome</strong> ou no <strong>Microsoft Edge</strong>. Neste navegador os dados não ficam salvos permanentemente — use o backup manual em Configurações para não perdê-los.</div>';
+  }
+  return '';
+}
 function renderAll(){
   var app = document.getElementById('app');
   var html =
-    (storageAvailable ? '' : '<div class="banner-warning">Atenção: o armazenamento do Claude não está disponível aqui — os dados desta sessão não serão salvos permanentemente. Isso costuma acontecer se o artifact ainda não foi publicado, ou se a ferramenta foi aberta fora do Claude.ai. Publique o artifact (ou reabra dentro do Claude.ai) para manter os protocolos salvos entre acessos.</div>') +
+    renderFsBanner() +
     renderHeader() +
     renderStats() +
     renderFiltersBar() +
@@ -1881,6 +2075,29 @@ function renderSettingsModal(){
     '</div>';
   }).join('') || '<div class="hint">Nenhum documento cadastrado ainda.</div>';
 
+  var fsSectionStatus, fsButtons = '';
+  if(fileMode && fsStatus==='connected'){
+    fsSectionStatus = 'Conectado ao arquivo <strong>'+esc(fsFileName)+'</strong>. Tudo é salvo automaticamente nele.';
+  }else if(fsStatus==='reconnect'){
+    fsSectionStatus = 'Há um arquivo lembrado, mas ele precisa ser reconectado nesta sessão.';
+  }else if(!fsSupported){
+    fsSectionStatus = 'Este navegador não permite salvar em arquivo. Use o Google Chrome ou o Microsoft Edge.';
+  }else{
+    fsSectionStatus = 'Nenhum arquivo conectado — os dados estão no armazenamento padrão do navegador.';
+  }
+  if(fsSupported){
+    if(fileMode && fsStatus==='connected'){
+      fsButtons = '<button type="button" class="btn-ghost outlined" onclick="App.abrirArquivoExistente()">Trocar de arquivo</button>'+
+                  '<button type="button" class="btn-ghost outlined" onclick="App.desconectarArquivo()">Desconectar</button>';
+    }else if(fsStatus==='reconnect'){
+      fsButtons = '<button type="button" class="btn-ghost outlined" onclick="App.reconectarArquivo()">Reconectar arquivo</button>'+
+                  '<button type="button" class="btn-ghost outlined" onclick="App.conectarNovoArquivo()">Criar novo arquivo</button>';
+    }else{
+      fsButtons = '<button type="button" class="btn-ghost outlined" onclick="App.conectarNovoArquivo()">Criar arquivo de dados</button>'+
+                  '<button type="button" class="btn-ghost outlined" onclick="App.abrirArquivoExistente()">Abrir arquivo existente</button>';
+    }
+  }
+
   var fm = state.feriadosMoveis;
   return ''+
   '<div class="overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeSettings()">'+
@@ -1896,6 +2113,13 @@ function renderSettingsModal(){
           '<input type="file" id="backupFileInput" accept="application/json" style="display:none;" onchange="App.importBackupFile(this)">'+
         '</div>'+
         '<div class="hint" style="margin-top:8px;">Restaurar um backup substitui todos os protocolos e configurações atuais — use com cuidado.</div>'+
+      '</div>'+
+
+      '<div class="settings-section">'+
+        '<h3>Armazenamento em arquivo (sincronização automática)</h3>'+
+        '<div class="hint">Salve os dados num arquivo <code>.json</code> dentro de uma pasta sincronizada (Google Drive para Desktop, OneDrive, etc.): a partir daí tudo é salvo automaticamente e a própria pasta cuida do backup na nuvem e da sincronização entre computadores, sem backup manual o tempo todo. Funciona no Chrome e no Edge. Em outro computador, use "Abrir arquivo existente" apontando para o mesmo arquivo na pasta sincronizada.</div>'+
+        '<div class="hint" style="color:var(--ink);margin-top:6px;">'+fsSectionStatus+'</div>'+
+        (fsButtons ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">'+fsButtons+'</div>' : '')+
       '</div>'+
 
       '<div class="settings-section">'+
@@ -2073,11 +2297,50 @@ function renderAtosBalcaoModal(){
 }
 
 /* ===================== Início ===================== */
+function fallbackLoad(){
+  return loadState().then(function(s){ state = s; renderAll(); });
+}
+function bootstrap(){
+  if(!fsSupported){
+    fsStatus = 'unsupported';
+    return fallbackLoad();
+  }
+  return idbHandleGet().then(function(handle){
+    if(!handle){
+      fsStatus = 'offer';
+      return fallbackLoad();
+    }
+    return fsQueryGranted(handle).then(function(granted){
+      if(!granted){
+        /* Handle lembrado, mas o navegador exige um gesto do usuario para reautorizar:
+           mostra o aviso de reconexao e carrega o fallback enquanto isso. */
+        fsPendingHandle = handle; fsStatus = 'reconnect';
+        return fallbackLoad();
+      }
+      return fsReadHandle(handle).then(function(text){
+        var imported = null;
+        try{ imported = JSON.parse(text); }catch(e){ imported = null; }
+        if(imported && Array.isArray(imported.protocolos)){
+          state = migrate(imported);
+          fileHandle = handle; fileMode = true; fsStatus = 'connected'; fsFileName = handle.name;
+          renderAll();
+        }else{
+          fsPendingHandle = handle; fsStatus = 'reconnect';
+          return fallbackLoad();
+        }
+      }).catch(function(){
+        fsPendingHandle = handle; fsStatus = 'reconnect';
+        return fallbackLoad();
+      });
+    });
+  }).catch(function(){
+    fsStatus = fsSupported ? 'offer' : 'unsupported';
+    return fallbackLoad();
+  });
+}
+
 ensureStorage();
-loadState().then(function(s){
-  state = s;
-  renderAll();
-});
+bootstrap();
 
 })();
 </script>
