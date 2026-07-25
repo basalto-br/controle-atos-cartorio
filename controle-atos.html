@@ -327,10 +327,48 @@ select.sortsel{
   .stat{min-width:33%;border-bottom:1px solid var(--line);}
   .field-row{flex-direction:column;gap:0;}
 }
+
+/* stats clicáveis + alerta de urgência */
+.stat.clickable{cursor:pointer;transition:background .12s ease;}
+.stat.clickable:hover{background:var(--bg-alt);}
+.stat.active{background:var(--ink);}
+.stat.active .num,.stat.active .lbl{color:var(--card);}
+.stat.active.alert .num{color:var(--card);}
+.banner-alert{background:var(--stamp-red-soft);color:var(--stamp-red);border:1px solid var(--stamp-red);padding:10px 14px;border-radius:var(--radius);font-size:13px;margin-bottom:16px;cursor:pointer;font-weight:600;transition:background .12s ease,color .12s ease;}
+.banner-alert:hover{background:var(--stamp-red);color:#fff;}
+
+/* busca com limpar */
+.search-wrap{position:relative;flex:1;min-width:180px;display:flex;}
+.search-wrap .search-input{flex:1;padding-right:30px;}
+.search-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:none;font-size:18px;line-height:1;color:var(--ink-soft);cursor:pointer;padding:0 4px;}
+.search-clear:hover{color:var(--stamp-red);}
+
+/* toasts (feedback + desfazer) */
+#toast-layer{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;}
+.toast{background:var(--ink);color:var(--card);padding:10px 14px;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,0.25);font-size:13px;display:flex;align-items:center;gap:14px;pointer-events:auto;animation:toastIn .18s ease;max-width:90vw;}
+.toast-undo{background:none;border:1px solid var(--card);color:var(--card);border-radius:4px;padding:3px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body);}
+.toast-undo:hover{background:var(--card);color:var(--ink);}
+.toast-out{opacity:0;transform:translateY(6px);transition:opacity .2s ease,transform .2s ease;}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ficha para impressão (oculta na tela) */
+#fichaPrintArea{display:none;}
+#fichaPrintArea .fp{font-family:var(--font-body);color:#000;}
+#fichaPrintArea .fp-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;}
+#fichaPrintArea .fp-title{font-family:var(--font-display);font-size:22px;margin:4px 0 14px;}
+#fichaPrintArea .fp-table{width:100%;border-collapse:collapse;font-size:13px;}
+#fichaPrintArea .fp-table td{border:1px solid #999;padding:6px 8px;vertical-align:top;}
+#fichaPrintArea .fp-table td.pl{width:170px;font-weight:600;background:#f0f0f0;}
+#fichaPrintArea .fp-sec{margin-top:14px;font-size:13px;}
+#fichaPrintArea .fp-h{font-family:var(--font-display);font-size:15px;margin-bottom:6px;border-bottom:1px solid #000;padding-bottom:3px;}
+#fichaPrintArea .fp-foot{margin-top:20px;font-family:var(--font-mono);font-size:10px;color:#555;}
+
 @media print{
   body *{visibility:hidden;}
   #dailyReportPrint, #dailyReportPrint *{visibility:visible;}
   #dailyReportPrint{position:absolute;left:0;top:0;width:100%;padding:10px;}
+  body.printing-ficha #fichaPrintArea, body.printing-ficha #fichaPrintArea *{visibility:visible;}
+  body.printing-ficha #fichaPrintArea{display:block;position:absolute;left:0;top:0;width:100%;padding:10px;}
   .overlay{position:static !important;background:none !important;padding:0 !important;display:block !important;}
   .modal{box-shadow:none !important;max-width:100% !important;}
   .no-print{display:none !important;}
@@ -339,6 +377,8 @@ select.sortsel{
 </head>
 <body>
 <div id="app"><div style="padding:60px;text-align:center;color:#6B675C;font-family:'JetBrains Mono',monospace;font-size:13px;">Carregando protocolos…</div></div>
+<div id="toast-layer" aria-live="polite"></div>
+<div id="fichaPrintArea"></div>
 
 <script>
 (function(){
@@ -418,7 +458,8 @@ var fsPending = false;
 var backupRunning = false;
 var ui = {
   search:'', statusFilter:'all', canalFilter:'all', pessoaFilter:'all',
-  onlyOverdue:false, sortBy:'prazo', viewMode:'lista', agruparPessoa:false
+  onlyOverdue:false, onlyDueToday:false, onlyPendingDocs:false,
+  sortBy:'prazo', viewMode:'lista', agruparPessoa:false
 };
 var draftModal = null;
 var settingsOpen = false;
@@ -877,12 +918,55 @@ var App = {};
 window.App = App;
 App.render = function(){ withFocus(renderAll); };
 
+/* Toast de feedback (fora do #app, sobrevive ao re-render). undoFn opcional vira "Desfazer". */
+App.showToast = function(msg, undoFn){
+  var layer = document.getElementById('toast-layer');
+  if(!layer) return;
+  var toast = document.createElement('div');
+  toast.className = 'toast';
+  var span = document.createElement('span');
+  span.innerHTML = msg;
+  toast.appendChild(span);
+  var timer;
+  function dismiss(){
+    if(timer){ clearTimeout(timer); timer=null; }
+    if(toast.parentNode){
+      toast.classList.add('toast-out');
+      setTimeout(function(){ if(toast.parentNode) toast.parentNode.removeChild(toast); }, 220);
+    }
+  }
+  if(typeof undoFn === 'function'){
+    var btn = document.createElement('button');
+    btn.className = 'toast-undo';
+    btn.textContent = 'Desfazer';
+    btn.onclick = function(){ dismiss(); undoFn(); };
+    toast.appendChild(btn);
+  }
+  layer.appendChild(toast);
+  timer = setTimeout(dismiss, 5000);
+};
+
 /* ---- Filtros / ordenação ---- */
 App.setSearch = function(v){ ui.search=v; App.render(); };
 App.setStatusFilter = function(v){ ui.statusFilter=v; App.render(); };
 App.setCanalFilter = function(v){ ui.canalFilter=v; App.render(); };
 App.setPessoaFilter = function(v){ ui.pessoaFilter=v; App.render(); };
-App.toggleOverdue = function(){ ui.onlyOverdue=!ui.onlyOverdue; App.render(); };
+App.toggleOverdue = function(){ var v=!ui.onlyOverdue; ui.onlyDueToday=false; ui.onlyPendingDocs=false; ui.onlyOverdue=v; App.render(); };
+App.toggleQuick = function(kind){
+  ui.viewMode='lista';
+  var flags={docs:'onlyPendingDocs', today:'onlyDueToday', overdue:'onlyOverdue'};
+  var flag=flags[kind];
+  var was=ui[flag];
+  ui.onlyOverdue=false; ui.onlyDueToday=false; ui.onlyPendingDocs=false;
+  ui[flag]=!was;
+  App.render();
+};
+App.filtroAtivos = function(){
+  ui.viewMode='lista'; ui.statusFilter='all';
+  ui.onlyOverdue=false; ui.onlyDueToday=false; ui.onlyPendingDocs=false;
+  App.render();
+};
+App.togglePessoaStat = function(v){ ui.pessoaFilter = (ui.pessoaFilter===v ? 'all' : v); App.render(); };
 App.setSort = function(v){ ui.sortBy=v; App.render(); };
 App.setViewMode = function(v){ ui.viewMode=v; justSwitchedView=true; App.render(); };
 App.toggleAgrupar = function(){ ui.agruparPessoa=!ui.agruparPessoa; App.render(); };
@@ -933,6 +1017,11 @@ function matchesFilters(p){
     var info = computePrazo(p);
     if(!info || !info.isOverdue) return false;
   }
+  if(ui.onlyDueToday){
+    var infoDue = computePrazo(p);
+    if(!infoDue || !infoDue.isDueToday) return false;
+  }
+  if(ui.onlyPendingDocs && p.docsCompletos) return false;
   if(ui.search){
     var q = ui.search.toLowerCase();
     var hay = (p.cliente+' '+p.numeroProtocolo+' '+p.tipos.join(' ')+' '+p.outorgados+' '+p.responsavel+' '+p.clienteTelefone+' '+p.clienteEmail).toLowerCase();
@@ -1051,6 +1140,19 @@ App.toggleVinculo = function(id){
 App.setField = function(name, value){
   if(draftModal) draftModal[name] = value;
 };
+function formatTelefone(v){
+  var d = String(v||'').replace(/\D/g,'').slice(0,11);
+  if(!d) return '';
+  if(d.length<=2) return '('+d;
+  if(d.length<=6) return '('+d.slice(0,2)+') '+d.slice(2);
+  if(d.length<=10) return '('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);
+  return '('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7);
+}
+App.setPhone = function(name, el){
+  var f = formatTelefone(el.value);
+  el.value = f;
+  if(draftModal) draftModal[name] = f;
+};
 App.setVinculoSearch = function(v){
   captureModalTextFields();
   draftModal.vinculoSearch = v;
@@ -1151,6 +1253,15 @@ App.deleteProtocolo = function(id){
   });
   saveState();
   App.render();
+  App.showToast('Protocolo movido para a lixeira.', function(){
+    state.protocolos = state.protocolos.map(function(p){
+      if(p.id===id){ p.naLixeira=false; p.dataExclusao=null; }
+      return p;
+    });
+    saveState();
+    App.render();
+    App.showToast('Protocolo restaurado.');
+  });
 };
 App.restaurarProtocolo = function(id){
   state.protocolos = state.protocolos.map(function(p){
@@ -1167,16 +1278,35 @@ App.excluirDefinitivamente = function(id){
   App.render();
 };
 App.changeStatusQuick = function(id, newStatus){
+  var prev = null;
+  state.protocolos.forEach(function(p){ if(p.id===id) prev={status:p.status, histLen:(p.historico||[]).length}; });
+  var changed = false;
   state.protocolos = state.protocolos.map(function(p){
     if(p.id===id && p.status!==newStatus){
       p.status=newStatus;
       p.historico = p.historico || [];
       p.historico.push({status:newStatus, ts:Date.now()});
+      changed = true;
     }
     return p;
   });
   saveState();
   App.render();
+  if(changed && prev){
+    var statusMap = getStatusMap();
+    var lbl = (statusMap[newStatus] || {label:newStatus}).label;
+    App.showToast('Status alterado para &ldquo;'+esc(lbl)+'&rdquo;.', function(){
+      state.protocolos = state.protocolos.map(function(p){
+        if(p.id===id){
+          p.status = prev.status;
+          if(p.historico && p.historico.length > prev.histLen) p.historico = p.historico.slice(0, prev.histLen);
+        }
+        return p;
+      });
+      saveState();
+      App.render();
+    });
+  }
 };
 App.docInlineOpen = {};
 App.showDocDateField = function(id){ App.docInlineOpen[id]=true; justOpenedKey='docdate:'+id; App.render(); };
@@ -1256,6 +1386,59 @@ App.closeClienteHistory = function(){ clienteHistoryModal=null; App.render(); };
 App.openDailyReport = function(){ dailyReportOpen=true; modalJustOpened=true; App.render(); };
 App.closeDailyReport = function(){ dailyReportOpen=false; App.render(); };
 App.printDailyReport = function(){ window.print(); };
+
+/* ---- Imprimir uma ficha individual (para anexar ao processo físico) ---- */
+function buildFichaPrintHTML(p){
+  var st = getStatusOf(p);
+  var canais = (p.canais||[]).map(function(c){ return (CANAL_MAP[c]||{label:c}).label; }).join(', ');
+  var info = computePrazo(p);
+  var prazoTxt;
+  if(!p.docsCompletos || !p.dataRecebimentoCompleto) prazoTxt = 'Documentação incompleta';
+  else if(!info) prazoTxt = 'Documentação completa em '+formatBR(p.dataRecebimentoCompleto);
+  else if(info.isOverdue) prazoTxt = 'Atrasado há '+info.diasAtraso+' dia(s) útil(eis) — prazo era '+formatBR(info.deadline);
+  else if(info.isDueToday) prazoTxt = 'Vence hoje ('+formatBR(info.deadline)+')';
+  else prazoTxt = 'Faltam '+(PRAZO_DIAS_UTEIS-info.elapsedCapped)+' dia(s) útil(eis) — prazo '+formatBR(info.deadline);
+  function row(label, val){ return val ? '<tr><td class="pl">'+esc(label)+'</td><td>'+val+'</td></tr>' : ''; }
+  var docs = (state.documentosChecklist||[]).map(function(doc){
+    return ((p.documentosMarcados && p.documentosMarcados[doc]) ? '&#9745; ' : '&#9744; ')+esc(doc);
+  }).join('<br>');
+  var obs = (p.observacoesHistorico||[]).slice().reverse().map(function(o){
+    var d = new Date(o.ts);
+    return '<div style="margin-bottom:4px;">['+esc(formatBR(toISO(d)))+'] '+esc(o.texto)+'</div>';
+  }).join('');
+  return '<div class="fp">'+
+    '<div class="fp-eyebrow">Cartório de Notas — Controle de Atos</div>'+
+    '<div class="fp-title">Ficha de Protocolo</div>'+
+    '<table class="fp-table"><tbody>'+
+      row('Nº do protocolo', p.numeroProtocolo ? esc(p.numeroProtocolo) : '—')+
+      row('Data do protocolo', esc(formatBR(p.dataProtocolo)))+
+      row('Cliente / outorgante', esc(p.cliente||'—')+' ('+(p.tipoPessoa==='pj'?'Pessoa Jurídica':'Pessoa Física')+')')+
+      row('Telefone', esc(p.clienteTelefone))+
+      row('E-mail', esc(p.clienteEmail))+
+      row('Outorgado(s)', esc(p.outorgados))+
+      row('Responsável', esc(p.responsavel))+
+      row('Canais', esc(canais))+
+      row('Tipos de ato', esc((p.tipos||[]).join(', ')))+
+      row('Status', esc(st.label))+
+      row('Prazo', esc(prazoTxt))+
+      row('Documentação completa', p.docsCompletos ? ('Sim'+(p.dataRecebimentoCompleto?(' — '+esc(formatBR(p.dataRecebimentoCompleto))):'')) : 'Não')+
+      (docs ? row('Checklist de documentos', docs) : '')+
+    '</tbody></table>'+
+    (obs ? '<div class="fp-sec"><div class="fp-h">Observações</div>'+obs+'</div>' : '')+
+    '<div class="fp-foot">Impresso em '+esc(formatBR(todayISO()))+'</div>'+
+  '</div>';
+}
+App.printFicha = function(id){
+  var p = state.protocolos.filter(function(x){ return x.id===id; })[0];
+  if(!p) return;
+  var area = document.getElementById('fichaPrintArea');
+  if(!area){ area = document.createElement('div'); area.id='fichaPrintArea'; document.body.appendChild(area); }
+  area.innerHTML = buildFichaPrintHTML(p);
+  document.body.classList.add('printing-ficha');
+  function cleanup(){ document.body.classList.remove('printing-ficha'); window.removeEventListener('afterprint', cleanup); }
+  window.addEventListener('afterprint', cleanup);
+  window.print();
+};
 
 /* ---- Atos de balcão (sem protocolo) ---- */
 App.openAtosBalcao = function(){ atosBalcaoModalOpen=true; modalJustOpened=true; App.render(); };
@@ -1612,12 +1795,28 @@ function renderFsBanner(){
   }
   return '';
 }
+function renderUrgenciaAlert(){
+  if(ui.viewMode==='lixeira' || ui.viewMode==='arquivados') return '';
+  var ativos = state.protocolos.filter(function(p){ return !p.naLixeira && !isArquivado(p); });
+  var overdue=0, dueToday=0;
+  ativos.forEach(function(p){
+    var info = computePrazo(p);
+    if(info){ if(info.isOverdue) overdue++; else if(info.isDueToday) dueToday++; }
+  });
+  if(!overdue && !dueToday) return '';
+  var parts = [];
+  if(overdue) parts.push('<strong>'+overdue+'</strong> atrasado'+(overdue>1?'s':''));
+  if(dueToday) parts.push('<strong>'+dueToday+'</strong> vence'+(dueToday>1?'m':'')+' hoje');
+  var target = overdue ? "App.toggleQuick('overdue')" : "App.toggleQuick('today')";
+  return '<div class="banner-alert no-print" onclick="'+target+'">&#9888; '+parts.join(' &middot; ')+' &mdash; clique para ver</div>';
+}
 function renderAll(){
   var app = document.getElementById('app');
   var html =
     renderFsBanner() +
     renderHeader() +
     renderStats() +
+    renderUrgenciaAlert() +
     renderFiltersBar() +
     '<div class="'+(justSwitchedView?'anim-in':'')+'">'+renderListArea()+'</div>' +
     (draftModal ? renderModal() : '') +
@@ -1667,17 +1866,25 @@ function renderStats(){
   var arquivados = all.filter(isArquivado).length;
   var pf = all.filter(function(p){ return p.tipoPessoa==='pf'; }).length;
   var pj = all.filter(function(p){ return p.tipoPessoa==='pj'; }).length;
-  function stat(num, lbl, alert){
-    return '<div class="stat'+(alert?' alert':'')+'"><div class="num">'+num+'</div><div class="lbl">'+lbl+'</div></div>';
+  function stat(num, lbl, o){
+    o = o || {};
+    var cls = 'stat';
+    if(o.alert) cls += ' alert';
+    if(o.active) cls += ' active';
+    if(o.onclick) cls += ' clickable';
+    var attr = o.onclick ? ' onclick="'+o.onclick+'" title="'+esc(o.title||'')+'"' : '';
+    return '<div class="'+cls+'"'+attr+'><div class="num">'+num+'</div><div class="lbl">'+lbl+'</div></div>';
   }
+  var isLista = ui.viewMode==='lista';
+  var noQuick = !ui.onlyOverdue && !ui.onlyDueToday && !ui.onlyPendingDocs;
   return '<div class="stats-bar no-print">'+
-    stat(ativos.length,'Ativos')+
-    stat(aguardandoDocs,'Aguard. docs')+
-    stat(dueToday,'Vencem hoje', dueToday>0)+
-    stat(overdue,'Atrasados', overdue>0)+
-    stat(arquivados,'Arquivados')+
-    stat(pf,'Pessoa física')+
-    stat(pj,'Pessoa jurídica')+
+    stat(ativos.length,'Ativos',{onclick:"App.filtroAtivos()", active:isLista&&noQuick&&ui.statusFilter==='all', title:'Ver todos os ativos'})+
+    stat(aguardandoDocs,'Aguard. docs',{onclick:"App.toggleQuick('docs')", active:isLista&&ui.onlyPendingDocs, title:'Filtrar os que aguardam documentos'})+
+    stat(dueToday,'Vencem hoje',{alert:dueToday>0, onclick:"App.toggleQuick('today')", active:isLista&&ui.onlyDueToday, title:'Filtrar os que vencem hoje'})+
+    stat(overdue,'Atrasados',{alert:overdue>0, onclick:"App.toggleQuick('overdue')", active:isLista&&ui.onlyOverdue, title:'Filtrar os atrasados'})+
+    stat(arquivados,'Arquivados',{onclick:"App.setViewMode('arquivados')", active:ui.viewMode==='arquivados', title:'Ver arquivados'})+
+    stat(pf,'Pessoa física',{onclick:"App.togglePessoaStat('pf')", active:ui.pessoaFilter==='pf', title:'Filtrar pessoa física'})+
+    stat(pj,'Pessoa jurídica',{onclick:"App.togglePessoaStat('pj')", active:ui.pessoaFilter==='pj', title:'Filtrar pessoa jurídica'})+
   '</div>';
 }
 
@@ -1704,7 +1911,10 @@ function renderFiltersBar(){
 
   return ''+
   '<div class="filters-bar no-print">'+
-    '<input id="searchInput" class="search-input" type="text" placeholder="Buscar por cliente, outorgado, nº de protocolo ou tipo de ato…" value="'+esc(ui.search)+'" oninput="App.setSearch(this.value)">'+
+    '<div class="search-wrap">'+
+      '<input id="searchInput" class="search-input" type="text" placeholder="Buscar por cliente, outorgado, nº de protocolo ou tipo de ato…" value="'+esc(ui.search)+'" oninput="App.setSearch(this.value)">'+
+      (ui.search ? '<button class="search-clear" title="Limpar busca (Esc)" onclick="App.setSearch(\'\')">&times;</button>' : '')+
+    '</div>'+
     '<select class="sortsel" onchange="App.setSort(this.value)">'+
       '<option value="prazo"'+(ui.sortBy==='prazo'?' selected':'')+'>Ordenar: prazo mais urgente</option>'+
       '<option value="data"'+(ui.sortBy==='data'?' selected':'')+'>Ordenar: protocolo mais recente</option>'+
@@ -1716,6 +1926,7 @@ function renderFiltersBar(){
       '<button class="seg-btn'+(isLixeira?' active':'')+'" onclick="App.setViewMode(\'lixeira\')">Lixeira ('+lixeiraCount+')</button>'+
     '</div>'+
   '</div>'+
+  (ui.search ? '<div class="hint no-print" style="margin:-6px 0 10px;">'+getFilteredSorted().length+' resultado(s) para &ldquo;'+esc(ui.search)+'&rdquo;</div>' : '')+
   (statusPills ? '<div class="filters-bar no-print"><div class="pill-group">'+statusPills+'</div></div>' : '')+
   (isLixeira ? '' :
     '<div class="filters-bar no-print">'+
@@ -1902,6 +2113,7 @@ function renderFicha(p){
         '</div>'+
         '<div class="ficha-actions">'+
           '<select class="status-select stamp '+st.cor+'" onchange="App.changeStatusQuick(\''+p.id+'\', this.value)">'+statusOptions+'</select>'+
+          '<button class="icon-btn" title="Imprimir ficha" onclick="App.printFicha(\''+p.id+'\')">&#9113;</button>'+
           '<button class="icon-btn" title="Editar" onclick="App.openEdit(\''+p.id+'\')">&#9998;</button>'+
           '<button class="icon-btn" title="Excluir" onclick="App.deleteProtocolo(\''+p.id+'\')">&times;</button>'+
         '</div>'+
@@ -2066,7 +2278,7 @@ function renderModal(){
       '<div class="field"><label>Tipo de pessoa</label><div class="segmented">'+pessoaBtns+'</div></div>'+
       '<div class="field-row">'+
         '<div class="field"><label>Cliente / outorgante (opcional)</label><input type="text" id="f_cliente" value="'+esc(d.cliente||'')+'" placeholder="Nome do cliente" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)"></div>'+
-        '<div class="field"><label>Telefone (opcional)</label><input type="text" id="f_clienteTelefone" value="'+esc(d.clienteTelefone||'')+'" placeholder="(00) 00000-0000" oninput="App.setField(\'clienteTelefone\', this.value)"></div>'+
+        '<div class="field"><label>Telefone (opcional)</label><input type="text" id="f_clienteTelefone" inputmode="tel" value="'+esc(d.clienteTelefone||'')+'" placeholder="(00) 00000-0000" oninput="App.setPhone(\'clienteTelefone\', this)"></div>'+
         '<div class="field"><label>E-mail (opcional)</label><input type="text" id="f_clienteEmail" value="'+esc(d.clienteEmail||'')+'" placeholder="nome@exemplo.com" oninput="App.setField(\'clienteEmail\', this.value)"></div>'+
       '</div>'+
       '<div class="field-row">'+
@@ -2421,6 +2633,26 @@ function bootstrap(){
     return fallbackLoad();
   });
 }
+
+/* ---- Atalhos de teclado: N = novo, / = busca, Esc = fecha modal/busca ---- */
+document.addEventListener('keydown', function(e){
+  var t = e.target;
+  var typing = t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.tagName==='SELECT' || t.isContentEditable);
+  if(e.key==='Escape'){
+    if(draftModal){ App.closeModal(); }
+    else if(settingsOpen){ App.closeSettings(); }
+    else if(clienteHistoryModal){ App.closeClienteHistory(); }
+    else if(dailyReportOpen){ App.closeDailyReport(); }
+    else if(atosBalcaoModalOpen){ App.closeAtosBalcao(); }
+    else if(ui.search){ App.setSearch(''); }
+    else if(t && t.id==='searchInput'){ t.blur(); }
+    return;
+  }
+  if(typing || e.metaKey || e.ctrlKey || e.altKey) return;
+  if(draftModal || settingsOpen || clienteHistoryModal || dailyReportOpen || atosBalcaoModalOpen) return;
+  if(e.key==='n' || e.key==='N'){ e.preventDefault(); App.openNew(); }
+  else if(e.key==='/'){ e.preventDefault(); var s=document.getElementById('searchInput'); if(s){ s.focus(); s.select(); } }
+});
 
 ensureStorage();
 bootstrap();
