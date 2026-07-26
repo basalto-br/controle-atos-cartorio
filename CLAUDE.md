@@ -15,8 +15,11 @@ de cada ato. Está no plano Pro do Claude.
 
 ## Arquitetura (importante preservar)
 
-- **Um arquivo só**, sem dependências além de fontes do Google Fonts via `@import`
-  (Source Serif 4, Inter, JetBrains Mono).
+- **Um arquivo só**, sem **nenhuma** dependência externa. As fontes (Source Serif 4,
+  Inter, JetBrains Mono) são **embutidas em base64** (`@font-face` no topo do `<style>`,
+  só o subconjunto `latin`, que cobre o português) — o app não faz nenhuma requisição de
+  rede depois de carregar (requisito de privacidade/LGPD; ver o dossiê e a pasta
+  `design_handoff_protocolos`).
 - **Sem framework**: tudo é montagem de strings HTML (`renderX()` retornam strings)
   injetadas via `innerHTML`. Não introduzir React/Vue sem discutir antes — o app atual
   depende de re-renderizações completas e handlers inline (`onclick="App.xxx(...)"`).
