@@ -352,6 +352,22 @@ select.sortsel{
 .modal-actions{display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}
 .modal-actions-right{display:flex;gap:8px;}
 
+/* ---------- Painel lateral de criar/editar (Fase 2 do redesign) ----------
+   Classes proprias (side-*), independentes de .overlay/.modal, que continuam
+   servindo Configuracoes/Historico/Relatorio/Atos de balcao sem alteracao. */
+@keyframes panelSlideIn{from{transform:translateX(28px);opacity:.3;}to{transform:translateX(0);opacity:1;}}
+.side-overlay{position:fixed;inset:0;background:rgba(34,31,26,0.45);display:flex;justify-content:flex-end;z-index:50;}
+.side-overlay.entering{animation:fadeIn .18s ease;}
+.side-panel{background:var(--painel);width:100%;max-width:640px;height:100vh;display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.18);}
+.side-panel.w-1000{max-width:1000px;}
+.side-panel.entering{animation:panelSlideIn .2s cubic-bezier(.2,.8,.3,1);}
+.side-panel-head{padding:22px 26px 16px;border-bottom:1px solid var(--borda-forte);flex-shrink:0;}
+.side-panel-head h2{font-family:var(--font-display);font-size:21px;margin:0;}
+.side-panel-body{flex:1;overflow-y:auto;padding:20px 26px;}
+.side-panel-foot{flex-shrink:0;padding:14px 26px;border-top:1px solid var(--borda-forte);display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--painel);}
+.side-panel-foot-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.side-esc-hint{font-family:var(--font-mono);font-size:10.5px;color:var(--apagado);}
+
 /* settings */
 .settings-section{margin-bottom:22px;}
 .settings-section h3{font-family:var(--font-display);font-size:15px;margin:0 0 4px;}
@@ -607,6 +623,7 @@ var ui = {
   sortBy:'prazo', viewMode:'lista', agruparPessoa:false, filtrosAbertos:false
 };
 var draftModal = null;
+var draftModalSnapshot = null;
 var settingsOpen = false;
 var clienteHistoryModal = null;
 var dailyReportOpen = false;
@@ -1209,6 +1226,8 @@ App.openNew = function(){
   };
   modalJustOpened = true;
   App.render();
+  captureModalTextFields();
+  draftModalSnapshot = JSON.stringify(draftModal);
 };
 App.openEdit = function(id){
   var p = state.protocolos.filter(function(x){return x.id===id;})[0];
@@ -1230,8 +1249,18 @@ App.openEdit = function(id){
   };
   modalJustOpened = true;
   App.render();
+  captureModalTextFields();
+  draftModalSnapshot = JSON.stringify(draftModal);
 };
-App.closeModal = function(){ draftModal=null; App.render(); };
+function isDraftDirty(){
+  if(!draftModal) return false;
+  captureModalTextFields();
+  return JSON.stringify(draftModal) !== draftModalSnapshot;
+}
+App.closeModal = function(){
+  if(isDraftDirty() && !window.confirm('Descartar as alterações feitas neste protocolo?')) return;
+  draftModal=null; draftModalSnapshot=null; App.render();
+};
 
 function captureModalTextFields(){
   if(!draftModal) return;
@@ -1392,7 +1421,7 @@ App.saveProtocolo = function(){
   }
   if(payload.responsavel) state.ultimoResponsavel = payload.responsavel;
   saveState();
-  draftModal=null;
+  draftModal=null; draftModalSnapshot=null;
   App.render();
 };
 App.deleteProtocolo = function(id){
@@ -2503,9 +2532,10 @@ function renderModal(){
   }
 
   return ''+
-  '<div class="overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeModal()">'+
-    '<div class="modal wide'+(modalJustOpened?' entering':'')+'">'+
-      '<h2>'+(d.mode==='edit'?'Editar protocolo':'Novo protocolo')+'</h2>'+
+  '<div class="side-overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeModal()">'+
+    '<div class="side-panel'+(modalJustOpened?' entering':'')+'">'+
+      '<div class="side-panel-head"><h2>'+(d.mode==='edit'?'Editar protocolo':'Novo protocolo')+'</h2></div>'+
+      '<div class="side-panel-body">'+
       '<div class="field-row">'+
         '<div class="field"><label>Nº do protocolo (opcional)</label><input type="text" id="f_numeroProtocolo" value="'+esc(d.numeroProtocolo||'')+'" placeholder="Ex: 12345/2026" oninput="App.setField(\'numeroProtocolo\', this.value)"></div>'+
         '<div class="field"><label>Data do protocolo</label><input type="date" id="f_dataProtocolo" value="'+esc(d.dataProtocolo||todayISO())+'" oninput="App.setField(\'dataProtocolo\', this.value)"></div>'+
@@ -2542,9 +2572,11 @@ function renderModal(){
         obsHistoricoHtml+
         '<textarea id="f_novaObservacao" placeholder="Nova observação (opcional) — fica registrada com data e hora, mantendo o histórico anterior" oninput="App.setField(\'novaObservacao\', this.value)">'+esc(d.novaObservacao||'')+'</textarea>'+
       '</div>'+
-      '<div class="modal-actions">'+
-        '<button class="btn-ghost" onclick="App.closeModal()">Cancelar</button>'+
-        '<div class="modal-actions-right">'+
+      '</div>'+
+      '<div class="side-panel-foot">'+
+        '<span class="side-esc-hint">Esc para fechar</span>'+
+        '<div class="side-panel-foot-right">'+
+          '<button class="btn-ghost" onclick="App.closeModal()">Cancelar</button>'+
           '<button class="btn btn-primary" onclick="App.saveProtocolo()">'+(d.mode==='edit'?'Salvar alterações':'Salvar protocolo')+'</button>'+
         '</div>'+
       '</div>'+
