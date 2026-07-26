@@ -368,6 +368,68 @@ select.sortsel{
 .side-panel-foot-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .side-esc-hint{font-family:var(--font-mono);font-size:10.5px;color:var(--apagado);}
 
+/* Formulario de criar/editar — secoes numeradas (Fase 2 parte 2) */
+.fm-sec{display:flex;flex-direction:column;gap:12px;padding:18px 0;border-bottom:1px solid var(--divisor-suave);}
+.fm-sec:first-of-type{padding-top:0;}
+.fm-sec-head{display:flex;align-items:center;gap:9px;}
+.fm-sec-label{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);white-space:nowrap;}
+.fm-sec-rule{flex:1;height:1px;background:var(--divisor-suave);}
+.fm-sec-count{font-size:10.5px;color:var(--apagado-2);white-space:nowrap;}
+.fm-row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
+.fm-field{flex:1;min-width:150px;}
+.fm-field.fixo{flex:none;}
+.fm-label{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--apagado);margin-bottom:6px;display:block;}
+.fm-input{width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--borda-forte);border-radius:var(--r-field);background:var(--ficha);color:var(--ink);font-family:var(--font-body);font-size:12.5px;}
+.fm-input:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px rgba(34,31,26,.07);}
+.fm-input-nome{font-family:var(--font-display);font-size:17px;font-weight:600;padding:11px 13px;}
+.fm-input-mono{font-family:var(--font-mono);font-size:12.5px;}
+.fm-input.ta{min-height:64px;resize:vertical;font-family:var(--font-body);}
+.fm-input-row{display:flex;gap:6px;}
+.fm-input-row .fm-input{flex:1;min-width:0;}
+.fm-aux-btn{flex:none;width:32px;border:1px solid var(--borda-forte);background:var(--painel);border-radius:var(--r-field);color:var(--tinta-media-2);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;}
+.fm-aux-btn:hover{border-color:var(--ink);color:var(--ink);}
+.fm-aux-btn.wpp{color:var(--teal);}
+.fm-aux-btn.wpp:hover{border-color:var(--teal);}
+
+.fm-warn{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--gold-soft);border:1px solid #E0C88E;border-radius:var(--r-field);}
+.fm-warn-bang{font-family:var(--font-mono);font-size:10px;font-weight:700;color:var(--gold);flex-shrink:0;}
+.fm-warn-txt{flex:1;font-size:12px;line-height:1.4;color:#7A4F13;}
+.fm-warn-btn{border:1px solid var(--gold);background:transparent;color:var(--gold);border-radius:var(--r-field);padding:6px 11px;font:600 11.5px var(--font-body);cursor:pointer;white-space:nowrap;}
+.fm-warn-btn:hover{background:var(--gold);color:var(--gold-soft);}
+
+.fm-seg-pessoa{display:flex;background:var(--barra-filtros);border-radius:9px;padding:3px;width:fit-content;}
+.fm-seg-pessoa button{border:none;background:transparent;color:var(--tinta-media-2);border-radius:6px;padding:7px 18px;font:500 12px var(--font-body);cursor:pointer;}
+.fm-seg-pessoa button.active.pf{background:var(--plum);color:var(--painel);font-weight:600;}
+.fm-seg-pessoa button.active.pj{background:var(--blue);color:var(--painel);font-weight:600;}
+
+.fm-chip{padding:7px 12px;border-radius:var(--r-field);border:1px solid var(--borda);background:var(--painel);color:var(--tinta-media-2);font:500 12px var(--font-body);cursor:pointer;white-space:nowrap;}
+.fm-chip:hover{border-color:var(--ink);}
+.fm-chip.active{background:var(--ink);color:var(--painel);border-color:var(--ink);font-weight:600;}
+.fm-chip.canal.active{background:var(--blue);border-color:var(--blue);}
+
+.fm-tiposearch-wrap{position:relative;}
+.fm-dropdown{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--ficha);border:1px solid var(--borda);border-radius:var(--r-field);box-shadow:0 6px 18px -12px rgba(0,0,0,.3);z-index:5;max-height:220px;overflow-y:auto;}
+.fm-dropdown-item{padding:8px 12px;border-bottom:1px solid var(--divisor-suave);font-size:12.5px;color:var(--tinta-media-2);cursor:pointer;}
+.fm-dropdown-item:last-child{border-bottom:none;}
+.fm-dropdown-item:hover{background:var(--apoio);color:var(--ink);}
+.fm-dropdown-empty{padding:10px 12px;font-size:12px;color:var(--apagado);font-style:italic;}
+
+.fm-prazo-box{border:1px solid #A9C4B2;background:#EDF4EE;border-radius:9px;padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.fm-prazo-toggle-wrap{display:flex;align-items:center;gap:10px;flex:1;min-width:210px;}
+.fm-toggle-lg{width:38px;height:22px;border-radius:12px;background:var(--borda-forte);position:relative;display:inline-block;flex-shrink:0;cursor:pointer;transition:background .15s ease;}
+.fm-toggle-lg.on{background:var(--green);}
+.fm-toggle-lg .knob{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--painel);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s ease;}
+.fm-toggle-lg.on .knob{left:19px;}
+.fm-prazo-toggle-lbl{font:600 13px var(--font-body);color:#2F5039;}
+.fm-prazo-sub{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#7C9384;}
+.fm-prazo-recebida input{margin-top:4px;width:110px;padding:7px 10px;border:1px solid #A9C4B2;border-radius:7px;background:var(--ficha);color:var(--ink);font-family:var(--font-mono);font-size:12.5px;}
+.fm-prazo-divisor{padding-left:14px;border-left:1px solid #C6D9CB;}
+.fm-prazo-venc{font-family:var(--font-mono);font-weight:700;font-size:15px;color:#2F5039;margin-top:3px;}
+.fm-hint{font-size:11px;color:var(--apagado);}
+
+.fm-disclosure{border:1px dashed var(--borda-forte);background:transparent;color:var(--tinta-media-2);border-radius:var(--r-field);padding:9px 12px;font:500 12px var(--font-body);cursor:pointer;text-align:left;width:100%;}
+.fm-disclosure:hover{border-color:var(--ink);color:var(--ink);}
+
 /* settings */
 .settings-section{margin-bottom:22px;}
 .settings-section h3{font-family:var(--font-display);font-size:15px;margin:0 0 4px;}
@@ -1222,7 +1284,7 @@ App.openNew = function(){
     mode:'new', id:null, tipoPessoa:'pf',
     canais:{balcao:true}, docsCompletos:false, responsavel: state.ultimoResponsavel || '',
     tipos:{}, status: state.statusList[0] ? state.statusList[0].key : '',
-    vinculados:{}, vinculoSearch:''
+    vinculados:{}, vinculoSearch:'', tipoSearch:'', vinculoManualAberto:false
   };
   modalJustOpened = true;
   App.render();
@@ -1245,7 +1307,7 @@ App.openEdit = function(id){
     dataProtocolo:p.dataProtocolo, docsCompletos:p.docsCompletos,
     dataRecebimentoCompleto:p.dataRecebimentoCompleto,
     tipos:tiposSet, status:p.status, novaObservacao:'',
-    vinculados:vinculadosSet, vinculoSearch:''
+    vinculados:vinculadosSet, vinculoSearch:'', tipoSearch:'', vinculoManualAberto:false
   };
   modalJustOpened = true;
   App.render();
@@ -1301,6 +1363,17 @@ App.toggleTipo = function(t){
   if(draftModal.tipos[t]) delete draftModal.tipos[t]; else draftModal.tipos[t]=true;
   App.render();
 };
+App.setTipoSearch = function(v){
+  captureModalTextFields();
+  draftModal.tipoSearch = v;
+  App.render();
+};
+App.pickTipoFromSearch = function(t){
+  captureModalTextFields();
+  draftModal.tipos[t] = true;
+  draftModal.tipoSearch = '';
+  App.render();
+};
 App.addTipoFromModal = function(){
   captureModalTextFields();
   var el = document.getElementById('novoTipoModalInput');
@@ -1336,6 +1409,17 @@ App.setVinculoSearch = function(v){
   captureModalTextFields();
   draftModal.vinculoSearch = v;
   App.render();
+};
+App.toggleVinculoManual = function(){
+  captureModalTextFields();
+  draftModal.vinculoManualAberto = !draftModal.vinculoManualAberto;
+  App.render();
+};
+App.copiarEmail = function(email){
+  if(!email || !navigator.clipboard || !navigator.clipboard.writeText) return;
+  navigator.clipboard.writeText(email).then(function(){
+    App.showToast('E-mail copiado.');
+  }).catch(function(){});
 };
 App.refreshClienteVinculoCheck = function(v){
   if(!draftModal) return;
@@ -2464,38 +2548,33 @@ function computeVinculoSugestaoHtml(d){
     return !p.naLixeira && !isArquivado(p) && (p.cliente||'').trim().toLowerCase()===nomeNorm && !d.vinculados[p.id];
   });
   if(!sugestoes.length) return '';
-  return '<div class="hint" style="background:var(--gold-soft);color:var(--gold);padding:8px 10px;border-radius:3px;margin-bottom:6px;">'+
-    'Encontrei '+sugestoes.length+' protocolo(s) ativo(s) para "'+esc(d.cliente.trim())+'": '+
-    sugestoes.map(function(p){
-      return '<button type="button" class="btn-ghost" style="text-decoration:underline;padding:2px 4px;color:var(--gold);" onclick="App.toggleVinculo(\''+p.id+'\')">+ '+esc(formatBR(p.dataProtocolo))+(p.numeroProtocolo?(' nº '+esc(p.numeroProtocolo)):'')+'</button>';
-    }).join(' ')+
-  '</div>';
+  var statusMap = getStatusMap();
+  return sugestoes.map(function(p){
+    var st = statusMap[p.status] || {label:p.status||''};
+    var quem = p.numeroProtocolo ? ('nº '+esc(p.numeroProtocolo)) : ('de '+esc(formatBR(p.dataProtocolo)));
+    return '<div class="fm-warn" style="margin-bottom:6px;">'+
+      '<span class="fm-warn-bang">!</span>'+
+      '<span class="fm-warn-txt">Já existe protocolo em andamento para este nome — <strong>'+quem+'</strong>, '+esc((st.label||'').toLowerCase())+'.</span>'+
+      '<button type="button" class="fm-warn-btn" onclick="App.toggleVinculo(\''+p.id+'\')">Vincular</button>'+
+    '</div>';
+  }).join('');
 }
 
+function telWhatsAppHref(tel){
+  var digits = String(tel||'').replace(/\D/g,'');
+  if(!digits) return '#';
+  if(digits.length<=11) digits = '55'+digits;
+  return 'https://wa.me/'+digits;
+}
 function renderModal(){
   var d = draftModal;
-  var canalBtns = CANAIS.map(function(c){
-    return '<button type="button" class="seg-btn'+(d.canais[c.key]?' active':'')+'" onclick="App.toggleCanal(\''+c.key+'\')">'+esc(c.label)+'</button>';
-  }).join('');
-  var pessoaBtns = ''+
-    '<button type="button" class="seg-btn'+(d.tipoPessoa==='pf'?' active':'')+'" onclick="App.setPessoa(\'pf\')">Pessoa Física</button>'+
-    '<button type="button" class="seg-btn'+(d.tipoPessoa==='pj'?' active':'')+'" onclick="App.setPessoa(\'pj\')">Pessoa Jurídica</button>';
-  var docsBtns = ''+
-    '<button type="button" class="seg-btn'+(d.docsCompletos?' active':'')+'" onclick="App.setDocsCompletos(true)">Sim, já recebi tudo</button>'+
-    '<button type="button" class="seg-btn'+(!d.docsCompletos?' active':'')+'" onclick="App.setDocsCompletos(false)">Não, falta documentação</button>';
-  var tiposHtml = getTiposOrdenadosPorUso().map(function(t){
-    var checked = d.tipos[t] ? ' checked' : '';
-    return '<label><input type="checkbox"'+checked+' onchange="App.toggleTipo(\''+jsAttr(t)+'\')"> '+esc(t)+'</label>';
-  }).join('');
-  var statusOptions = state.statusList.map(function(s){
-    return '<option value="'+esc(s.key)+'"'+(s.key===d.status?' selected':'')+'>'+esc(s.label)+'</option>';
-  }).join('');
+  var original = d.mode==='edit' ? state.protocolos.filter(function(p){return p.id===d.id;})[0] : null;
+
   var responsavelOptions = '<option value=""'+(d.responsavel?'':' selected')+'>— Selecionar —</option>'+
     state.responsaveis.map(function(r){
       return '<option value="'+esc(r)+'"'+(r===d.responsavel?' selected':'')+'>'+esc(r)+'</option>';
     }).join('');
 
-  var original = d.mode==='edit' ? state.protocolos.filter(function(p){return p.id===d.id;})[0] : null;
   var obsHistoricoHtml = '';
   if(original && original.observacoesHistorico && original.observacoesHistorico.length){
     var obsRows = original.observacoesHistorico.slice().reverse().map(function(o){
@@ -2506,7 +2585,20 @@ function renderModal(){
     obsHistoricoHtml = '<div class="hist-box" style="margin-bottom:8px;max-height:150px;overflow-y:auto;">'+obsRows+'</div>';
   }
 
-  var vinculoSugestaoHtml = computeVinculoSugestaoHtml(d);
+  /* ---- Cabecalho: rotulo mono (numero/data ou "novo protocolo") + titulo ---- */
+  var headEyebrow = (d.mode==='edit' && original)
+    ? ('editando · '+(original.numeroProtocolo?('nº '+original.numeroProtocolo+' · '):'')+'aberto em '+formatBR(original.dataProtocolo))
+    : 'novo protocolo';
+  var headTitle = d.mode==='edit' ? (d.cliente || 'Editar protocolo') : 'Abertura de protocolo';
+
+  /* ---- Secao 1 · Outorgante ---- */
+  var dupWarningHtml = computeVinculoSugestaoHtml(d);
+  var pessoaSegHtml = ''+
+    '<button type="button" class="'+(d.tipoPessoa==='pf'?'active pf':'')+'" onclick="App.setPessoa(\'pf\')">Física</button>'+
+    '<button type="button" class="'+(d.tipoPessoa==='pj'?'active pj':'')+'" onclick="App.setPessoa(\'pj\')">Jurídica</button>';
+  var telAuxHtml = (d.mode==='edit' && d.clienteTelefone) ? '<a class="fm-aux-btn wpp" href="'+telWhatsAppHref(d.clienteTelefone)+'" target="_blank" rel="noopener" title="Abrir WhatsApp">&#8599;</a>' : '';
+  var emailAuxHtml = (d.mode==='edit' && d.clienteEmail) ? '<button type="button" class="fm-aux-btn" title="Copiar e-mail" onclick="App.copiarEmail(\''+jsAttr(d.clienteEmail)+'\')">&#10697;</button>' : '';
+
   var selectedVinculoChipsHtml = '';
   var vinculoIdsAtuais = Object.keys(d.vinculados||{});
   if(vinculoIdsAtuais.length){
@@ -2530,48 +2622,119 @@ function renderModal(){
     }).join('');
     if(!candidatos.length) vinculoResultsHtml = '<div class="hint">Nenhum protocolo encontrado.</div>';
   }
+  var vinculoDisclosureHtml = ''+
+    '<button type="button" class="fm-disclosure" onclick="App.toggleVinculoManual()">'+(d.vinculoManualAberto?'Ocultar busca por outro protocolo ⌃':'Vincular a outro protocolo manualmente ⌄')+'</button>'+
+    (d.vinculoManualAberto ? (
+      '<div style="margin-top:10px;">'+
+        selectedVinculoChipsHtml+
+        '<input type="text" id="vinculoSearchInput" class="fm-input" placeholder="Buscar por cliente ou nº de protocolo…" value="'+esc(d.vinculoSearch||'')+'" oninput="App.setVinculoSearch(this.value)">'+
+        (vinculoResultsHtml ? '<div class="checklist" style="max-height:140px;margin-top:6px;">'+vinculoResultsHtml+'</div>' : '')+
+        '<div class="fm-hint" style="margin-top:6px;">Isso só serve para ver os protocolos juntos depois — não muda nada nos dados de cada um.</div>'+
+      '</div>'
+    ) : '');
+
+  var sec1Html = ''+
+  '<div class="fm-sec">'+
+    '<div class="fm-sec-head"><span class="fm-sec-label">1 &middot; Outorgante</span><span class="fm-sec-rule"></span></div>'+
+    '<input type="text" id="f_cliente" class="fm-input fm-input-nome" value="'+esc(d.cliente||'')+'" placeholder="Nome do cliente / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
+    '<div id="vinculoSugestaoContainer">'+dupWarningHtml+'</div>'+
+    '<div class="fm-row">'+
+      '<div class="fm-field fixo"><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa">'+pessoaSegHtml+'</div></div>'+
+      '<div class="fm-field"><span class="fm-label">Telefone (opcional)</span><div class="fm-input-row"><input type="text" id="f_clienteTelefone" class="fm-input fm-input-mono" inputmode="tel" value="'+esc(d.clienteTelefone||'')+'" placeholder="(00) 00000-0000" oninput="App.setPhone(\'clienteTelefone\', this)">'+telAuxHtml+'</div></div>'+
+      '<div class="fm-field"><span class="fm-label">E-mail (opcional)</span><div class="fm-input-row"><input type="text" id="f_clienteEmail" class="fm-input" value="'+esc(d.clienteEmail||'')+'" placeholder="nome@exemplo.com" oninput="App.setField(\'clienteEmail\', this.value)">'+emailAuxHtml+'</div></div>'+
+    '</div>'+
+    '<div><span class="fm-label">Outorgado(s) (opcional)</span><input type="text" id="f_outorgados" class="fm-input" value="'+esc(d.outorgados||'')+'" placeholder="Quem recebe os poderes" oninput="App.setField(\'outorgados\', this.value)"></div>'+
+    '<div>'+vinculoDisclosureHtml+'</div>'+
+  '</div>';
+
+  /* ---- Secao 2 · Ato ---- */
+  var tiposSelecionados = Object.keys(d.tipos||{});
+  var chipsBase = getTiposOrdenadosPorUso().slice(0,5);
+  var chipsExtras = tiposSelecionados.filter(function(t){ return chipsBase.indexOf(t)===-1; });
+  var chipsAll = chipsBase.concat(chipsExtras);
+  var tipoChipsHtml = chipsAll.map(function(t){
+    var checked = !!d.tipos[t];
+    return '<button type="button" class="fm-chip'+(checked?' active':'')+'" onclick="App.toggleTipo(\''+jsAttr(t)+'\')">'+(checked?'&#10003; ':'')+esc(t)+'</button>';
+  }).join('');
+  var tq = (d.tipoSearch||'').trim().toLowerCase();
+  var tipoDropdownHtml = '';
+  if(tq){
+    var tipoMatches = state.tiposAtos.filter(function(t){ return t.toLowerCase().indexOf(tq)!==-1; }).slice(0,8);
+    tipoDropdownHtml = '<div class="fm-dropdown">'+
+      (tipoMatches.length ? tipoMatches.map(function(t){
+        return '<div class="fm-dropdown-item" onclick="App.pickTipoFromSearch(\''+jsAttr(t)+'\')">'+(d.tipos[t]?'&#10003; ':'')+esc(t)+'</div>';
+      }).join('') : '<div class="fm-dropdown-empty">Nenhum tipo encontrado com esse termo.</div>')+
+    '</div>';
+  }
+  var sec2Html = ''+
+  '<div class="fm-sec">'+
+    '<div class="fm-sec-head"><span class="fm-sec-label">2 &middot; Ato</span><span class="fm-sec-rule"></span>'+(tiposSelecionados.length?'<span class="fm-sec-count">'+tiposSelecionados.length+' selecionado'+(tiposSelecionados.length>1?'s':'')+'</span>':'')+'</div>'+
+    '<div class="fm-tiposearch-wrap">'+
+      '<input type="text" id="tipoSearchInput" class="fm-input" placeholder="Buscar entre os '+state.tiposAtos.length+' tipos de ato…" value="'+esc(d.tipoSearch||'')+'" oninput="App.setTipoSearch(this.value)">'+
+      tipoDropdownHtml+
+    '</div>'+
+    (chipsAll.length ? '<div><span class="fm-label">mais usados recentemente</span><div style="display:flex;gap:6px;flex-wrap:wrap;">'+tipoChipsHtml+'</div></div>' : '')+
+    '<div class="add-tipo-row"><input type="text" id="novoTipoModalInput" class="fm-input" placeholder="Adicionar novo tipo de ato…"><button type="button" class="btn-ghost outlined" onclick="App.addTipoFromModal()">Adicionar</button></div>'+
+  '</div>';
+
+  /* ---- Secao 3 · Atendimento ---- */
+  var canalChipsHtml = CANAIS.map(function(c){
+    return '<button type="button" class="fm-chip canal'+(d.canais[c.key]?' active':'')+'" onclick="App.toggleCanal(\''+c.key+'\')">'+esc(c.label)+'</button>';
+  }).join('');
+  var sec3Html = ''+
+  '<div class="fm-sec">'+
+    '<div class="fm-sec-head"><span class="fm-sec-label">3 &middot; Atendimento</span><span class="fm-sec-rule"></span></div>'+
+    '<div class="fm-row">'+
+      '<div class="fm-field"><span class="fm-label">Canais (múltipla escolha)</span><div style="display:flex;gap:6px;flex-wrap:wrap;">'+canalChipsHtml+'</div></div>'+
+      '<div class="fm-field fixo" style="min-width:190px;"><span class="fm-label">Responsável interno</span><select class="fm-input" onchange="App.setResponsavel(this.value)">'+responsavelOptions+'</select>'+
+        '<div class="add-tipo-row"><input type="text" id="novoResponsavelModalInput" class="fm-input" placeholder="Adicionar novo responsável…"><button type="button" class="btn-ghost outlined" onclick="App.addResponsavelFromModal()">Adicionar</button></div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+
+  /* ---- Secao 4 · Prazo ---- */
+  var prazoExtraHtml = '';
+  if(d.docsCompletos){
+    var previewDate = d.dataRecebimentoCompleto || d.dataProtocolo || todayISO();
+    var deadlinePreview = addBusinessDays(previewDate, PRAZO_DIAS_UTEIS);
+    prazoExtraHtml = ''+
+      '<div><div class="fm-prazo-sub">recebida em</div><div class="fm-prazo-recebida"><input type="date" id="f_dataRecebimentoCompleto" value="'+esc(d.dataRecebimentoCompleto||todayISO())+'" oninput="App.setField(\'dataRecebimentoCompleto\', this.value)"></div></div>'+
+      '<div class="fm-prazo-divisor"><div class="fm-prazo-sub">prazo &middot; '+PRAZO_DIAS_UTEIS+' d.ú.</div><div class="fm-prazo-venc">vence '+esc(formatBR(deadlinePreview))+'</div></div>';
+  }
+  var sec4Html = ''+
+  '<div class="fm-sec" style="border-bottom:none;">'+
+    '<div class="fm-sec-head"><span class="fm-sec-label">4 &middot; Prazo</span><span class="fm-sec-rule"></span></div>'+
+    '<div class="fm-prazo-box">'+
+      '<div class="fm-prazo-toggle-wrap">'+
+        '<span class="fm-toggle-lg'+(d.docsCompletos?' on':'')+'" onclick="App.setDocsCompletos('+(!d.docsCompletos)+')"><span class="knob"></span></span>'+
+        '<span class="fm-prazo-toggle-lbl">Documentação completa</span>'+
+      '</div>'+
+      prazoExtraHtml+
+    '</div>'+
+    '<div class="fm-hint">'+(d.docsCompletos ? 'O prazo é recalculado automaticamente a partir da data de recebimento.' : 'Desmarcado, o protocolo entra sem prazo em contagem — a data pode ser preenchida depois.')+'</div>'+
+  '</div>';
 
   return ''+
   '<div class="side-overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeModal()">'+
     '<div class="side-panel'+(modalJustOpened?' entering':'')+'">'+
-      '<div class="side-panel-head"><h2>'+(d.mode==='edit'?'Editar protocolo':'Novo protocolo')+'</h2></div>'+
-      '<div class="side-panel-body">'+
-      '<div class="field-row">'+
-        '<div class="field"><label>Nº do protocolo (opcional)</label><input type="text" id="f_numeroProtocolo" value="'+esc(d.numeroProtocolo||'')+'" placeholder="Ex: 12345/2026" oninput="App.setField(\'numeroProtocolo\', this.value)"></div>'+
-        '<div class="field"><label>Data do protocolo</label><input type="date" id="f_dataProtocolo" value="'+esc(d.dataProtocolo||todayISO())+'" oninput="App.setField(\'dataProtocolo\', this.value)"></div>'+
-      '</div>'+
-      '<div class="field"><label>Tipo de pessoa</label><div class="segmented">'+pessoaBtns+'</div></div>'+
-      '<div class="field-row">'+
-        '<div class="field"><label>Cliente / outorgante (opcional)</label><input type="text" id="f_cliente" value="'+esc(d.cliente||'')+'" placeholder="Nome do cliente" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)"></div>'+
-        '<div class="field"><label>Telefone (opcional)</label><input type="text" id="f_clienteTelefone" inputmode="tel" value="'+esc(d.clienteTelefone||'')+'" placeholder="(00) 00000-0000" oninput="App.setPhone(\'clienteTelefone\', this)"></div>'+
-        '<div class="field"><label>E-mail (opcional)</label><input type="text" id="f_clienteEmail" value="'+esc(d.clienteEmail||'')+'" placeholder="nome@exemplo.com" oninput="App.setField(\'clienteEmail\', this.value)"></div>'+
-      '</div>'+
-      '<div class="field-row">'+
-        '<div class="field"><label>Outorgado(s) (opcional)</label><input type="text" id="f_outorgados" value="'+esc(d.outorgados||'')+'" placeholder="Quem recebe os poderes" oninput="App.setField(\'outorgados\', this.value)"></div>'+
-        '<div class="field"><label>Responsável interno (opcional)</label><select onchange="App.setResponsavel(this.value)">'+responsavelOptions+'</select>'+
-          '<div class="add-tipo-row"><input type="text" id="novoResponsavelModalInput" placeholder="Adicionar novo responsável…"><button type="button" class="btn-ghost outlined" onclick="App.addResponsavelFromModal()">Adicionar</button></div>'+
+      '<div class="side-panel-head" style="display:flex;align-items:flex-start;gap:12px;">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div class="fm-label" style="margin-bottom:3px;">'+esc(headEyebrow)+'</div>'+
+          '<h2 style="margin:0;">'+esc(headTitle)+'</h2>'+
         '</div>'+
+        '<button type="button" class="ib28" style="width:30px;height:30px;" title="Fechar" onclick="App.closeModal()">&times;</button>'+
       '</div>'+
-      '<div class="field"><label>Vincular a outro(s) protocolo(s) da mesma pessoa/empresa (opcional)</label>'+
-        '<div id="vinculoSugestaoContainer">'+vinculoSugestaoHtml+'</div>'+
-        selectedVinculoChipsHtml+
-        '<input type="text" id="vinculoSearchInput" placeholder="Buscar por cliente ou nº de protocolo…" value="'+esc(d.vinculoSearch||'')+'" oninput="App.setVinculoSearch(this.value)">'+
-        (vinculoResultsHtml ? '<div class="checklist" style="max-height:140px;margin-top:6px;">'+vinculoResultsHtml+'</div>' : '')+
-        '<div class="hint">Isso só serve para ver os protocolos juntos depois — não muda nada nos dados de cada um.</div>'+
-      '</div>'+
-      '<div class="field"><label>Canal de atendimento (selecione um ou mais)</label><div class="segmented">'+canalBtns+'</div></div>'+
-      '<div class="field"><label>Documentação completa?</label><div class="segmented">'+docsBtns+'</div>'+
-        (d.docsCompletos ? '<div class="field" style="margin-top:8px;"><label>Data do recebimento completo</label><input type="date" id="f_dataRecebimentoCompleto" value="'+esc(d.dataRecebimentoCompleto||todayISO())+'" oninput="App.setField(\'dataRecebimentoCompleto\', this.value)"></div>' : '<div class="hint">O prazo de '+PRAZO_DIAS_UTEIS+' dias úteis começa a contar quando você marcar a documentação como completa (pelo botão na ficha, ou aqui).</div>')+
-      '</div>'+
-      '<div class="field"><label>Tipos de ato (selecione um ou mais)</label>'+
-        '<div class="checklist">'+tiposHtml+'</div>'+
-        '<div class="add-tipo-row"><input type="text" id="novoTipoModalInput" placeholder="Adicionar novo tipo de ato…"><button type="button" class="btn-ghost outlined" onclick="App.addTipoFromModal()">Adicionar</button></div>'+
-      '</div>'+
-      '<div class="field"><label>Status inicial / andamento</label><select id="f_status" onchange="App.setStatus(this.value)">'+statusOptions+'</select></div>'+
-      '<div class="field"><label>Observações</label>'+
-        obsHistoricoHtml+
-        '<textarea id="f_novaObservacao" placeholder="Nova observação (opcional) — fica registrada com data e hora, mantendo o histórico anterior" oninput="App.setField(\'novaObservacao\', this.value)">'+esc(d.novaObservacao||'')+'</textarea>'+
-      '</div>'+
+      '<div class="side-panel-body">'+
+        '<div class="fm-row" style="margin-bottom:16px;">'+
+          '<div class="fm-field fixo" style="min-width:160px;"><span class="fm-label">Nº do protocolo (opcional)</span><input type="text" id="f_numeroProtocolo" class="fm-input fm-input-mono" value="'+esc(d.numeroProtocolo||'')+'" placeholder="Ex: 12345/2026" oninput="App.setField(\'numeroProtocolo\', this.value)"></div>'+
+          '<div class="fm-field fixo" style="min-width:150px;"><span class="fm-label">Data do protocolo</span><input type="date" id="f_dataProtocolo" class="fm-input fm-input-mono" value="'+esc(d.dataProtocolo||todayISO())+'" oninput="App.setField(\'dataProtocolo\', this.value)"></div>'+
+        '</div>'+
+        sec1Html+sec2Html+sec3Html+sec4Html+
+        '<div class="fm-sec" style="border-bottom:none;padding-top:18px;">'+
+          '<span class="fm-label">Observação inicial</span>'+
+          obsHistoricoHtml+
+          '<textarea id="f_novaObservacao" class="fm-input ta" placeholder="Ex.: cliente traz a certidão de ônus na segunda." oninput="App.setField(\'novaObservacao\', this.value)">'+esc(d.novaObservacao||'')+'</textarea>'+
+        '</div>'+
       '</div>'+
       '<div class="side-panel-foot">'+
         '<span class="side-esc-hint">Esc para fechar</span>'+
