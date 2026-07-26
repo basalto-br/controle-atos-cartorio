@@ -414,6 +414,38 @@ select.sortsel{
 .btn-avancar:hover{background:var(--carimbo);}
 .prazo-acao{font-family:var(--font-body);font-size:11px;color:var(--tinta-fraca,var(--ink-soft));}
 
+/* Quadro (Kanban) redesenhado */
+.kb-board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(224px,1fr);gap:14px;overflow-x:auto;padding-bottom:8px;}
+.kb-col{background:var(--apoio);border-radius:var(--r-card);display:flex;flex-direction:column;max-height:74vh;transition:background .12s;}
+.kb-head{display:flex;align-items:center;gap:7px;margin:12px 12px 0;padding-bottom:9px;border-bottom:2px solid var(--borda-forte);}
+.kb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.kb-head .kl{font-family:var(--font-body);font-size:11.5px;font-weight:600;color:var(--tinta-media);}
+.kb-head .kc{margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--apagado);}
+.kb-body{flex:1;overflow-y:auto;padding:10px 10px 2px;display:flex;flex-direction:column;gap:8px;}
+.kb-card{background:var(--ficha);border:1px solid var(--borda-ficha);border-left:3px solid var(--borda-forte);border-radius:8px;padding:11px 12px;display:flex;flex-direction:column;gap:7px;cursor:grab;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:box-shadow .12s;}
+.kb-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.kb-card:active{cursor:grabbing;}
+.kb-card.pf{border-left-color:var(--plum);}
+.kb-card.pj{border-left-color:var(--blue);}
+.kb-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.kb-num{font-family:var(--font-mono);font-size:10px;color:var(--apagado);}
+.kb-tag-atraso{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.04em;background:var(--carimbo);color:var(--painel);padding:1px 6px;border-radius:3px;}
+.kb-nome{font-family:var(--font-display);font-size:14.5px;font-weight:600;line-height:1.2;text-wrap:pretty;}
+.kb-tipo{font-size:11px;color:var(--tinta-media-2);text-wrap:pretty;}
+.kb-prazo{display:flex;align-items:center;gap:7px;}
+.trilha-mini{display:flex;gap:3px;}
+.marca-mini{width:9px;height:6px;border-radius:2px;background:var(--trilho);}
+.kb-prazo-txt{font-family:var(--font-mono);font-size:10.5px;font-weight:700;}
+.kb-prazo-txt.ok{color:var(--green);}
+.kb-prazo-txt.warn{color:var(--gold);}
+.kb-prazo-txt.late{color:var(--carimbo);}
+.kb-foot{display:flex;align-items:center;gap:6px;flex-wrap:wrap;border-top:1px dashed #EAE5D6;padding-top:6px;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--apagado);}
+.kb-vazio{font-size:11.5px;color:var(--apagado);text-align:center;padding:10px 0;font-style:italic;}
+.kb-dropzone{display:none;margin:4px 10px 10px;border:2px dashed var(--teal);background:var(--teal-soft);border-radius:8px;padding:16px 12px;text-align:center;font-family:var(--font-body);font-size:11px;font-weight:600;color:var(--teal);}
+.kb-board.is-dragging .kb-dropzone{display:block;}
+.kb-col.alvo{background:#EAF3F1;}
+.kb-col.alvo .kb-dropzone{background:#CDE7E2;}
+
 @media (max-width:700px){
   .cp{grid-template-columns:5px 1fr;}
   .cp-prazo{grid-column:2;border-left:none;border-top:1px solid var(--borda-ficha);flex-direction:row;align-items:center;flex-wrap:wrap;}
@@ -1471,10 +1503,28 @@ App.addObservacaoQuick = function(id){
 App.updateObsDraft = function(id, v){ obsDraftText[id]=v; };
 
 /* ---- Kanban drag and drop ---- */
-App.dragStart = function(ev, id){ ev.dataTransfer.setData('text/plain', id); };
+App.dragStart = function(ev, id){
+  ev.dataTransfer.setData('text/plain', id);
+  ev.dataTransfer.effectAllowed = 'move';
+  var board = document.querySelector('.kb-board');
+  if(board) board.classList.add('is-dragging');
+};
+App.markAlvo = function(col){
+  var cols = document.querySelectorAll('.kb-col.alvo');
+  for(var i=0;i<cols.length;i++){ if(cols[i]!==col) cols[i].classList.remove('alvo'); }
+  col.classList.add('alvo');
+};
+App.limpaDrag = function(){
+  var board = document.querySelector('.kb-board');
+  if(board) board.classList.remove('is-dragging');
+  var cols = document.querySelectorAll('.kb-col.alvo');
+  for(var i=0;i<cols.length;i++){ cols[i].classList.remove('alvo'); }
+};
+App.dragEnd = function(){ App.limpaDrag(); };
 App.dropOnColumn = function(ev, statusKey){
   ev.preventDefault();
   var id = ev.dataTransfer.getData('text/plain');
+  App.limpaDrag();
   if(id) App.changeStatusQuick(id, statusKey);
 };
 
@@ -2293,29 +2343,44 @@ function renderListArea(){
 
 function renderKanbanCard(p){
   var info = computePrazo(p);
-  var tag = '';
-  if(!p.docsCompletos){ tag='<span class="k-tag warn">Docs pendentes</span>'; }
-  else if(info){
-    if(info.isOverdue) tag='<span class="k-tag late">Atrasado '+info.diasAtraso+'d</span>';
-    else if(info.isDueToday) tag='<span class="k-tag warn">Vence hoje</span>';
-    else tag='<span class="k-tag ok">'+(PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d restantes</span>';
+  var atrasado = !!(info && info.isOverdue);
+  var prazoHtml = '';
+  if(!p.docsCompletos || !p.dataRecebimentoCompleto){
+    prazoHtml = '<div class="kb-prazo"><span class="kb-prazo-txt warn">docs pendentes</span></div>';
+  }else if(info){
+    var cor = info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)');
+    var txtCls = info.isOverdue ? 'late' : (info.isDueToday ? 'warn' : 'ok');
+    var txt = info.isOverdue ? (info.diasAtraso+'d atraso') : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d rest.');
+    var marks = '';
+    for(var i=1;i<=PRAZO_DIAS_UTEIS;i++){ marks += '<div class="marca-mini"'+(i<=info.elapsedCapped?' style="background:'+cor+';"':'')+'></div>'; }
+    prazoHtml = '<div class="kb-prazo"><div class="trilha-mini">'+marks+'</div><span class="kb-prazo-txt '+txtCls+'">'+esc(txt)+'</span></div>';
   }
-  return '<div class="kanban-card" draggable="true" ondragstart="App.dragStart(event,\''+p.id+'\')" onclick="App.openEdit(\''+p.id+'\')">'+
-    '<div class="k-top"><span>'+esc(formatBR(p.dataProtocolo))+'</span><span>'+(p.tipoPessoa==='pj'?'PJ':'PF')+'</span></div>'+
-    '<div class="k-cliente">'+esc(p.cliente||'Sem identificação')+'</div>'+
-    tag+
+  var foot = [];
+  if(p.responsavel) foot.push(esc(p.responsavel));
+  (p.canais||[]).forEach(function(c){ foot.push(esc((CANAL_MAP[c]||{label:c}).label)); });
+  return '<div class="kb-card '+(p.tipoPessoa==='pj'?'pj':'pf')+'" draggable="true" ondragstart="App.dragStart(event,\''+p.id+'\')" ondragend="App.dragEnd(event)" onclick="App.openEdit(\''+p.id+'\')">'+
+    '<div class="kb-meta">'+
+      '<span class="selo '+(p.tipoPessoa==='pj'?'pj':'pf')+'">'+(p.tipoPessoa==='pj'?'PJ':'PF')+'</span>'+
+      (p.numeroProtocolo ? '<span class="kb-num">nº '+esc(p.numeroProtocolo)+'</span>' : '')+
+      (atrasado ? '<span class="kb-tag-atraso">ATRASADO</span>' : '')+
+    '</div>'+
+    '<div class="kb-nome">'+esc(p.cliente||'Sem identificação')+'</div>'+
+    ((p.tipos && p.tipos.length) ? '<div class="kb-tipo">'+esc(p.tipos.join(' · '))+'</div>' : '')+
+    prazoHtml+
+    (foot.length ? '<div class="kb-foot">'+foot.join(' · ')+'</div>' : '')+
   '</div>';
 }
 function renderKanban(list){
   var cols = state.statusList.map(function(s){
     var items = list.filter(function(p){ return p.status===s.key; });
-    var cardsHtml = items.map(renderKanbanCard).join('') || '<div class="kanban-empty">Vazio</div>';
-    return '<div class="kanban-col" ondragover="event.preventDefault()" ondrop="App.dropOnColumn(event,\''+jsAttr(s.key)+'\')">'+
-      '<div class="kanban-col-header stamp '+s.cor+'" style="transform:none;">'+esc(s.label)+' · '+items.length+'</div>'+
-      '<div class="kanban-col-body">'+cardsHtml+'</div>'+
+    var cardsHtml = items.map(renderKanbanCard).join('') || '<div class="kb-vazio">Vazio</div>';
+    return '<div class="kb-col" ondragover="event.preventDefault();App.markAlvo(this);" ondrop="App.dropOnColumn(event,\''+jsAttr(s.key)+'\')">'+
+      '<div class="kb-head"><span class="kb-dot" style="background:var(--'+s.cor+');"></span><span class="kl">'+esc(s.label)+'</span><span class="kc">'+items.length+'</span></div>'+
+      '<div class="kb-body">'+cardsHtml+'</div>'+
+      '<div class="kb-dropzone">soltar aqui</div>'+
     '</div>';
   }).join('');
-  return '<div class="kanban-board">'+cols+'</div>';
+  return '<div class="kb-board">'+cols+'</div>';
 }
 
 /* ---- Modal novo/editar ---- */
