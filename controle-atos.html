@@ -159,24 +159,16 @@ button{font-family:var(--font-body);cursor:pointer;}
   display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;
 }
 .search-input{
-  flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);
-  border-radius:var(--radius);font-size:13.5px;background:var(--card);color:var(--ink);
+  flex:1;min-width:180px;padding:9px 12px 9px 30px;border:1px solid var(--borda-forte);
+  border-radius:var(--r-field);font-size:13.5px;background:var(--painel);color:var(--ink);
   font-family:var(--font-body);
 }
 .search-input:focus{outline:2px solid var(--blue);outline-offset:1px;}
-.pill-group{display:flex;gap:6px;flex-wrap:wrap;}
-.pill{
-  padding:6px 12px;border-radius:20px;border:1px solid var(--line);background:var(--card);
-  font-size:12px;color:var(--ink-soft);font-weight:500;white-space:nowrap;
-  transition:background .15s ease, color .15s ease, border-color .15s ease, transform .1s ease;
-}
-.pill.active{background:var(--ink);color:var(--card);border-color:var(--ink);}
-.pill:hover{border-color:var(--ink);}
-.pill:active{transform:scale(0.96);}
 select.sortsel{
-  padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius);
-  font-size:12.5px;background:var(--card);color:var(--ink);font-family:var(--font-body);
+  padding:8px 10px;border:1px solid var(--borda-forte);border-radius:var(--r-field);
+  font-size:12.5px;background:var(--painel);color:var(--ink);font-family:var(--font-body);
 }
+/* .segmented/.seg-btn seguem usados pelo painel de criar/editar (canais, pessoa, docs) — nao alterar */
 .segmented{display:flex;gap:6px;flex-wrap:wrap;}
 .seg-btn{
   padding:8px 14px;border:1px solid var(--line);border-radius:20px;background:#fff;
@@ -186,6 +178,35 @@ select.sortsel{
 .seg-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
 .seg-btn:active{transform:scale(0.96);}
 .hint{font-size:11.5px;color:var(--ink-soft);margin:4px 0 10px;}
+
+/* Segmentado de visao (Lista/Quadro/Arquivados/Lixeira) — barra de filtros redesenhada */
+.seg2{display:flex;background:#DAD6C7;border-radius:var(--r-field);padding:2px;flex-wrap:wrap;}
+.seg2-btn{border:none;background:transparent;color:var(--tinta-media-2);border-radius:6px;padding:6px 14px;font:500 12.5px var(--font-body);cursor:pointer;transition:background .12s ease,color .12s ease,box-shadow .12s ease;white-space:nowrap;}
+.seg2-btn.active{background:var(--painel);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.12);}
+
+/* Botao Filtrar + painel recolhivel */
+.filtro-btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--ink);background:var(--painel);color:var(--ink);border-radius:var(--r-field);padding:8px 13px;font:600 12.5px var(--font-body);cursor:pointer;white-space:nowrap;transition:background .12s ease,color .12s ease;}
+.filtro-btn:hover,.filtro-btn.aberto{background:var(--ink);color:var(--painel);}
+.filtro-contador{font-family:var(--font-mono);font-size:10px;font-weight:700;background:var(--ink);color:var(--painel);border-radius:9px;padding:2px 6px;}
+.filtro-btn:hover .filtro-contador,.filtro-btn.aberto .filtro-contador{background:var(--painel);color:var(--ink);}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--apagado);pointer-events:none;}
+
+.painel-filtros{background:var(--apoio);border-radius:var(--r-card);padding:16px 18px;margin:0 0 14px;}
+.pf-grid{display:grid;grid-template-columns:auto 1fr;gap:10px 18px;align-items:center;}
+.pf-label{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--apagado);text-align:right;}
+.pf-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.chip-filtro{padding:5px 11px;border-radius:var(--r-chip);border:1px solid var(--borda);background:var(--painel);color:var(--tinta-media-2);font:500 11.5px var(--font-body);cursor:pointer;white-space:nowrap;transition:background .12s ease,color .12s ease,border-color .12s ease;}
+.chip-filtro:hover{border-color:var(--ink);}
+.chip-filtro.active{background:var(--ink);color:var(--painel);border-color:var(--ink);font-weight:600;}
+.chip-filtro.pf.active{background:var(--plum);border-color:var(--plum);}
+.chip-filtro.pj.active{background:var(--blue);border-color:var(--blue);}
+.pf-divisor{width:1px;height:18px;background:var(--borda);margin:0 4px;}
+.pf-toggle{display:inline-flex;align-items:center;gap:6px;font:500 11.5px var(--font-body);color:var(--tinta-media-2);cursor:pointer;user-select:none;}
+.toggle-track{width:26px;height:15px;border-radius:9px;background:var(--borda-forte);position:relative;display:inline-block;transition:background .15s ease;flex-shrink:0;}
+.toggle-track.on{background:var(--ink);}
+.toggle-knob{position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:var(--painel);box-shadow:0 1px 2px rgba(0,0,0,.2);transition:left .15s ease;}
+.toggle-track.on .toggle-knob{left:13px;}
+.pf-limpar{border:none;background:none;color:var(--carimbo);font:500 11.5px var(--font-body);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
 
 /* ---------- List / Ficha ---------- */
 .empty-state{
@@ -583,7 +604,7 @@ var backupRunning = false;
 var ui = {
   search:'', statusFilter:'all', canalFilter:'all', pessoaFilter:'all',
   onlyOverdue:false, onlyDueToday:false, onlyPendingDocs:false,
-  sortBy:'prazo', viewMode:'lista', agruparPessoa:false
+  sortBy:'prazo', viewMode:'lista', agruparPessoa:false, filtrosAbertos:false
 };
 var draftModal = null;
 var settingsOpen = false;
@@ -1094,6 +1115,11 @@ App.togglePessoaStat = function(v){ ui.pessoaFilter = (ui.pessoaFilter===v ? 'al
 App.setSort = function(v){ ui.sortBy=v; App.render(); };
 App.setViewMode = function(v){ ui.viewMode=v; justSwitchedView=true; App.render(); };
 App.toggleAgrupar = function(){ ui.agruparPessoa=!ui.agruparPessoa; App.render(); };
+App.toggleFiltrosPanel = function(){ ui.filtrosAbertos=!ui.filtrosAbertos; App.render(); };
+App.limparFiltros = function(){
+  ui.statusFilter='all'; ui.canalFilter='all'; ui.pessoaFilter='all'; ui.agruparPessoa=false;
+  App.render();
+};
 App.toggleHistorico = function(id){
   var opening = !historicoAbertos[id];
   historicoAbertos[id]=opening;
@@ -2029,56 +2055,74 @@ function renderStats(){
 }
 
 function renderFiltersBar(){
-  var statusPills = '';
-  if(ui.viewMode==='lista' || ui.viewMode==='arquivados'){
-    statusPills += '<button class="pill'+(ui.statusFilter==='all'?' active':'')+'" onclick="App.setStatusFilter(\'all\')">Todos os status</button>';
-    state.statusList.forEach(function(s){
-      statusPills += '<button class="pill'+(ui.statusFilter===s.key?' active':'')+'" onclick="App.setStatusFilter(\''+jsAttr(s.key)+'\')">'+esc(s.label)+'</button>';
-    });
-  }
-  var canalPills = '<button class="pill'+(ui.canalFilter==='all'?' active':'')+'" onclick="App.setCanalFilter(\'all\')">Todos os canais</button>';
-  CANAIS.forEach(function(c){
-    canalPills += '<button class="pill'+(ui.canalFilter===c.key?' active':'')+'" onclick="App.setCanalFilter(\''+c.key+'\')">'+esc(c.label)+'</button>';
-  });
-  var pessoaPills = ''+
-    '<button class="pill'+(ui.pessoaFilter==='all'?' active':'')+'" onclick="App.setPessoaFilter(\'all\')">PF + PJ</button>'+
-    '<button class="pill'+(ui.pessoaFilter==='pf'?' active':'')+'" onclick="App.setPessoaFilter(\'pf\')">Pessoa Física</button>'+
-    '<button class="pill'+(ui.pessoaFilter==='pj'?' active':'')+'" onclick="App.setPessoaFilter(\'pj\')">Pessoa Jurídica</button>';
-  var agruparBtn = (ui.viewMode==='lista' || ui.viewMode==='arquivados') ? '<button class="pill'+(ui.agruparPessoa?' active':'')+'" onclick="App.toggleAgrupar()">Agrupar em seções PF/PJ</button>' : '';
   var arquivadosCount = state.protocolos.filter(isArquivado).length;
   var lixeiraCount = state.protocolos.filter(function(p){ return p.naLixeira; }).length;
   var isLixeira = ui.viewMode==='lixeira';
+  var showFiltro = !isLixeira;
+
+  var activeCount = 0;
+  if(ui.statusFilter!=='all') activeCount++;
+  if(ui.canalFilter!=='all') activeCount++;
+  if(ui.pessoaFilter!=='all') activeCount++;
+  if(ui.agruparPessoa) activeCount++;
+
+  function chip(label, active, onclick, extraCls){
+    return '<button type="button" class="chip-filtro'+(extraCls?' '+extraCls:'')+(active?' active':'')+'" onclick="'+onclick+'">'+esc(label)+'</button>';
+  }
+
+  var statusChips = '';
+  if(ui.viewMode==='lista' || ui.viewMode==='arquivados'){
+    statusChips += chip('Todos', ui.statusFilter==='all', "App.setStatusFilter('all')");
+    state.statusList.forEach(function(s){
+      statusChips += chip(s.label, ui.statusFilter===s.key, "App.setStatusFilter('"+jsAttr(s.key)+"')");
+    });
+  }
+  var pessoaChips = ''+
+    chip('Todas', ui.pessoaFilter==='all', "App.setPessoaFilter('all')")+
+    chip('Pessoa física', ui.pessoaFilter==='pf', "App.setPessoaFilter('pf')", 'pf')+
+    chip('Pessoa jurídica', ui.pessoaFilter==='pj', "App.setPessoaFilter('pj')", 'pj');
+  var agruparToggle = (ui.viewMode==='lista' || ui.viewMode==='arquivados') ?
+    '<span class="pf-divisor"></span>'+
+    '<label class="pf-toggle" onclick="App.toggleAgrupar()"><span class="toggle-track'+(ui.agruparPessoa?' on':'')+'"><span class="toggle-knob"></span></span>Separar em seções</label>'
+    : '';
+  var canalChips = chip('Todos', ui.canalFilter==='all', "App.setCanalFilter('all')");
+  CANAIS.forEach(function(c){
+    canalChips += chip(c.label, ui.canalFilter===c.key, "App.setCanalFilter('"+c.key+"')");
+  });
+
+  var painel = '';
+  if(showFiltro && ui.filtrosAbertos){
+    painel = '<div class="painel-filtros no-print"><div class="pf-grid">'+
+      (statusChips ? '<div class="pf-label">Status</div><div class="pf-chips">'+statusChips+'</div>' : '')+
+      '<div class="pf-label">Pessoa</div><div class="pf-chips">'+pessoaChips+agruparToggle+'</div>'+
+      '<div class="pf-label">Canal</div><div class="pf-chips">'+canalChips+
+        '<div style="flex:1"></div>'+
+        (activeCount ? '<button type="button" class="pf-limpar" onclick="App.limparFiltros()">limpar filtros</button>' : '')+
+      '</div>'+
+    '</div></div>';
+  }
 
   return ''+
   '<div class="filters-bar no-print">'+
     '<div class="search-wrap">'+
+      '<span class="search-icon">&#8981;</span>'+
       '<input id="searchInput" class="search-input" type="text" placeholder="Buscar por cliente, outorgado, nº de protocolo ou tipo de ato…" value="'+esc(ui.search)+'" oninput="App.setSearch(this.value)">'+
       (ui.search ? '<button class="search-clear" title="Limpar busca (Esc)" onclick="App.setSearch(\'\')">&times;</button>' : '')+
     '</div>'+
+    (showFiltro ? '<button type="button" class="filtro-btn'+(ui.filtrosAbertos?' aberto':'')+'" onclick="App.toggleFiltrosPanel()">Filtrar'+(activeCount?' <span class="filtro-contador">'+activeCount+'</span>':'')+'</button>' : '')+
     '<select class="sortsel" onchange="App.setSort(this.value)">'+
       '<option value="prazo"'+(ui.sortBy==='prazo'?' selected':'')+'>Ordenar: prazo mais urgente</option>'+
       '<option value="data"'+(ui.sortBy==='data'?' selected':'')+'>Ordenar: protocolo mais recente</option>'+
     '</select>'+
-    '<div class="segmented">'+
-      '<button class="seg-btn'+(ui.viewMode==='lista'?' active':'')+'" onclick="App.setViewMode(\'lista\')">Lista</button>'+
-      '<button class="seg-btn'+(ui.viewMode==='quadro'?' active':'')+'" onclick="App.setViewMode(\'quadro\')">Quadro</button>'+
-      '<button class="seg-btn'+(ui.viewMode==='arquivados'?' active':'')+'" onclick="App.setViewMode(\'arquivados\')">Arquivados ('+arquivadosCount+')</button>'+
-      '<button class="seg-btn'+(isLixeira?' active':'')+'" onclick="App.setViewMode(\'lixeira\')">Lixeira ('+lixeiraCount+')</button>'+
+    '<div class="seg2">'+
+      '<button class="seg2-btn'+(ui.viewMode==='lista'?' active':'')+'" onclick="App.setViewMode(\'lista\')">Lista</button>'+
+      '<button class="seg2-btn'+(ui.viewMode==='quadro'?' active':'')+'" onclick="App.setViewMode(\'quadro\')">Quadro</button>'+
+      '<button class="seg2-btn'+(ui.viewMode==='arquivados'?' active':'')+'" onclick="App.setViewMode(\'arquivados\')">Arquivados ('+arquivadosCount+')</button>'+
+      '<button class="seg2-btn'+(isLixeira?' active':'')+'" onclick="App.setViewMode(\'lixeira\')">Lixeira ('+lixeiraCount+')</button>'+
     '</div>'+
   '</div>'+
+  painel+
   (ui.search ? '<div class="hint no-print" style="margin:-6px 0 10px;">'+getFilteredSorted().length+' resultado(s) para &ldquo;'+esc(ui.search)+'&rdquo;</div>' : '')+
-  (statusPills ? '<div class="filters-bar no-print"><div class="pill-group">'+statusPills+'</div></div>' : '')+
-  (isLixeira ? '' :
-    '<div class="filters-bar no-print">'+
-      '<div class="pill-group">'+canalPills+'</div>'+
-    '</div>'+
-    '<div class="filters-bar no-print">'+
-      '<div class="pill-group">'+pessoaPills+
-        '<button class="pill'+(ui.onlyOverdue?' active':'')+'" onclick="App.toggleOverdue()">Somente atrasados</button>'+
-        agruparBtn+
-      '</div>'+
-    '</div>'
-  )+
   (ui.viewMode==='quadro' ? '<div class="kanban-hint no-print">Arraste um cartão para outra coluna para mudar o status. Clique no cartão para editar os detalhes.</div>' : '')+
   (ui.viewMode==='arquivados' ? '<div class="kanban-hint no-print">Protocolos finalizados (já digitalizados) ou com cliente desistente. Mude o status na ficha para reabrir, se precisar.</div>' : '')+
   (isLixeira ? '<div class="kanban-hint no-print">Protocolos excluídos ficam aqui até você restaurar ou excluir definitivamente — não somem sozinhos.</div>' : '');
@@ -2835,6 +2879,7 @@ document.addEventListener('keydown', function(e){
     else if(clienteHistoryModal){ App.closeClienteHistory(); }
     else if(dailyReportOpen){ App.closeDailyReport(); }
     else if(atosBalcaoModalOpen){ App.closeAtosBalcao(); }
+    else if(ui.filtrosAbertos){ App.toggleFiltrosPanel(); }
     else if(ui.search){ App.setSearch(''); }
     else if(t && t.id==='searchInput'){ t.blur(); }
     return;
