@@ -360,6 +360,7 @@ select.sortsel{
 .side-overlay.entering{animation:fadeIn .18s ease;}
 .side-panel{background:var(--painel);width:100%;max-width:640px;height:100vh;display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.18);}
 .side-panel.w-1000{max-width:1000px;}
+.side-panel.w-520{max-width:520px;}
 .side-panel.entering{animation:panelSlideIn .2s cubic-bezier(.2,.8,.3,1);}
 .side-panel-head{padding:22px 26px 16px;border-bottom:1px solid var(--borda-forte);flex-shrink:0;}
 .side-panel-head h2{font-family:var(--font-display);font-size:21px;margin:0;}
@@ -429,6 +430,14 @@ select.sortsel{
 
 .fm-disclosure{border:1px dashed var(--borda-forte);background:transparent;color:var(--tinta-media-2);border-radius:var(--r-field);padding:9px 12px;font:500 12px var(--font-body);cursor:pointer;text-align:left;width:100%;}
 .fm-disclosure:hover{border-color:var(--ink);color:var(--ink);}
+
+/* Abertura rapida (3a) */
+.fm-quick-body{display:flex;flex-direction:column;gap:18px;}
+.fm-input.dashed{border-style:dashed;background:var(--painel);}
+.fm-disclosure-big{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;border:1px dashed var(--borda-forte);background:var(--apoio);border-radius:9px;padding:12px 14px;cursor:pointer;font-family:var(--font-body);text-align:left;transition:border-color .12s ease;}
+.fm-disclosure-big:hover{border-color:var(--ink);}
+.fm-disclosure-big-lbl{font:600 12.5px var(--font-body);color:var(--ink);}
+.fm-disclosure-big-sub{font:400 11px var(--font-body);color:var(--apagado);white-space:nowrap;}
 
 /* settings */
 .settings-section{margin-bottom:22px;}
@@ -1284,12 +1293,15 @@ App.openNew = function(){
     mode:'new', id:null, tipoPessoa:'pf',
     canais:{balcao:true}, docsCompletos:false, responsavel: state.ultimoResponsavel || '',
     tipos:{}, status: state.statusList[0] ? state.statusList[0].key : '',
-    vinculados:{}, vinculoSearch:'', tipoSearch:'', vinculoManualAberto:false
+    vinculados:{}, vinculoSearch:'', tipoSearch:'', vinculoManualAberto:false,
+    camposOpcionaisAbertos:false
   };
   modalJustOpened = true;
   App.render();
   captureModalTextFields();
   draftModalSnapshot = JSON.stringify(draftModal);
+  var nomeEl = document.getElementById('f_cliente');
+  if(nomeEl) nomeEl.focus();
 };
 App.openEdit = function(id){
   var p = state.protocolos.filter(function(x){return x.id===id;})[0];
@@ -1414,6 +1426,16 @@ App.toggleVinculoManual = function(){
   captureModalTextFields();
   draftModal.vinculoManualAberto = !draftModal.vinculoManualAberto;
   App.render();
+};
+App.toggleCamposOpcionais = function(){
+  /* Expandir revela campos novos (nº/data do protocolo) cujo valor-padrao (ex.: hoje) so
+     entra no draftModal na proxima captura — sem este cuidado, expandir sem ter mudado
+     nada antes dispararia um falso "descartar alteracoes?" ao fechar em seguida. */
+  var wasDirty = isDraftDirty();
+  draftModal.camposOpcionaisAbertos = !draftModal.camposOpcionaisAbertos;
+  App.render();
+  captureModalTextFields();
+  if(!wasDirty) draftModalSnapshot = JSON.stringify(draftModal);
 };
 App.copiarEmail = function(email){
   if(!email || !navigator.clipboard || !navigator.clipboard.writeText) return;
@@ -2566,9 +2588,67 @@ function telWhatsAppHref(tel){
   if(digits.length<=11) digits = '55'+digits;
   return 'https://wa.me/'+digits;
 }
+/* ---- Helpers de campo reutilizados pelo modo rapido (3a) e pelo formulario completo (3b/edicao) ---- */
+function buildPessoaSegButtons(d){
+  return ''+
+    '<button type="button" class="'+(d.tipoPessoa==='pf'?'active pf':'')+'" onclick="App.setPessoa(\'pf\')">Física</button>'+
+    '<button type="button" class="'+(d.tipoPessoa==='pj'?'active pj':'')+'" onclick="App.setPessoa(\'pj\')">Jurídica</button>';
+}
+function buildCanalChipsHtml(d){
+  return CANAIS.map(function(c){
+    return '<button type="button" class="fm-chip canal'+(d.canais[c.key]?' active':'')+'" onclick="App.toggleCanal(\''+c.key+'\')">'+esc(c.label)+'</button>';
+  }).join('');
+}
+function buildTipoChipsHtml(d){
+  var tiposSelecionados = Object.keys(d.tipos||{});
+  var chipsBase = getTiposOrdenadosPorUso().slice(0,5);
+  var chipsExtras = tiposSelecionados.filter(function(t){ return chipsBase.indexOf(t)===-1; });
+  var chipsAll = chipsBase.concat(chipsExtras);
+  return chipsAll.map(function(t){
+    var checked = !!d.tipos[t];
+    return '<button type="button" class="fm-chip'+(checked?' active':'')+'" onclick="App.toggleTipo(\''+jsAttr(t)+'\')">'+(checked?'&#10003; ':'')+esc(t)+'</button>';
+  }).join('');
+}
+function buildTipoDropdownHtml(d){
+  var tq = (d.tipoSearch||'').trim().toLowerCase();
+  if(!tq) return '';
+  var tipoMatches = state.tiposAtos.filter(function(t){ return t.toLowerCase().indexOf(tq)!==-1; }).slice(0,8);
+  return '<div class="fm-dropdown">'+
+    (tipoMatches.length ? tipoMatches.map(function(t){
+      return '<div class="fm-dropdown-item" onclick="App.pickTipoFromSearch(\''+jsAttr(t)+'\')">'+(d.tipos[t]?'&#10003; ':'')+esc(t)+'</div>';
+    }).join('') : '<div class="fm-dropdown-empty">Nenhum tipo encontrado com esse termo.</div>')+
+  '</div>';
+}
+
+/* ---- Corpo do painel de "abertura rapida" (3a): so 4 campos + disclosure pro resto ---- */
+function renderModalQuickBody(d){
+  return '<div class="fm-quick-body">'+
+    '<div>'+
+      '<span class="fm-label">Outorgante</span>'+
+      '<input type="text" id="f_cliente" class="fm-input fm-input-nome" value="'+esc(d.cliente||'')+'" placeholder="Nome do cliente / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
+      '<div id="vinculoSugestaoContainer" style="margin-top:8px;">'+computeVinculoSugestaoHtml(d)+'</div>'+
+    '</div>'+
+    '<div><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa">'+buildPessoaSegButtons(d)+'</div></div>'+
+    '<div>'+
+      '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;"><span class="fm-label" style="margin-bottom:0;">Tipo de ato</span><span style="font-size:10.5px;color:var(--apagado-2);">mais usados recentemente</span></div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+buildTipoChipsHtml(d)+'</div>'+
+      '<div class="fm-tiposearch-wrap" style="margin-top:8px;">'+
+        '<input type="text" id="tipoSearchInput" class="fm-input dashed" placeholder="Buscar entre os '+state.tiposAtos.length+' tipos…" value="'+esc(d.tipoSearch||'')+'" oninput="App.setTipoSearch(this.value)">'+
+        buildTipoDropdownHtml(d)+
+      '</div>'+
+    '</div>'+
+    '<div><span class="fm-label">Canal de atendimento</span><div style="display:flex;gap:6px;flex-wrap:wrap;">'+buildCanalChipsHtml(d)+'</div></div>'+
+    '<button type="button" class="fm-disclosure-big" onclick="App.toggleCamposOpcionais()">'+
+      '<span class="fm-disclosure-big-lbl">Contato, outorgados, responsável e prazo</span>'+
+      '<span class="fm-disclosure-big-sub">6 campos opcionais &#8964;</span>'+
+    '</button>'+
+  '</div>';
+}
+
 function renderModal(){
   var d = draftModal;
   var original = d.mode==='edit' ? state.protocolos.filter(function(p){return p.id===d.id;})[0] : null;
+  var isQuick = (d.mode==='new' && !d.camposOpcionaisAbertos);
 
   var responsavelOptions = '<option value=""'+(d.responsavel?'':' selected')+'>— Selecionar —</option>'+
     state.responsaveis.map(function(r){
@@ -2589,13 +2669,36 @@ function renderModal(){
   var headEyebrow = (d.mode==='edit' && original)
     ? ('editando · '+(original.numeroProtocolo?('nº '+original.numeroProtocolo+' · '):'')+'aberto em '+formatBR(original.dataProtocolo))
     : 'novo protocolo';
-  var headTitle = d.mode==='edit' ? (d.cliente || 'Editar protocolo') : 'Abertura de protocolo';
+  var headTitle = d.mode==='edit' ? (d.cliente || 'Editar protocolo') : (isQuick ? 'Abertura rápida' : 'Abertura de protocolo');
+
+  if(isQuick){
+    var quickBodyHtml = renderModalQuickBody(d);
+    var saveLabelQuick = 'Criar protocolo';
+    return ''+
+    '<div class="side-overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeModal()">'+
+      '<div class="side-panel w-520'+(modalJustOpened?' entering':'')+'">'+
+        '<div class="side-panel-head" style="display:flex;align-items:flex-start;gap:12px;">'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div class="fm-label" style="margin-bottom:3px;">'+esc(headEyebrow)+'</div>'+
+            '<h2 style="margin:0;">'+esc(headTitle)+'</h2>'+
+          '</div>'+
+          '<button type="button" class="ib28" style="width:30px;height:30px;" title="Fechar" onclick="App.closeModal()">&times;</button>'+
+        '</div>'+
+        '<div class="side-panel-body">'+quickBodyHtml+'</div>'+
+        '<div class="side-panel-foot">'+
+          '<span class="side-esc-hint">Esc para fechar</span>'+
+          '<div class="side-panel-foot-right">'+
+            '<button class="btn-ghost" onclick="App.closeModal()">Cancelar</button>'+
+            '<button class="btn btn-primary" onclick="App.saveProtocolo()">'+saveLabelQuick+'</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }
 
   /* ---- Secao 1 · Outorgante ---- */
   var dupWarningHtml = computeVinculoSugestaoHtml(d);
-  var pessoaSegHtml = ''+
-    '<button type="button" class="'+(d.tipoPessoa==='pf'?'active pf':'')+'" onclick="App.setPessoa(\'pf\')">Física</button>'+
-    '<button type="button" class="'+(d.tipoPessoa==='pj'?'active pj':'')+'" onclick="App.setPessoa(\'pj\')">Jurídica</button>';
+  var pessoaSegHtml = buildPessoaSegButtons(d);
   var telAuxHtml = (d.mode==='edit' && d.clienteTelefone) ? '<a class="fm-aux-btn wpp" href="'+telWhatsAppHref(d.clienteTelefone)+'" target="_blank" rel="noopener" title="Abrir WhatsApp">&#8599;</a>' : '';
   var emailAuxHtml = (d.mode==='edit' && d.clienteEmail) ? '<button type="button" class="fm-aux-btn" title="Copiar e-mail" onclick="App.copiarEmail(\''+jsAttr(d.clienteEmail)+'\')">&#10697;</button>' : '';
 
@@ -2649,23 +2752,8 @@ function renderModal(){
 
   /* ---- Secao 2 · Ato ---- */
   var tiposSelecionados = Object.keys(d.tipos||{});
-  var chipsBase = getTiposOrdenadosPorUso().slice(0,5);
-  var chipsExtras = tiposSelecionados.filter(function(t){ return chipsBase.indexOf(t)===-1; });
-  var chipsAll = chipsBase.concat(chipsExtras);
-  var tipoChipsHtml = chipsAll.map(function(t){
-    var checked = !!d.tipos[t];
-    return '<button type="button" class="fm-chip'+(checked?' active':'')+'" onclick="App.toggleTipo(\''+jsAttr(t)+'\')">'+(checked?'&#10003; ':'')+esc(t)+'</button>';
-  }).join('');
-  var tq = (d.tipoSearch||'').trim().toLowerCase();
-  var tipoDropdownHtml = '';
-  if(tq){
-    var tipoMatches = state.tiposAtos.filter(function(t){ return t.toLowerCase().indexOf(tq)!==-1; }).slice(0,8);
-    tipoDropdownHtml = '<div class="fm-dropdown">'+
-      (tipoMatches.length ? tipoMatches.map(function(t){
-        return '<div class="fm-dropdown-item" onclick="App.pickTipoFromSearch(\''+jsAttr(t)+'\')">'+(d.tipos[t]?'&#10003; ':'')+esc(t)+'</div>';
-      }).join('') : '<div class="fm-dropdown-empty">Nenhum tipo encontrado com esse termo.</div>')+
-    '</div>';
-  }
+  var tipoChipsHtml = buildTipoChipsHtml(d);
+  var tipoDropdownHtml = buildTipoDropdownHtml(d);
   var sec2Html = ''+
   '<div class="fm-sec">'+
     '<div class="fm-sec-head"><span class="fm-sec-label">2 &middot; Ato</span><span class="fm-sec-rule"></span>'+(tiposSelecionados.length?'<span class="fm-sec-count">'+tiposSelecionados.length+' selecionado'+(tiposSelecionados.length>1?'s':'')+'</span>':'')+'</div>'+
@@ -2673,14 +2761,12 @@ function renderModal(){
       '<input type="text" id="tipoSearchInput" class="fm-input" placeholder="Buscar entre os '+state.tiposAtos.length+' tipos de ato…" value="'+esc(d.tipoSearch||'')+'" oninput="App.setTipoSearch(this.value)">'+
       tipoDropdownHtml+
     '</div>'+
-    (chipsAll.length ? '<div><span class="fm-label">mais usados recentemente</span><div style="display:flex;gap:6px;flex-wrap:wrap;">'+tipoChipsHtml+'</div></div>' : '')+
+    (tipoChipsHtml ? '<div><span class="fm-label">mais usados recentemente</span><div style="display:flex;gap:6px;flex-wrap:wrap;">'+tipoChipsHtml+'</div></div>' : '')+
     '<div class="add-tipo-row"><input type="text" id="novoTipoModalInput" class="fm-input" placeholder="Adicionar novo tipo de ato…"><button type="button" class="btn-ghost outlined" onclick="App.addTipoFromModal()">Adicionar</button></div>'+
   '</div>';
 
   /* ---- Secao 3 · Atendimento ---- */
-  var canalChipsHtml = CANAIS.map(function(c){
-    return '<button type="button" class="fm-chip canal'+(d.canais[c.key]?' active':'')+'" onclick="App.toggleCanal(\''+c.key+'\')">'+esc(c.label)+'</button>';
-  }).join('');
+  var canalChipsHtml = buildCanalChipsHtml(d);
   var sec3Html = ''+
   '<div class="fm-sec">'+
     '<div class="fm-sec-head"><span class="fm-sec-label">3 &middot; Atendimento</span><span class="fm-sec-rule"></span></div>'+
