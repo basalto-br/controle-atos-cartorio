@@ -23,9 +23,15 @@ de cada ato. Está no plano Pro do Claude.
 - **Sem framework**: tudo é montagem de strings HTML (`renderX()` retornam strings)
   injetadas via `innerHTML`. Não introduzir React/Vue sem discutir antes — o app atual
   depende de re-renderizações completas e handlers inline (`onclick="App.xxx(...)"`).
-- **Re-render total a cada mudança de estado**: `App.render()` chama `renderAll()`, que
-  reconstrói `#app.innerHTML` inteiro. Isso já causou bugs sutis (ver seção "Armadilhas"
-  abaixo) — qualquer novo campo de texto/interação precisa levar isso em conta.
+- **Re-render total a cada mudança de estado**: `App.render()` chama `withFocus(renderAll)`,
+  que reconstrói `#app.innerHTML` inteiro. `withFocus` restaura o elemento em foco e a
+  seleção de texto, **e também a posição de rolagem** de `window` e dos containers com
+  rolagem própria (`SCROLL_CONTAINER_SELECTORS`: `.overlay`, `.side-panel-body`,
+  `.fm-edit-col-left`, `.fm-edit-col-right`) — sem isso, qualquer clique em
+  select/chip/checkbox (que dispara render) fazia a tela "pular" pro topo. Ao criar um
+  novo container com rolagem própria, adicionar o seletor nessa lista. Isso já causou
+  outros bugs sutis também (ver seção "Armadilhas" abaixo) — qualquer novo campo de
+  texto/interação precisa levar tudo isso em conta.
 - **Persistência (3 camadas que coexistem, nesta ordem de preferência):**
   1. **Pasta local via File System Access** (Chrome/Edge): o usuário conecta uma pasta
      (`App.conectarPastaDados`, guardada num `FileSystemDirectoryHandle` no IndexedDB).
@@ -46,7 +52,18 @@ de cada ato. Está no plano Pro do Claude.
 - **Migração**: a função `migrate(raw)` roda a cada carregamento e preenche campos que
   não existiam em versões antigas do `state`, sem quebrar dados já salvos. Sempre que
   adicionar um campo novo ao `state` ou a um protocolo, adicionar o default
-  correspondente em `migrate()`.
+  correspondente em `migrate()`. **Todo caminho que produz um `state` novo precisa
+  passar por `migrate()`** — `loadState()` já teve um bug real em que os 3 caminhos de
+  fallback (sem dado salvo, JSON inválido, promise rejeitada) chamavam `defaultState()`
+  direto, pulando `migrate()` e deixando defaults calculados lá (ex.: a heurística de
+  categoria de tipo) sem rodar numa instalação nova.
+  Para inserir uma fase padrão nova no meio de um `statusList` que o usuário já pode
+  ter customizado, usar `inserirFaseAposChave(lista, afterKey, novaFase)` — insere pela
+  `key` (nunca editada pelo usuário, ao contrário do `label`), é idempotente, e cai
+  para "acrescenta no fim" se a fase-âncora já tiver sido removida. Renomear um label
+  padrão (ex.: "Cliente desistiu" → "Usuário desistiu") só deve sobrescrever se o label
+  atual ainda for **exatamente** o texto antigo — nunca mexer num label que o usuário
+  já personalizou.
 
 ## Modelo de dados (`state`)
 
@@ -54,30 +71,69 @@ de cada ato. Está no plano Pro do Claude.
   `cliente`, `clienteTelefone`, `clienteEmail`, `outorgados`, `responsavel`,
   `tipoPessoa` (`pf`/`pj`), `canais` (array — um protocolo pode ter vários canais de
   atendimento), `dataProtocolo`, `docsCompletos`, `dataRecebimentoCompleto`, `status`,
-  `tipos` (array de tipos de ato), `observacoesHistorico` (array `{texto, ts}`),
-  `historico` (array `{status, ts}` — toda mudança de status fica registrada com
-  data/hora), `rascunhoDigitalizado`, `dataDigitalizacao`, `grupoVinculoId` (vínculo
-  manual com outros protocolos), `naLixeira`, `dataExclusao`, `createdAt`.
-- **`tiposAtos`**: lista de tipos de procuração/escritura, editável em Configurações.
+  `tipos` (array de tipos de ato), `observacoesHistorico` (array `{texto, ts, etiqueta,
+  editadoEm}` — `etiqueta` é uma das chaves de `ETIQUETAS_OBS`, opcional; `editadoEm`
+  marca quando uma entrada foi corrigida via `App.confirmarCorrecaoObs`, nunca some o
+  texto original), `historico` (array `{status, ts}` — toda mudança de status fica
+  registrada com data/hora), `rascunhoDigitalizado`, `dataDigitalizacao`,
+  `grupoVinculoId` (vínculo manual com outros protocolos), `documentosMarcados` (mapa
+  texto-do-documento → `true`, ver checklist abaixo), `documentosExtras` (array de
+  strings, documentos ad-hoc só deste protocolo), `pendencias` (array, ver agenda
+  abaixo), `naLixeira`, `dataExclusao`, `createdAt`.
+  Apesar do nome do campo (`cliente`) e das funções internas (`App.showClienteHistory`
+  etc.) continuarem `cliente*` por herança histórica, **todo texto visível na
+  interface usa "usuário"** ("Nome do usuário / outorgante", etc.) — não confundir um
+  com o outro; renomear os identificadores internos foi avaliado e descartado por ser
+  um refactor de alto risco sem ganho visível.
+- **`tiposAtos`**: lista (array de strings) de tipos de procuração/escritura, editável
+  em Configurações. **`categoriaPorTipo`**: mapa `nome-do-tipo → 'procuracao' |
+  'escritura' | null`, mantido **fora** de `tiposAtos` de propósito (tipos são sempre
+  referenciados pelo nome-string em todo o resto do código; não virar `{nome,
+  categoria}` só por causa disso). `categorizarTipoPorNome(nome)` classifica
+  automaticamente por prefixo do nome (`normalizarSemAcento` primeiro, pra não falhar
+  por causa de normalização Unicode NFC/NFD do "ç"/"ã"); quem não bate com nenhum
+  prefixo fica `null` de propósito — o usuário classifica manualmente em
+  Configurações, nunca um palpite forçado.
+- **`checklistPorTipo`**: mapa `nome-do-tipo → array de documentos específicos`. Some
+  a `DOCUMENTOS_BASE_CHECKLIST` (constante fixa, não editável, vale pra todo tipo) via
+  `getChecklistDoProtocolo(p)`, que também soma `p.documentosExtras` — tudo
+  deduplicado, sem repetir item. Marcar um documento (`documentosMarcados`) nunca marca
+  "documentação completa" automaticamente — são dois controles manuais independentes.
+  Um extra ad-hoc pode ser "promovido" (`App.promoverDocumentoExtra`) pra virar
+  documento padrão do tipo escolhido: entra em `checklistPorTipo`, sai de
+  `documentosExtras` daquele protocolo, e a marcação de "recebido" nunca se perde nesse
+  processo. O campo antigo `documentosChecklist` (lista global única, pré-existente a
+  este sistema) continua no `state` intacto por preservação de dado, mas a tela de
+  Configurações não edita mais ele.
 - **`statusList`**: fases de andamento, **totalmente configuráveis pelo usuário**
   (adicionar, editar, reordenar, remover). Cada fase tem `{key, label, cor, isFinal,
   requerDigitalizacao}`. `cor` é uma das chaves de `PALETTE` (gray/gold/blue/plum/
-  green/dark/teal/rose) e corresponde a variáveis CSS com o mesmo nome.
+  green/dark/teal/rose) e corresponde a variáveis CSS com o mesmo nome. Default atual
+  (8 fases, nesta ordem): Aguardando documentos p/ análise → Pendência de documentos →
+  Em confecção → Em análise pelo Tabelião → Em conferência pelo usuário → Aguardando
+  assinatura → Finalizado (final, exige digitalização) → Usuário desistiu (final).
 - **`responsaveis`**: lista de nomes pré-definidos (editável), usada como `<select>` no
   formulário — não é texto livre. `ultimoResponsavel` guarda o último usado, que vira
-  padrão ao abrir "+ Novo Protocolo".
+  padrão ao abrir "+ Novo Protocolo". A mesma lista é reaproveitada no campo
+  "responsável" das pendências da agenda.
 - **`feriadosExtras`** / **`feriadosMoveis`**: configuração de feriados para o cálculo
-  de prazo.
+  de prazo — e também usados pela janela de dias úteis da agenda (`addBusinessDays`).
 - **`atosBalcao`**: `{ 'YYYY-MM-DD': quantidade }` — contador simples de atos que não
   geram protocolo (atendimento só de balcão). Completamente separado dos protocolos.
 - **`atosBalcaoLancamentos`**: `{ 'YYYY-MM-DD': [{qtd, ts}, ...] }` — ao lado de
   `atosBalcao`, guarda cada lançamento individual (pra "desfazer último lançamento" e
   pra mostrar as pílulas com horário). Só incrementos **positivos** viram lançamento
   aqui; correções com -1 ou edição direta do total não entram nessa lista.
-- **`documentosChecklist`** / `documentosMarcados` (por protocolo): **campo já existe no
-  modelo de dados e na migração, mas a UI nunca foi construída** — é uma ideia
-  (checklist de documentos específicos por tipo de ato, tipo "RG, CPF, comprovante de
-  residência") que ficou só esboçada. Se for retomar, é o próximo passo natural.
+- **`p.pendencias`** (agenda de pendências/próximos passos, por protocolo): array de
+  `{id, descricao, dataPrevista, responsavel, situacao: 'pendente'|'concluida'|
+  'cancelada', notaConclusao, historico: [{situacao, ts, nota}], createdAt}`. Fica
+  **separado** de `observacoesHistorico`/`historico` de status — nunca misturar os
+  dados —, mas a criação e a conclusão de cada pendência também aparecem, só como
+  leitura, na timeline unificada da ficha (ver `buildTimelineUnificada` abaixo);
+  cancelamento e reabertura não entram lá, só na própria agenda. `computeAgendaBuckets()`
+  é o único lugar que calcula os 4 grupos da faixa compacta (vencidas / hoje / próximos
+  7 dias úteis / protocolos ativos sem nenhuma pendência pendente) — reaproveitar essa
+  função em vez de recalcular em outro lugar.
 
 ## Regras de negócio que precisam ser respeitadas
 
@@ -88,7 +144,7 @@ de cada ato. Está no plano Pro do Claude.
   diferente por tipo de ato** — não reabrir essa discussão sem ele pedir.
 - **Arquivamento**: um protocolo é considerado arquivado quando o status é `isFinal` E
   (não exige digitalização OU `rascunhoDigitalizado === true`). Só a fase padrão
-  "Finalizado" exige digitalização antes de arquivar; "Cliente desistiu" arquiva na
+  "Finalizado" exige digitalização antes de arquivar; "Usuário desistiu" arquiva na
   hora. Fases finais novas que o usuário criar entram sem exigir digitalização, a
   menos que ele marque a caixa "Exige digitalização antes de arquivar".
 - **Lixeira, não exclusão definitiva**: excluir um protocolo só marca `naLixeira=true`
@@ -141,6 +197,22 @@ de cada ato. Está no plano Pro do Claude.
   contexto, não num popup do navegador. Ao introduzir uma nova ação destrutiva,
   escolher conscientemente: se for reversível/já tem rede de segurança, `confirm()`
   nativo basta; se for definitivo, preferir o padrão de cartão inline.
+- **Timeline unificada**: histórico de mudança de status, log de observações e
+  criação/conclusão de pendências da agenda aparecem juntos numa única lista
+  cronológica (mais recente primeiro), tanto no card da ficha na Lista quanto no
+  painel de criar/editar. `buildTimelineUnificada(p)` é a única função que monta essa
+  lista (mesclando os três, sem duplicar nada no `state`) — qualquer novo tipo de
+  evento que deva aparecer aí entra como mais um `tipo` nesse array, com a
+  renderização correspondente adicionada em `renderTimelineFicha` (ficha, com tag
+  texto "status"/"obs"/"agenda") e `renderDiarioUnificado` (painel, com ponto colorido
+  ou pílula). Isso é só uma visão de leitura — os dados de origem (`historico`,
+  `observacoesHistorico`, `pendencias`) continuam cada um na sua estrutura própria.
+- **Faixas compactas no topo da Lista**: agenda (`renderAgendaStrip`) e atos de balcão
+  (`renderAtosBalcaoStrip`) — só aparecem na visão Lista, nunca em Quadro/Arquivados/
+  Lixeira, pra não distrair durante outros fluxos. A faixa da agenda tem 4 números
+  clicáveis (vencidas/hoje/próximos 7 dias úteis/sem próximo passo) que abrem um
+  painel expansível com as linhas daquele grupo — clicar no número alterna
+  aberto/fechado (`ui.agendaFiltroAberto`), clicar no nome do protocolo abre a ficha.
 
 ### Sistema visual (redesign `design_handoff_protocolos`)
 
