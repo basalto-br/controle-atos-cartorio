@@ -365,6 +365,18 @@ select.sortsel{
 .side-panel-head{padding:22px 26px 16px;border-bottom:1px solid var(--borda-forte);flex-shrink:0;}
 .side-panel-head h2{font-family:var(--font-display);font-size:21px;margin:0;}
 .side-panel-body{flex:1;overflow-y:auto;padding:20px 26px;}
+.side-panel-body.edit-grid{display:grid;grid-template-columns:1fr 320px;padding:0;overflow:hidden;}
+.fm-edit-col-left{padding:20px 24px;overflow-y:auto;min-width:0;}
+.fm-edit-col-right{background:var(--apoio);border-left:1px solid var(--borda-forte);display:flex;flex-direction:column;overflow-y:auto;}
+.fm-diario-bloco{padding:16px 18px;border-bottom:1px solid var(--borda-forte);}
+.fm-diario-bloco:last-child{border-bottom:none;}
+.fm-obs-box{border:1px solid var(--borda-forte);background:var(--ficha);border-radius:var(--r-field);padding:9px 11px;}
+.fm-obs-box textarea{width:100%;box-sizing:border-box;border:none;outline:none;background:transparent;resize:none;min-height:38px;color:var(--ink);font-family:var(--font-body);font-size:12px;line-height:1.5;padding:0;}
+.fm-obs-hint{font-family:var(--font-mono);font-size:9.5px;color:var(--apagado-2);border-top:1px solid var(--divisor-suave);padding-top:7px;margin-top:4px;}
+@media (max-width:760px){
+  .side-panel-body.edit-grid{grid-template-columns:1fr;}
+  .fm-edit-col-right{border-left:none;border-top:1px solid var(--borda-forte);}
+}
 .side-panel-foot{flex-shrink:0;padding:14px 26px;border-top:1px solid var(--borda-forte);display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--painel);}
 .side-panel-foot-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .side-esc-hint{font-family:var(--font-mono);font-size:10.5px;color:var(--apagado);}
@@ -1531,7 +1543,7 @@ App.saveProtocolo = function(){
   App.render();
 };
 App.deleteProtocolo = function(id){
-  if(!window.confirm('Mover este protocolo para a lixeira? Você pode restaurá-lo depois, em "Lixeira".')) return;
+  if(!window.confirm('Mover este protocolo para a lixeira? Você pode restaurá-lo depois, em "Lixeira".')) return false;
   state.protocolos = state.protocolos.map(function(p){
     if(p.id===id){ p.naLixeira=true; p.dataExclusao=Date.now(); }
     return p;
@@ -1547,6 +1559,13 @@ App.deleteProtocolo = function(id){
     App.render();
     App.showToast('Protocolo restaurado.');
   });
+  return true;
+};
+App.moverParaLixeiraDoModal = function(id){
+  if(App.deleteProtocolo(id)){
+    draftModal = null; draftModalSnapshot = null;
+    App.render();
+  }
 };
 App.restaurarProtocolo = function(id){
   state.protocolos = state.protocolos.map(function(p){
@@ -2645,6 +2664,77 @@ function renderModalQuickBody(d){
   '</div>';
 }
 
+/* ---- Secao 4 (edicao) em modo leitura: reusa computePrazo/renderTrilha ja usados na ficha.
+   Marcar/desmarcar documentacao completa continua sendo feito pela ficha, nao pelo painel. ---- */
+function renderPrazoLeituraHtml(original){
+  if(!original.docsCompletos || !original.dataRecebimentoCompleto){
+    return '<div class="fm-hint">Documentação incompleta — marque pela ficha, na lista, para iniciar a contagem do prazo.</div>';
+  }
+  var info = computePrazo(original);
+  if(!info){
+    return '<div class="fm-prazo-box"><div class="fm-prazo-toggle-wrap">'+
+      '<span class="fm-toggle-lg on" style="cursor:default;"><span class="knob"></span></span>'+
+      '<span class="fm-prazo-toggle-lbl">Documentação completa</span>'+
+    '</div>'+
+    '<div><div class="fm-prazo-sub">recebida em</div><div style="margin-top:4px;font-family:var(--font-mono);font-size:12.5px;color:var(--ink);">'+esc(formatBR(original.dataRecebimentoCompleto))+'</div></div>'+
+    '</div><div class="fm-hint">Esta fase não conta mais prazo.</div>';
+  }
+  var cor = info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)');
+  var vencTxt = info.isOverdue ? ('atrasado há '+info.diasAtraso+'d') : (info.isDueToday ? ('hoje, '+formatBR(info.deadline).slice(0,5)) : formatBR(info.deadline));
+  return ''+
+  '<div class="fm-prazo-box">'+
+    '<div class="fm-prazo-toggle-wrap">'+
+      '<span class="fm-toggle-lg on" style="cursor:default;"><span class="knob"></span></span>'+
+      '<span class="fm-prazo-toggle-lbl">Documentação completa</span>'+
+    '</div>'+
+    '<div><div class="fm-prazo-sub">recebida em</div><div style="margin-top:4px;font-family:var(--font-mono);font-size:12.5px;color:var(--ink);">'+esc(formatBR(original.dataRecebimentoCompleto))+'</div></div>'+
+    '<div class="fm-prazo-divisor"><div class="fm-prazo-sub">prazo</div>'+renderTrilha(info, cor)+'</div>'+
+    '<div><div class="fm-prazo-sub">vence</div><div class="fm-prazo-venc" style="color:'+cor+';">'+esc(vencTxt)+'</div></div>'+
+  '</div>'+
+  '<div class="fm-hint">Para reabrir a contagem ou corrigir a data, use a ficha na lista.</div>';
+}
+
+/* ---- Coluna direita da edicao: Andamento (sempre visivel) + diario de observacoes
+   (salva na hora, reusando App.addObservacaoQuick/updateObsDraft ja usados na ficha) ---- */
+function renderAndamentoColuna(p){
+  var statusMap = getStatusMap();
+  var rows = (p.historico||[]).slice().reverse().map(function(h){
+    var st = statusMap[h.status] || {label:h.status, cor:'gray'};
+    var dt = new Date(h.ts);
+    var dstr = pad(dt.getDate())+'/'+pad(dt.getMonth()+1)+'/'+dt.getFullYear()+' '+pad(dt.getHours())+':'+pad(dt.getMinutes());
+    return '<div style="display:flex;gap:9px;align-items:flex-start;">'+
+      '<span style="width:7px;height:7px;border-radius:50%;background:var(--'+st.cor+');margin-top:5px;flex-shrink:0;"></span>'+
+      '<div style="min-width:0;">'+
+        '<div style="font-size:12px;color:var(--ink);line-height:1.25;font-weight:500;">'+esc(st.label)+'</div>'+
+        '<div style="font-family:var(--font-mono);font-size:10px;color:var(--apagado);margin-top:1px;">'+esc(dstr)+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  return '<div class="fm-diario-bloco">'+
+    '<div class="fm-label" style="margin-bottom:10px;">Andamento</div>'+
+    '<div style="display:flex;flex-direction:column;gap:9px;">'+rows+'</div>'+
+  '</div>';
+}
+function renderObservacoesColuna(p){
+  var list = p.observacoesHistorico || [];
+  var rows = list.slice().reverse().map(function(o){
+    var dt = new Date(o.ts);
+    var dstr = pad(dt.getDate())+'/'+pad(dt.getMonth()+1)+'/'+dt.getFullYear()+' '+pad(dt.getHours())+':'+pad(dt.getMinutes());
+    return '<div style="border-left:2px solid var(--borda-forte);padding-left:10px;">'+
+      '<div style="font-size:12px;line-height:1.45;color:var(--tinta-media);text-wrap:pretty;">'+esc(o.texto)+'</div>'+
+      '<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--apagado);margin-top:3px;">'+esc(dstr)+'</div>'+
+    '</div>';
+  }).join('');
+  return '<div class="fm-diario-bloco" style="flex:1;">'+
+    '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;"><span class="fm-label" style="margin-bottom:0;">Observações</span>'+(list.length?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--apagado-2);">'+list.length+'</span>':'')+'</div>'+
+    '<div class="fm-obs-box">'+
+      '<textarea id="obsnew_'+p.id+'" placeholder="Escrever observação…" oninput="App.updateObsDraft(\''+p.id+'\', this.value)" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();App.addObservacaoQuick(\''+p.id+'\');}">'+esc(obsDraftText[p.id]||'')+'</textarea>'+
+      '<div class="fm-obs-hint">Enter salva &middot; Shift+Enter quebra linha</div>'+
+    '</div>'+
+    '<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">'+rows+'</div>'+
+  '</div>';
+}
+
 function renderModal(){
   var d = draftModal;
   var original = d.mode==='edit' ? state.protocolos.filter(function(p){return p.id===d.id;})[0] : null;
@@ -2779,26 +2869,83 @@ function renderModal(){
   '</div>';
 
   /* ---- Secao 4 · Prazo ---- */
-  var prazoExtraHtml = '';
-  if(d.docsCompletos){
-    var previewDate = d.dataRecebimentoCompleto || d.dataProtocolo || todayISO();
-    var deadlinePreview = addBusinessDays(previewDate, PRAZO_DIAS_UTEIS);
-    prazoExtraHtml = ''+
-      '<div><div class="fm-prazo-sub">recebida em</div><div class="fm-prazo-recebida"><input type="date" id="f_dataRecebimentoCompleto" value="'+esc(d.dataRecebimentoCompleto||todayISO())+'" oninput="App.setField(\'dataRecebimentoCompleto\', this.value)"></div></div>'+
-      '<div class="fm-prazo-divisor"><div class="fm-prazo-sub">prazo &middot; '+PRAZO_DIAS_UTEIS+' d.ú.</div><div class="fm-prazo-venc">vence '+esc(formatBR(deadlinePreview))+'</div></div>';
-  }
-  var sec4Html = ''+
-  '<div class="fm-sec" style="border-bottom:none;">'+
-    '<div class="fm-sec-head"><span class="fm-sec-label">4 &middot; Prazo</span><span class="fm-sec-rule"></span></div>'+
-    '<div class="fm-prazo-box">'+
-      '<div class="fm-prazo-toggle-wrap">'+
-        '<span class="fm-toggle-lg'+(d.docsCompletos?' on':'')+'" onclick="App.setDocsCompletos('+(!d.docsCompletos)+')"><span class="knob"></span></span>'+
-        '<span class="fm-prazo-toggle-lbl">Documentação completa</span>'+
+  var isEdit = d.mode==='edit';
+  var sec4Html;
+  if(isEdit && original){
+    sec4Html = ''+
+    '<div class="fm-sec" style="border-bottom:none;">'+
+      '<div class="fm-sec-head"><span class="fm-sec-label">4 &middot; Prazo</span><span class="fm-sec-rule"></span></div>'+
+      renderPrazoLeituraHtml(original)+
+    '</div>';
+  }else{
+    var prazoExtraHtml = '';
+    if(d.docsCompletos){
+      var previewDate = d.dataRecebimentoCompleto || d.dataProtocolo || todayISO();
+      var deadlinePreview = addBusinessDays(previewDate, PRAZO_DIAS_UTEIS);
+      prazoExtraHtml = ''+
+        '<div><div class="fm-prazo-sub">recebida em</div><div class="fm-prazo-recebida"><input type="date" id="f_dataRecebimentoCompleto" value="'+esc(d.dataRecebimentoCompleto||todayISO())+'" oninput="App.setField(\'dataRecebimentoCompleto\', this.value)"></div></div>'+
+        '<div class="fm-prazo-divisor"><div class="fm-prazo-sub">prazo &middot; '+PRAZO_DIAS_UTEIS+' d.ú.</div><div class="fm-prazo-venc">vence '+esc(formatBR(deadlinePreview))+'</div></div>';
+    }
+    sec4Html = ''+
+    '<div class="fm-sec" style="border-bottom:none;">'+
+      '<div class="fm-sec-head"><span class="fm-sec-label">4 &middot; Prazo</span><span class="fm-sec-rule"></span></div>'+
+      '<div class="fm-prazo-box">'+
+        '<div class="fm-prazo-toggle-wrap">'+
+          '<span class="fm-toggle-lg'+(d.docsCompletos?' on':'')+'" onclick="App.setDocsCompletos('+(!d.docsCompletos)+')"><span class="knob"></span></span>'+
+          '<span class="fm-prazo-toggle-lbl">Documentação completa</span>'+
+        '</div>'+
+        prazoExtraHtml+
       '</div>'+
-      prazoExtraHtml+
-    '</div>'+
-    '<div class="fm-hint">'+(d.docsCompletos ? 'O prazo é recalculado automaticamente a partir da data de recebimento.' : 'Desmarcado, o protocolo entra sem prazo em contagem — a data pode ser preenchida depois.')+'</div>'+
-  '</div>';
+      '<div class="fm-hint">'+(d.docsCompletos ? 'O prazo é recalculado automaticamente a partir da data de recebimento.' : 'Desmarcado, o protocolo entra sem prazo em contagem — a data pode ser preenchida depois.')+'</div>'+
+    '</div>';
+  }
+
+  var numeroDataRowHtml = ''+
+    '<div class="fm-row" style="margin-bottom:16px;">'+
+      '<div class="fm-field fixo" style="min-width:160px;"><span class="fm-label">Nº do protocolo (opcional)</span><input type="text" id="f_numeroProtocolo" class="fm-input fm-input-mono" value="'+esc(d.numeroProtocolo||'')+'" placeholder="Ex: 12345/2026" oninput="App.setField(\'numeroProtocolo\', this.value)"></div>'+
+      '<div class="fm-field fixo" style="min-width:150px;"><span class="fm-label">Data do protocolo</span><input type="date" id="f_dataProtocolo" class="fm-input fm-input-mono" value="'+esc(d.dataProtocolo||todayISO())+'" oninput="App.setField(\'dataProtocolo\', this.value)"></div>'+
+    '</div>';
+
+  if(isEdit && original){
+    var st = getStatusOf(original);
+    var headBadgesHtml = ''+
+      '<span class="selo '+(original.tipoPessoa==='pj'?'pj':'pf')+'">'+(original.tipoPessoa==='pj'?'PJ':'PF')+'</span>'+
+      '<span class="chip-status" style="cursor:default;background:var(--'+st.cor+'-soft);color:var(--'+st.cor+');"><span class="pt" style="background:var(--'+st.cor+');"></span>'+esc(st.label)+'</span>';
+    return ''+
+    '<div class="side-overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeModal()">'+
+      '<div class="side-panel w-1000'+(modalJustOpened?' entering':'')+'">'+
+        '<div class="side-panel-head" style="display:flex;align-items:flex-start;gap:12px;">'+
+          '<div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
+            '<div>'+
+              '<div class="fm-label" style="margin-bottom:3px;">'+esc(headEyebrow)+'</div>'+
+              '<h2 style="margin:0;">'+esc(headTitle)+'</h2>'+
+            '</div>'+
+            headBadgesHtml+
+          '</div>'+
+          '<button type="button" class="ib28" style="width:30px;height:30px;" title="Fechar" onclick="App.closeModal()">&times;</button>'+
+        '</div>'+
+        '<div class="side-panel-body edit-grid">'+
+          '<div class="fm-edit-col-left">'+
+            numeroDataRowHtml+
+            sec1Html+sec2Html+sec3Html+sec4Html+
+          '</div>'+
+          '<div class="fm-edit-col-right">'+
+            renderAndamentoColuna(original)+
+            renderObservacoesColuna(original)+
+          '</div>'+
+        '</div>'+
+        '<div class="side-panel-foot">'+
+          '<button class="btn-ghost" style="border:1px solid var(--borda-forte);color:var(--carimbo);" onclick="App.moverParaLixeiraDoModal(\''+original.id+'\')">Mover para lixeira</button>'+
+          '<div style="flex:1"></div>'+
+          '<span class="side-esc-hint">Esc pede confirmação se houver alteração</span>'+
+          '<div class="side-panel-foot-right">'+
+            '<button class="btn-ghost" onclick="App.closeModal()">Cancelar</button>'+
+            '<button class="btn btn-primary" onclick="App.saveProtocolo()">Salvar alterações</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }
 
   return ''+
   '<div class="side-overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeModal()">'+
@@ -2811,10 +2958,7 @@ function renderModal(){
         '<button type="button" class="ib28" style="width:30px;height:30px;" title="Fechar" onclick="App.closeModal()">&times;</button>'+
       '</div>'+
       '<div class="side-panel-body">'+
-        '<div class="fm-row" style="margin-bottom:16px;">'+
-          '<div class="fm-field fixo" style="min-width:160px;"><span class="fm-label">Nº do protocolo (opcional)</span><input type="text" id="f_numeroProtocolo" class="fm-input fm-input-mono" value="'+esc(d.numeroProtocolo||'')+'" placeholder="Ex: 12345/2026" oninput="App.setField(\'numeroProtocolo\', this.value)"></div>'+
-          '<div class="fm-field fixo" style="min-width:150px;"><span class="fm-label">Data do protocolo</span><input type="date" id="f_dataProtocolo" class="fm-input fm-input-mono" value="'+esc(d.dataProtocolo||todayISO())+'" oninput="App.setField(\'dataProtocolo\', this.value)"></div>'+
-        '</div>'+
+        numeroDataRowHtml+
         sec1Html+sec2Html+sec3Html+sec4Html+
         '<div class="fm-sec" style="border-bottom:none;padding-top:18px;">'+
           '<span class="fm-label">Observação inicial</span>'+
@@ -2826,7 +2970,7 @@ function renderModal(){
         '<span class="side-esc-hint">Esc para fechar</span>'+
         '<div class="side-panel-foot-right">'+
           '<button class="btn-ghost" onclick="App.closeModal()">Cancelar</button>'+
-          '<button class="btn btn-primary" onclick="App.saveProtocolo()">'+(d.mode==='edit'?'Salvar alterações':'Salvar protocolo')+'</button>'+
+          '<button class="btn btn-primary" onclick="App.saveProtocolo()">Salvar protocolo</button>'+
         '</div>'+
       '</div>'+
     '</div>'+
