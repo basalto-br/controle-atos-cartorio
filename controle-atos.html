@@ -838,6 +838,29 @@ function getCategoriaDoTipo(nome){
   return (state.categoriaPorTipo && state.categoriaPorTipo[nome]) || null;
 }
 
+/* Base fixa (nao editavel) que entra em TODO tipo de ato, procuracao ou escritura.
+   Documentos especificos por tipo moram em state.checklistPorTipo e se somam a esta
+   base (uniao, sem repetir); documentos extras adicionados so num protocolo
+   especifico moram em p.documentosExtras. Ver getChecklistDoProtocolo(). */
+var DOCUMENTOS_BASE_CHECKLIST = [
+  'Documento de identificação com CPF do(s) outorgante(s)',
+  'Documento de identificação com CPF do(s) outorgado(s)',
+  'Qualificação do(s) outorgante(s)',
+  'Qualificação do(s) outorgado(s)'
+];
+function getChecklistDoProtocolo(p){
+  var lista = DOCUMENTOS_BASE_CHECKLIST.slice();
+  (p.tipos||[]).forEach(function(t){
+    (state.checklistPorTipo[t]||[]).forEach(function(doc){
+      if(lista.indexOf(doc)===-1) lista.push(doc);
+    });
+  });
+  (p.documentosExtras||[]).forEach(function(doc){
+    if(lista.indexOf(doc)===-1) lista.push(doc);
+  });
+  return lista;
+}
+
 var PRAZO_DIAS_UTEIS = 5;
 var STORAGE_KEY = 'cartorio-data';
 var FS_IDB_NAME = 'cartorio-fs';
@@ -916,7 +939,8 @@ function defaultState(){
     atosBalcao: {},
     atosBalcaoLancamentos: {},
     sugestoesDispensadas: {},
-    categoriaPorTipo: {}
+    categoriaPorTipo: {},
+    checklistPorTipo: {}
   };
 }
 
@@ -960,6 +984,7 @@ function migrate(raw){
     if(p.clienteDocumento==null) p.clienteDocumento='';
     if(p.valorAto==null) p.valorAto=null;
     if(!p.documentosMarcados) p.documentosMarcados={};
+    if(!p.documentosExtras) p.documentosExtras=[];
     if(!p.tipos) p.tipos=[];
     if(!p.canais){ p.canais = p.canal ? [p.canal] : ['balcao']; }
     if(!p.observacoesHistorico){
@@ -990,6 +1015,7 @@ function migrate(raw){
     return p;
   });
   if(!s.documentosChecklist) s.documentosChecklist = DEFAULT_DOCUMENTOS_CHECKLIST.slice();
+  if(!s.checklistPorTipo) s.checklistPorTipo = {};
   if(!s.responsaveis){
     var seen = {};
     s.responsaveis = [];
@@ -1549,6 +1575,50 @@ App.toggleDocumentoMarcado = function(id, doc){
       p.documentosMarcados = p.documentosMarcados || {};
       if(p.documentosMarcados[doc]) delete p.documentosMarcados[doc];
       else p.documentosMarcados[doc]=true;
+    }
+    return p;
+  });
+  saveState();
+  App.render();
+};
+App.addDocumentoExtraProtocolo = function(id){
+  var el = document.getElementById('docExtra_'+id);
+  var v = el ? el.value.trim() : '';
+  if(!v) return;
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id && getChecklistDoProtocolo(p).indexOf(v)===-1){
+      p.documentosExtras = p.documentosExtras || [];
+      p.documentosExtras.push(v);
+    }
+    return p;
+  });
+  saveState();
+  if(el) el.value='';
+  App.render();
+};
+App.removerDocumentoExtraProtocolo = function(id, doc){
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id){
+      p.documentosExtras = (p.documentosExtras||[]).filter(function(x){ return x!==doc; });
+      if(p.documentosMarcados) delete p.documentosMarcados[doc];
+    }
+    return p;
+  });
+  saveState();
+  App.render();
+};
+/* "Promover" um extra ad-hoc pra virar documento padrao do tipo escolhido: some em
+   state.checklistPorTipo (passa a valer pra todo protocolo futuro/existente desse
+   tipo) e sai de documentosExtras deste protocolo especifico (senao apareceria
+   duplicado - um vindo do tipo, outro do extra). Marcacao (documentosMarcados) nao
+   e tocada, entao nada que ja foi marcado como recebido se perde. */
+App.promoverDocumentoExtra = function(id, doc, tipoAlvo){
+  if(!tipoAlvo) return;
+  if(!state.checklistPorTipo[tipoAlvo]) state.checklistPorTipo[tipoAlvo] = [];
+  if(state.checklistPorTipo[tipoAlvo].indexOf(doc)===-1) state.checklistPorTipo[tipoAlvo].push(doc);
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id){
+      p.documentosExtras = (p.documentosExtras||[]).filter(function(x){ return x!==doc; });
     }
     return p;
   });
@@ -2137,7 +2207,7 @@ function buildFichaPrintHTML(p){
   else if(info.isDueToday) prazoTxt = 'Vence hoje ('+formatBR(info.deadline)+')';
   else prazoTxt = 'Faltam '+(PRAZO_DIAS_UTEIS-info.elapsedCapped)+' dia(s) útil(eis) — prazo '+formatBR(info.deadline);
   function row(label, val){ return val ? '<tr><td class="pl">'+esc(label)+'</td><td>'+val+'</td></tr>' : ''; }
-  var docs = (state.documentosChecklist||[]).map(function(doc){
+  var docs = getChecklistDoProtocolo(p).map(function(doc){
     return ((p.documentosMarcados && p.documentosMarcados[doc]) ? '&#9745; ' : '&#9744; ')+esc(doc);
   }).join('<br>');
   var obs = (p.observacoesHistorico||[]).slice().reverse().map(function(o){
@@ -2419,20 +2489,32 @@ App.setCategoriaDoTipo = function(tipo, categoria){
   App.render();
 };
 
-/* ---- Configurações: documentos do checklist ---- */
-App.addDocumentoSettings = function(){
-  var el = document.getElementById('settingsNovoDocumento');
-  var v = el ? el.value.trim() : '';
-  if(!v) return;
-  if(state.documentosChecklist.indexOf(v)===-1){ state.documentosChecklist.push(v); saveState(); }
+/* ---- Configurações: checklist de documentos por tipo de ato ----
+   state.documentosChecklist (a lista global antiga) fica intocada no state por
+   preservacao de dados (protocolos antigos podem ter documentosMarcados vindo dela),
+   mas a tela de Configuracoes agora edita state.checklistPorTipo, especifico por
+   tipo, que se soma a DOCUMENTOS_BASE_CHECKLIST (fixa, nao editavel). */
+var checklistTipoAbertos = {};
+App.toggleChecklistTipoSettings = function(t){
+  checklistTipoAbertos[t] = !checklistTipoAbertos[t];
   App.render();
 };
-App.renameDocumentoSettings = function(oldVal, newVal){
+App.addChecklistTipoDoc = function(tipo, idx){
+  var el = document.getElementById('novoDocTipo_'+idx);
+  var v = el ? el.value.trim() : '';
+  if(!v) return;
+  if(!state.checklistPorTipo[tipo]) state.checklistPorTipo[tipo] = [];
+  if(state.checklistPorTipo[tipo].indexOf(v)===-1) state.checklistPorTipo[tipo].push(v);
+  saveState();
+  if(el) el.value='';
+  App.render();
+};
+App.renameChecklistTipoDoc = function(tipo, oldVal, newVal){
   newVal = (newVal||'').trim();
   if(!newVal || newVal===oldVal) return;
-  state.documentosChecklist = state.documentosChecklist.map(function(x){ return x===oldVal ? newVal : x; });
+  state.checklistPorTipo[tipo] = (state.checklistPorTipo[tipo]||[]).map(function(x){ return x===oldVal ? newVal : x; });
   state.protocolos = state.protocolos.map(function(p){
-    if(p.documentosMarcados && p.documentosMarcados[oldVal]){
+    if(p.documentosMarcados && p.documentosMarcados[oldVal] && (p.tipos||[]).indexOf(tipo)!==-1){
       delete p.documentosMarcados[oldVal];
       p.documentosMarcados[newVal]=true;
     }
@@ -2441,8 +2523,8 @@ App.renameDocumentoSettings = function(oldVal, newVal){
   saveState();
   App.render();
 };
-App.removeDocumentoSettings = function(doc){
-  state.documentosChecklist = state.documentosChecklist.filter(function(x){ return x!==doc; });
+App.removeChecklistTipoDoc = function(tipo, doc){
+  state.checklistPorTipo[tipo] = (state.checklistPorTipo[tipo]||[]).filter(function(x){ return x!==doc; });
   saveState();
   App.render();
 };
@@ -2859,18 +2941,38 @@ function renderVinculados(p){
 }
 
 function renderDocumentosChecklist(p){
-  var docs = state.documentosChecklist || [];
-  if(!docs.length) return '';
+  var docs = getChecklistDoProtocolo(p);
   var marcados = p.documentosMarcados || {};
+  var extras = p.documentosExtras || [];
   var qtd = docs.filter(function(doc){ return marcados[doc]; }).length;
   var isOpen = documentosAbertos[p.id];
   var toggle = '<button class="hist-toggle" onclick="App.toggleDocumentosView(\''+p.id+'\')">'+(isOpen?'Ocultar checklist de documentos':'Checklist de documentos ('+qtd+'/'+docs.length+')')+'</button>';
   if(!isOpen) return '<div style="margin-top:8px;">'+toggle+'</div>';
+  var tipos = p.tipos || [];
+  var tipoOptionsHtml = tipos.map(function(t){ return '<option value="'+esc(t)+'">'+esc(t)+'</option>'; }).join('');
   var rows = docs.map(function(doc){
     var checked = marcados[doc] ? ' checked' : '';
-    return '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400;"><input type="checkbox"'+checked+' onchange="App.toggleDocumentoMarcado(\''+p.id+'\', \''+jsAttr(doc)+'\')"> '+esc(doc)+'</label>';
+    var isExtra = extras.indexOf(doc)!==-1;
+    var acoesExtra = '';
+    if(isExtra){
+      if(tipos.length===1){
+        acoesExtra = '<button type="button" style="border:1px solid var(--line);background:var(--card);color:var(--ink-soft);border-radius:3px;padding:3px 7px;font-size:10.5px;cursor:pointer;white-space:nowrap;" title="Tornar padrão deste tipo de ato" onclick="App.promoverDocumentoExtra(\''+p.id+'\', \''+jsAttr(doc)+'\', \''+jsAttr(tipos[0])+'\')">tornar padrão</button>';
+      }else if(tipos.length>1){
+        acoesExtra = '<select style="font-size:10.5px;padding:2px 4px;" onchange="if(this.value) App.promoverDocumentoExtra(\''+p.id+'\', \''+jsAttr(doc)+'\', this.value)"><option value="">tornar padrão de…</option>'+tipoOptionsHtml+'</select>';
+      }
+      acoesExtra += '<button type="button" class="remove-x" title="Remover este documento extra" onclick="App.removerDocumentoExtraProtocolo(\''+p.id+'\', \''+jsAttr(doc)+'\')">&times;</button>';
+    }
+    return '<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;color:var(--ink);">'+
+      '<label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;font-weight:400;">'+
+        '<input type="checkbox"'+checked+' onchange="App.toggleDocumentoMarcado(\''+p.id+'\', \''+jsAttr(doc)+'\')">'+
+        '<span>'+esc(doc)+(isExtra?' <span style="font-size:10px;color:var(--ink-soft,#888);font-style:italic;">(extra deste protocolo)</span>':'')+'</span>'+
+      '</label>'+
+      acoesExtra+
+    '</div>';
   }).join('');
-  return '<div style="margin-top:8px;">'+toggle+'<div class="hist-box'+(justOpenedKey==='docs:'+p.id?' anim-in':'')+'">'+rows+'</div></div>';
+  return '<div style="margin-top:8px;">'+toggle+'<div class="hist-box'+(justOpenedKey==='docs:'+p.id?' anim-in':'')+'">'+rows+
+    '<div class="add-tipo-row" style="margin-top:6px;"><input type="text" id="docExtra_'+p.id+'" placeholder="Documento extra só deste protocolo…"><button type="button" class="btn-ghost outlined" onclick="App.addDocumentoExtraProtocolo(\''+p.id+'\')">Adicionar</button></div>'+
+  '</div></div>';
 }
 
 function renderLixeiraItem(p){
@@ -3823,12 +3925,24 @@ function renderSettingsModal(){
     '</div>';
   }).join('') || '<div class="hint">Nenhum responsável cadastrado ainda.</div>';
 
-  var documentosRows = state.documentosChecklist.map(function(doc){
-    return '<div class="list-row">'+
-      '<input type="text" value="'+esc(doc)+'" style="flex:1;padding:5px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;" onchange="App.renameDocumentoSettings(\''+jsAttr(doc)+'\', this.value)">'+
-      '<button class="remove-x" onclick="App.removeDocumentoSettings(\''+jsAttr(doc)+'\')" title="Remover">&times;</button>'+
+  var checklistPorTipoRows = state.tiposAtos.map(function(t, idx){
+    var isOpen = checklistTipoAbertos[t];
+    var lista = state.checklistPorTipo[t] || [];
+    var toggle = '<button type="button" class="hist-toggle" onclick="App.toggleChecklistTipoSettings(\''+jsAttr(t)+'\')">'+(isOpen?'▾':'▸')+' '+esc(t)+' — '+lista.length+' documento(s) específico(s)</button>';
+    if(!isOpen) return '<div style="margin-bottom:2px;">'+toggle+'</div>';
+    var docRows = lista.map(function(doc){
+      return '<div class="list-row">'+
+        '<input type="text" value="'+esc(doc)+'" style="flex:1;padding:5px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;" onchange="App.renameChecklistTipoDoc(\''+jsAttr(t)+'\', \''+jsAttr(doc)+'\', this.value)">'+
+        '<button class="remove-x" onclick="App.removeChecklistTipoDoc(\''+jsAttr(t)+'\', \''+jsAttr(doc)+'\')" title="Remover">&times;</button>'+
+      '</div>';
+    }).join('') || '<div class="hint">Nenhum documento específico ainda — usa só a base comum.</div>';
+    return '<div style="margin-bottom:10px;">'+toggle+
+      '<div class="hist-box">'+docRows+
+        '<div class="add-tipo-row" style="margin-top:6px;"><input type="text" id="novoDocTipo_'+idx+'" placeholder="Novo documento específico deste tipo…"><button type="button" class="btn-ghost outlined" onclick="App.addChecklistTipoDoc(\''+jsAttr(t)+'\', '+idx+')">Adicionar</button></div>'+
+      '</div>'+
     '</div>';
-  }).join('') || '<div class="hint">Nenhum documento cadastrado ainda.</div>';
+  }).join('') || '<div class="hint">Nenhum tipo de ato cadastrado ainda.</div>';
+  var documentosBaseHtml = DOCUMENTOS_BASE_CHECKLIST.map(function(d){ return '<div class="hint" style="margin:2px 0;">• '+esc(d)+'</div>'; }).join('');
 
   var fsSectionStatus, fsButtons = '', fsBackupInfo = '';
   if(fileMode && fsStatus==='connected'){
@@ -3910,10 +4024,11 @@ function renderSettingsModal(){
       '</div>'+
 
       '<div class="settings-section">'+
-        '<h3>Documentos do checklist</h3>'+
-        '<div class="hint">Lista de documentos que você pode marcar como entregues em cada protocolo, direto na ficha. Edite o nome no campo para renomear. É complementar ao campo geral "documentação completa", não o substitui.</div>'+
-        '<div class="checklist" style="max-height:150px;">'+documentosRows+'</div>'+
-        '<div class="add-tipo-row"><input type="text" id="settingsNovoDocumento" placeholder="Novo documento…"><button type="button" class="btn-ghost outlined" onclick="App.addDocumentoSettings()">Adicionar</button></div>'+
+        '<h3>Checklist de documentos por tipo de ato</h3>'+
+        '<div class="hint">Todo tipo de ato já pede, por padrão, esta base fixa (não editável):</div>'+
+        documentosBaseHtml+
+        '<div class="hint" style="margin-top:8px;">Some documentos específicos a cada tipo abaixo — quando um protocolo tem mais de um tipo, a ferramenta junta tudo sem repetir. É complementar ao campo geral "documentação completa", não o substitui; marcar tudo no checklist não marca a documentação como completa automaticamente.</div>'+
+        '<div class="checklist" style="max-height:220px;margin-top:6px;">'+checklistPorTipoRows+'</div>'+
       '</div>'+
 
       '<div class="settings-section">'+
