@@ -31,8 +31,8 @@
   --barra-filtros:#E7E4D8;
   --tinta-media:#3F3C34;
   --tinta-media-2:#57544B;
-  --apagado:#9A9587;
-  --apagado-2:#B0AB9C;
+  --apagado:#6B675C;
+  --apagado-2:#77705F;
   --carimbo:#8C2A20;
   --borda:#E0DCCE;
   --borda-ficha:#E6E1D2;
@@ -2833,28 +2833,12 @@ function renderFsBanner(){
   }
   return '';
 }
-function renderUrgenciaAlert(){
-  if(ui.viewMode==='lixeira' || ui.viewMode==='arquivados') return '';
-  var ativos = state.protocolos.filter(function(p){ return !p.naLixeira && !isArquivado(p); });
-  var overdue=0, dueToday=0;
-  ativos.forEach(function(p){
-    var info = computePrazo(p);
-    if(info){ if(info.isOverdue) overdue++; else if(info.isDueToday) dueToday++; }
-  });
-  if(!overdue && !dueToday) return '';
-  var parts = [];
-  if(overdue) parts.push('<strong>'+overdue+'</strong> atrasado'+(overdue>1?'s':''));
-  if(dueToday) parts.push('<strong>'+dueToday+'</strong> vence'+(dueToday>1?'m':'')+' hoje');
-  var target = overdue ? "App.toggleQuick('overdue')" : "App.toggleQuick('today')";
-  return '<div class="banner-alert no-print" onclick="'+target+'">&#9888; '+parts.join(' &middot; ')+' &mdash; clique para ver</div>';
-}
 function renderAll(){
   var app = document.getElementById('app');
   var html =
     renderFsBanner() +
     renderHeader() +
     renderStats() +
-    renderUrgenciaAlert() +
     renderFiltersBar() +
     '<div class="'+(justSwitchedView?'anim-in':'')+'">'+renderListArea()+'</div>' +
     (draftModal ? renderModal() : '') +
@@ -4535,9 +4519,9 @@ function renderAgendaStrip(){
     return '<button type="button" class="agenda-chip'+(ativo?' active':'')+'" style="'+corStyle+'" onclick="App.toggleAgendaFiltro(\''+key+'\')"><span class="agenda-chip-num">'+qtd+'</span> '+esc(label)+'</button>';
   }
   var chipsHtml = ''+
-    chip('vencidas','vencidas',buckets.vencidas.length,'var(--carimbo,#8C2A20)')+
-    chip('hoje','hoje',buckets.hoje.length,'var(--gold,#A26A1C)')+
-    chip('semana','próx. 7 dias',buckets.semana.length,null)+
+    chip('vencidas','pend. vencidas',buckets.vencidas.length,'var(--carimbo,#8C2A20)')+
+    chip('hoje','pend. hoje',buckets.hoje.length,'var(--gold,#A26A1C)')+
+    chip('semana','pend. próx. 7 dias',buckets.semana.length,null)+
     chip('semproximo','sem próximo passo',buckets.semProximo.length,null);
   var painelHtml = aberto ? ('<div class="agenda-strip-painel no-print">'+renderAgendaPainel(aberto, buckets)+'</div>') : '';
   return '<div class="agenda-strip-wrap no-print">'+
