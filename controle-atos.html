@@ -784,10 +784,12 @@ var PALETTE = [
 var DEFAULT_STATUS_LIST = [
   {key:'aguardando_documentos', label:'Aguardando documentos p/ análise', cor:'gray', isFinal:false, requerDigitalizacao:false},
   {key:'pendencia_documentos', label:'Pendência de documentos', cor:'gold', isFinal:false, requerDigitalizacao:false},
+  {key:'em_confeccao', label:'Em confecção', cor:'rose', isFinal:false, requerDigitalizacao:false},
   {key:'em_analise', label:'Em análise pelo Tabelião', cor:'blue', isFinal:false, requerDigitalizacao:false},
+  {key:'em_conferencia_usuario', label:'Em conferência pelo usuário', cor:'teal', isFinal:false, requerDigitalizacao:false},
   {key:'aguardando_assinatura', label:'Aguardando assinatura', cor:'plum', isFinal:false, requerDigitalizacao:false},
   {key:'finalizado', label:'Finalizado', cor:'green', isFinal:true, requerDigitalizacao:true},
-  {key:'desistiu', label:'Cliente desistiu', cor:'dark', isFinal:true, requerDigitalizacao:false}
+  {key:'desistiu', label:'Usuário desistiu', cor:'dark', isFinal:true, requerDigitalizacao:false}
 ];
 
 var CANAIS = [
@@ -961,6 +963,19 @@ function defaultState(){
   };
 }
 
+/* Insere uma fase nova logo apos outra ja existente (por key, que nunca muda mesmo
+   se o usuario renomear o label) - usado em migrate() pra acrescentar fases padrao
+   novas em instalacoes que ja tem statusList proprio. Idempotente: nao duplica se a
+   key ja existir. Se a fase-ancora nao existir mais (usuario removeu), so acrescenta
+   no fim, sem travar a migracao. */
+function inserirFaseAposChave(lista, afterKey, novaFase){
+  if(lista.some(function(s){ return s.key===novaFase.key; })) return;
+  var idx = -1;
+  for(var i=0;i<lista.length;i++){ if(lista[i].key===afterKey){ idx=i; break; } }
+  if(idx===-1) lista.push(novaFase);
+  else lista.splice(idx+1, 0, novaFase);
+}
+
 function migrate(raw){
   var s = raw || defaultState();
   if(!s.tiposAtos) s.tiposAtos = DEFAULT_TIPOS.slice();
@@ -973,6 +988,11 @@ function migrate(raw){
   s.statusList = s.statusList.map(function(st){
     if(st.requerDigitalizacao==null) st.requerDigitalizacao=false;
     return st;
+  });
+  inserirFaseAposChave(s.statusList, 'pendencia_documentos', {key:'em_confeccao', label:'Em confecção', cor:'rose', isFinal:false, requerDigitalizacao:false});
+  inserirFaseAposChave(s.statusList, 'em_analise', {key:'em_conferencia_usuario', label:'Em conferência pelo usuário', cor:'teal', isFinal:false, requerDigitalizacao:false});
+  s.statusList.forEach(function(st){
+    if(st.key==='desistiu' && st.label==='Cliente desistiu') st.label='Usuário desistiu';
   });
   var statusMapForMigration = {};
   s.statusList.forEach(function(st){ statusMapForMigration[st.key]=st; });
@@ -1365,7 +1385,9 @@ function pendenciasPendentes(p){
    concluida/cancelada no historico. */
 function computeAgendaBuckets(){
   var hoje = todayISO();
-  var limite7 = toISO(addDays(new Date(), 7));
+  /* Janela de 7 dias UTEIS (segunda a sexta, sem contar sabado/domingo/feriado) —
+     mesmo conceito ja usado no calculo do prazo (addBusinessDays). */
+  var limite7 = addBusinessDays(hoje, 7);
   var vencidas=[], hojeList=[], semana=[], semProximo=[];
   state.protocolos.forEach(function(p){
     if(p.naLixeira) return;
@@ -2371,7 +2393,7 @@ function buildFichaPrintHTML(p){
     '<table class="fp-table"><tbody>'+
       row('Nº do protocolo', p.numeroProtocolo ? esc(p.numeroProtocolo) : '—')+
       row('Data do protocolo', esc(formatBR(p.dataProtocolo)))+
-      row('Cliente / outorgante', esc(p.cliente||'—')+' ('+(p.tipoPessoa==='pj'?'Pessoa Jurídica':'Pessoa Física')+')')+
+      row('Usuário / outorgante', esc(p.cliente||'—')+' ('+(p.tipoPessoa==='pj'?'Pessoa Jurídica':'Pessoa Física')+')')+
       row('Telefone', esc(p.clienteTelefone))+
       row('E-mail', esc(p.clienteEmail))+
       row('Outorgado(s)', esc(p.outorgados))+
@@ -2475,7 +2497,7 @@ App.exportAtosBalcaoCSV = function(){
 App.exportCSV = function(){
   var list = getFilteredSorted();
   var statusMap = getStatusMap();
-  var headers = ['Nº Protocolo','Data do Protocolo','Tipo de Pessoa','Cliente/Outorgante','Telefone','E-mail','Outorgado(s)','Canais','Responsável','Documentos Completos','Data Recebimento Completo','Data do Prazo','Status','Tipos de Ato','Vinculado a','Observações (histórico)'];
+  var headers = ['Nº Protocolo','Data do Protocolo','Tipo de Pessoa','Usuário/Outorgante','Telefone','E-mail','Outorgado(s)','Canais','Responsável','Documentos Completos','Data Recebimento Completo','Data do Prazo','Status','Tipos de Ato','Vinculado a','Observações (histórico)'];
   function csvField(v){
     v = (v==null?'':String(v));
     if(/["\,\n;]/.test(v)) v = '"'+v.replace(/"/g,'""')+'"';
@@ -2947,7 +2969,7 @@ function renderFiltersBar(){
   '<div class="filters-bar no-print">'+
     '<div class="search-wrap">'+
       '<span class="search-icon">&#8981;</span>'+
-      '<input id="searchInput" class="search-input" type="text" placeholder="Buscar por cliente, outorgado, nº de protocolo ou tipo de ato…" value="'+esc(ui.search)+'" oninput="App.setSearch(this.value)">'+
+      '<input id="searchInput" class="search-input" type="text" placeholder="Buscar por usuário, outorgado, nº de protocolo ou tipo de ato…" value="'+esc(ui.search)+'" oninput="App.setSearch(this.value)">'+
       (ui.search ? '<button class="search-clear" title="Limpar busca (Esc)" onclick="App.setSearch(\'\')">&times;</button>' : '')+
     '</div>'+
     (showFiltro ? '<button type="button" class="filtro-btn'+(ui.filtrosAbertos?' aberto':'')+'" onclick="App.toggleFiltrosPanel()">Filtrar'+(activeCount?' <span class="filtro-contador">'+activeCount+'</span>':'')+'</button>' : '')+
@@ -2965,7 +2987,7 @@ function renderFiltersBar(){
   painel+
   (ui.search ? '<div class="hint no-print" style="margin:-6px 0 10px;">'+getFilteredSorted().length+' resultado(s) para &ldquo;'+esc(ui.search)+'&rdquo;</div>' : '')+
   (ui.viewMode==='quadro' ? '<div class="kanban-hint no-print">Arraste um cartão para outra coluna para mudar o status. Clique no cartão para editar os detalhes.</div>' : '')+
-  (ui.viewMode==='arquivados' ? '<div class="kanban-hint no-print">Protocolos finalizados (já digitalizados) ou com cliente desistente. Mude o status na ficha para reabrir, se precisar.</div>' : '')+
+  (ui.viewMode==='arquivados' ? '<div class="kanban-hint no-print">Protocolos finalizados (já digitalizados) ou com usuário desistente. Mude o status na ficha para reabrir, se precisar.</div>' : '')+
   (isLixeira ? (
     '<div class="lx-header-row no-print">'+
       '<div class="lx-header-nota">Nada é apagado automaticamente. Um protocolo restaurado volta para a lista com status, prazo, diário e vínculos intactos.</div>'+
@@ -3030,11 +3052,28 @@ function buildTimelineUnificada(p){
   var itensObs = (p.observacoesHistorico||[]).map(function(o){
     return {tipo:'obs', ts:o.ts, obs:o};
   });
-  return itensStatus.concat(itensObs).sort(function(a,b){ return b.ts-a.ts; });
+  /* Criacao e conclusao de pendencia tambem entram na timeline (so leitura - a
+     agenda continua sendo a fonte de verdade, isto e so um espelho pra visao
+     cronologica). Cancelamento/reabertura nao aparecem aqui, so na propria agenda. */
+  var itensAgenda = [];
+  (p.pendencias||[]).forEach(function(pd){
+    itensAgenda.push({tipo:'pendencia_criada', ts:pd.createdAt, descricao:pd.descricao});
+    var concluidaEvt = (pd.historico||[]).filter(function(h){ return h.situacao==='concluida'; }).slice(-1)[0];
+    if(concluidaEvt){
+      itensAgenda.push({tipo:'pendencia_concluida', ts:concluidaEvt.ts, descricao:pd.descricao, nota:concluidaEvt.nota});
+    }
+  });
+  return itensStatus.concat(itensObs).concat(itensAgenda).sort(function(a,b){ return b.ts-a.ts; });
 }
 function renderTipoTagTimeline(tipo){
-  var isStatus = tipo==='status';
-  return '<span style="display:inline-block;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;margin-right:5px;background:'+(isStatus?'#E7E4DA':'#E3E8F1')+';color:'+(isStatus?'#57544B':'#2C3E5C')+';">'+(isStatus?'status':'obs')+'</span>';
+  var TAGS = {
+    status: {label:'status', bg:'#E7E4DA', cor:'#57544B'},
+    obs: {label:'obs', bg:'#E3E8F1', cor:'#2C3E5C'},
+    pendencia_criada: {label:'agenda', bg:'#F2E4C9', cor:'#7A4F13'},
+    pendencia_concluida: {label:'agenda', bg:'#E1EDE3', cor:'#3E6B4B'}
+  };
+  var t = TAGS[tipo] || TAGS.status;
+  return '<span style="display:inline-block;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;margin-right:5px;background:'+t.bg+';color:'+t.cor+';">'+t.label+'</span>';
 }
 function renderTimelineFicha(p){
   var itens = buildTimelineUnificada(p);
@@ -3047,6 +3086,12 @@ function renderTimelineFicha(p){
       var dstr = pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes());
       if(it.tipo==='status'){
         return '<div class="hist-row"><span>'+renderTipoTagTimeline('status')+esc(it.statusLabel)+'</span><span class="hd">'+esc(dstr)+' — '+esc(it.duracaoTxt)+'</span></div>';
+      }
+      if(it.tipo==='pendencia_criada'){
+        return '<div class="hist-row" style="display:block;"><div class="hd">'+renderTipoTagTimeline('pendencia_criada')+esc(dstr)+'</div><div>Pendência criada: '+esc(it.descricao)+'</div></div>';
+      }
+      if(it.tipo==='pendencia_concluida'){
+        return '<div class="hist-row" style="display:block;"><div class="hd">'+renderTipoTagTimeline('pendencia_concluida')+esc(dstr)+'</div><div>Pendência concluída: '+esc(it.descricao)+(it.nota?' — '+esc(it.nota):'')+'</div></div>';
       }
       var o = it.obs;
       var extras = (o.etiqueta?(' '+renderPilulaEtiqueta(o.etiqueta)):'')+(o.editadoEm?' <span style="font-size:10px;font-style:italic;color:var(--tinta-fraca,var(--ink-soft));">editado</span>':'');
@@ -3299,7 +3344,7 @@ function renderFicha(p, dentroDeGrupo){
   var nomeHtml = dentroDeGrupo
     ? '<div class="cp-tipo" style="font-size:14px;font-weight:500;color:var(--ink);">'+tipoLinha+'</div>'
     : (
-      (p.cliente ? '<div class="cp-nome" title="Ver histórico deste cliente" onclick="App.showClienteHistory(\''+jsAttr(p.cliente)+'\')">'+esc(p.cliente)+'</div>' : '<div class="cp-nome vazio">Sem identificação de cliente</div>')+
+      (p.cliente ? '<div class="cp-nome" title="Ver histórico deste usuário" onclick="App.showClienteHistory(\''+jsAttr(p.cliente)+'\')">'+esc(p.cliente)+'</div>' : '<div class="cp-nome vazio">Sem identificação de usuário</div>')+
       '<div class="cp-tipo">'+tipoLinha+'</div>'
     );
   return ''+
@@ -3713,7 +3758,7 @@ function renderModalQuickBody(d){
   return '<div class="fm-quick-body">'+
     '<div>'+
       '<span class="fm-label">Outorgante</span>'+
-      '<input type="text" id="f_cliente" class="fm-input fm-input-nome" value="'+esc(d.cliente||'')+'" placeholder="Nome do cliente / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
+      '<input type="text" id="f_cliente" class="fm-input fm-input-nome" value="'+esc(d.cliente||'')+'" placeholder="Nome do usuário / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
       '<div id="vinculoSugestaoContainer" style="margin-top:8px;">'+computeVinculoSugestaoHtml(d)+'</div>'+
     '</div>'+
     '<div><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa">'+buildPessoaSegButtons(d)+'</div></div>'+
@@ -3794,6 +3839,16 @@ function renderDiarioUnificado(p){
         '<div style="min-width:0;">'+
           '<div style="font-size:12px;color:var(--ink);line-height:1.25;font-weight:500;">'+esc(it.statusLabel)+'</div>'+
           '<div style="font-family:var(--font-mono);font-size:10px;color:var(--apagado);margin-top:1px;">'+esc(dstr)+' — '+esc(it.duracaoTxt)+'</div>'+
+        '</div>'+
+      '</div>';
+    }
+    if(it.tipo==='pendencia_criada' || it.tipo==='pendencia_concluida'){
+      var concluida = it.tipo==='pendencia_concluida';
+      return '<div style="display:flex;gap:9px;align-items:flex-start;">'+
+        '<span style="width:7px;height:7px;border-radius:50%;background:'+(concluida?'var(--stamp-green,#3E6B4B)':'var(--gold,#A26A1C)')+';margin-top:5px;flex-shrink:0;"></span>'+
+        '<div style="min-width:0;">'+
+          '<div style="font-size:12px;color:var(--ink);line-height:1.25;font-weight:500;">'+(concluida?'Pendência concluída':'Pendência criada')+': '+esc(it.descricao)+(it.nota?' — '+esc(it.nota):'')+'</div>'+
+          '<div style="font-family:var(--font-mono);font-size:10px;color:var(--apagado);margin-top:1px;">'+esc(dstr)+'</div>'+
         '</div>'+
       '</div>';
     }
@@ -3925,7 +3980,7 @@ function renderModal(){
     (d.vinculoManualAberto ? (
       '<div style="margin-top:10px;">'+
         selectedVinculoChipsHtml+
-        '<input type="text" id="vinculoSearchInput" class="fm-input" placeholder="Buscar por cliente ou nº de protocolo…" value="'+esc(d.vinculoSearch||'')+'" oninput="App.setVinculoSearch(this.value)">'+
+        '<input type="text" id="vinculoSearchInput" class="fm-input" placeholder="Buscar por usuário ou nº de protocolo…" value="'+esc(d.vinculoSearch||'')+'" oninput="App.setVinculoSearch(this.value)">'+
         (vinculoResultsHtml ? '<div class="checklist" style="max-height:140px;margin-top:6px;">'+vinculoResultsHtml+'</div>' : '')+
         '<div class="fm-hint" style="margin-top:6px;">Isso só serve para ver os protocolos juntos depois — não muda nada nos dados de cada um.</div>'+
       '</div>'
@@ -3934,7 +3989,7 @@ function renderModal(){
   var sec1Html = ''+
   '<div class="fm-sec">'+
     '<div class="fm-sec-head"><span class="fm-sec-label">1 &middot; Outorgante</span><span class="fm-sec-rule"></span></div>'+
-    '<input type="text" id="f_cliente" class="fm-input fm-input-nome" value="'+esc(d.cliente||'')+'" placeholder="Nome do cliente / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
+    '<input type="text" id="f_cliente" class="fm-input fm-input-nome" value="'+esc(d.cliente||'')+'" placeholder="Nome do usuário / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
     '<div id="vinculoSugestaoContainer">'+dupWarningHtml+'</div>'+
     '<div class="fm-row">'+
       '<div class="fm-field fixo"><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa">'+pessoaSegHtml+'</div></div>'+
@@ -4069,7 +4124,7 @@ function renderModal(){
         '<div class="fm-sec" style="border-bottom:none;padding-top:18px;">'+
           '<span class="fm-label">Observação inicial</span>'+
           obsHistoricoHtml+
-          '<textarea id="f_novaObservacao" class="fm-input ta" placeholder="Ex.: cliente traz a certidão de ônus na segunda." oninput="App.setField(\'novaObservacao\', this.value)">'+esc(d.novaObservacao||'')+'</textarea>'+
+          '<textarea id="f_novaObservacao" class="fm-input ta" placeholder="Ex.: usuário traz a certidão de ônus na segunda." oninput="App.setField(\'novaObservacao\', this.value)">'+esc(d.novaObservacao||'')+'</textarea>'+
         '</div>'+
       '</div>'+
       '<div class="side-panel-foot">'+
