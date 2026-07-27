@@ -412,6 +412,7 @@ select.sortsel{
 
 .fm-seg-pessoa{display:flex;background:var(--barra-filtros);border-radius:9px;padding:3px;width:fit-content;}
 .fm-seg-pessoa button{border:none;background:transparent;color:var(--tinta-media-2);border-radius:6px;padding:7px 18px;font:500 12px var(--font-body);cursor:pointer;}
+.fm-seg-pessoa button.active{background:var(--ink);color:var(--painel);font-weight:600;}
 .fm-seg-pessoa button.active.pf{background:var(--plum);color:var(--painel);font-weight:600;}
 .fm-seg-pessoa button.active.pj{background:var(--blue);color:var(--painel);font-weight:600;}
 
@@ -804,6 +805,39 @@ var DEFAULT_DOCUMENTOS_CHECKLIST = [
   'Certidão de casamento/nascimento'
 ];
 
+/* Duas categorias fixas (nao editaveis pelo usuario, ao contrario de tiposAtos/
+   statusList). categoriaPorTipo mora fora do array tiposAtos pra nao mexer no
+   formato ja usado em toda parte (tipos sempre referenciados pelo nome-string). */
+var CATEGORIAS_ATO = [
+  {key:'procuracao', label:'Procurações'},
+  {key:'escritura', label:'Escrituras'}
+];
+function categoriaOposta(cat){ return cat==='procuracao' ? 'escritura' : 'procuracao'; }
+/* Heuristica de migracao automatica por nome: so classifica quem comeca claramente
+   com "procuraç.../procurac..." ou "escritura...". Quem nao bate com nenhum dos dois
+   fica sem categoria (null) de proposito, pra nao arriscar um palpite errado — o
+   usuario classifica manualmente pela tela de Configuracoes. */
+/* Remove acentos antes de comparar - "procuraç" vs "procurac" digitados/salvos em
+   normalizacoes Unicode diferentes (NFC/NFD) nao batem com indexOf ingenuo. */
+function normalizarSemAcento(s){
+  var norm = (s||'').normalize('NFD');
+  var out = '';
+  for(var i=0;i<norm.length;i++){
+    var code = norm.charCodeAt(i);
+    if(code<768 || code>879) out += norm.charAt(i); // fora da faixa de marcas combinantes (U+0300-U+036F)
+  }
+  return out.trim().toLowerCase();
+}
+function categorizarTipoPorNome(nome){
+  var n = normalizarSemAcento(nome);
+  if(n.indexOf('procura')===0) return 'procuracao';
+  if(n.indexOf('escritura')===0) return 'escritura';
+  return null;
+}
+function getCategoriaDoTipo(nome){
+  return (state.categoriaPorTipo && state.categoriaPorTipo[nome]) || null;
+}
+
 var PRAZO_DIAS_UTEIS = 5;
 var STORAGE_KEY = 'cartorio-data';
 var FS_IDB_NAME = 'cartorio-fs';
@@ -881,7 +915,8 @@ function defaultState(){
     feriadosMoveis: {carnaval:true, corpusChristi:true, sextaSanta:true},
     atosBalcao: {},
     atosBalcaoLancamentos: {},
-    sugestoesDispensadas: {}
+    sugestoesDispensadas: {},
+    categoriaPorTipo: {}
   };
 }
 
@@ -906,6 +941,12 @@ function migrate(raw){
   if(!s.atosBalcao) s.atosBalcao={};
   if(!s.atosBalcaoLancamentos) s.atosBalcaoLancamentos={};
   if(!s.sugestoesDispensadas) s.sugestoesDispensadas={};
+  if(!s.categoriaPorTipo) s.categoriaPorTipo={};
+  s.tiposAtos.forEach(function(nome){
+    if(s.categoriaPorTipo[nome]) return;
+    var auto = categorizarTipoPorNome(nome);
+    if(auto) s.categoriaPorTipo[nome] = auto;
+  });
   s.protocolos = (s.protocolos||[]).map(function(p){
     if(!p.historico || !p.historico.length) p.historico=[{status:p.status, ts:p.createdAt||Date.now()}];
     if(!p.tipoPessoa) p.tipoPessoa='pf';
@@ -974,10 +1015,10 @@ function ensureStorage(){
 function loadState(){
   return window.storage.get(STORAGE_KEY, false).then(function(res){
     if(res && res.value){
-      try{ return migrate(JSON.parse(res.value)); }catch(e){ return defaultState(); }
+      try{ return migrate(JSON.parse(res.value)); }catch(e){ return migrate(defaultState()); }
     }
-    return defaultState();
-  }).catch(function(){ return defaultState(); });
+    return migrate(defaultState());
+  }).catch(function(){ return migrate(defaultState()); });
 }
 function saveState(){
   if(fileMode && dirHandle){
@@ -1570,7 +1611,7 @@ App.openNew = function(){
     canais:{balcao:true}, docsCompletos:false, responsavel: state.ultimoResponsavel || '',
     tipos:{}, status: state.statusList[0] ? state.statusList[0].key : '',
     vinculados:{}, vinculoSearch:'', tipoSearch:'', vinculoManualAberto:false,
-    camposOpcionaisAbertos:false
+    camposOpcionaisAbertos:false, categoriaAtivaTipo:'procuracao'
   };
   modalJustOpened = true;
   App.render();
@@ -1588,6 +1629,11 @@ App.openEdit = function(id){
   (p.canais||[]).forEach(function(c){ canaisSet[c]=true; });
   var vinculadosSet = {};
   getVinculados(p).forEach(function(v){ vinculadosSet[v.id]=true; });
+  var primeiraCategoriaExistente = null;
+  for(var pi=0; pi<p.tipos.length; pi++){
+    var catDoTipo = getCategoriaDoTipo(p.tipos[pi]);
+    if(catDoTipo){ primeiraCategoriaExistente = catDoTipo; break; }
+  }
   draftModal = {
     mode:'edit', id:id,
     numeroProtocolo:p.numeroProtocolo, cliente:p.cliente, clienteTelefone:p.clienteTelefone, clienteEmail:p.clienteEmail,
@@ -1595,7 +1641,8 @@ App.openEdit = function(id){
     dataProtocolo:p.dataProtocolo, docsCompletos:p.docsCompletos,
     dataRecebimentoCompleto:p.dataRecebimentoCompleto,
     tipos:tiposSet, status:p.status, novaObservacao:'',
-    vinculados:vinculadosSet, vinculoSearch:'', tipoSearch:'', vinculoManualAberto:false
+    vinculados:vinculadosSet, vinculoSearch:'', tipoSearch:'', vinculoManualAberto:false,
+    categoriaAtivaTipo: primeiraCategoriaExistente || 'procuracao'
   };
   modalJustOpened = true;
   App.render();
@@ -1667,7 +1714,12 @@ App.addTipoFromModal = function(){
   var el = document.getElementById('novoTipoModalInput');
   var v = el ? el.value.trim() : '';
   if(!v) return;
-  if(state.tiposAtos.indexOf(v)===-1) state.tiposAtos.push(v);
+  if(state.tiposAtos.indexOf(v)===-1){
+    state.tiposAtos.push(v);
+    /* Preferencia: heuristica pelo nome; se nao bater, usa a categoria que o
+       usuario esta navegando no momento (mais provavel que o palpite em branco). */
+    state.categoriaPorTipo[v] = categorizarTipoPorNome(v) || draftModal.categoriaAtivaTipo || null;
+  }
   draftModal.tipos[v]=true;
   saveState();
   App.render();
@@ -1709,6 +1761,16 @@ App.toggleCamposOpcionais = function(){
      nada antes dispararia um falso "descartar alteracoes?" ao fechar em seguida. */
   var wasDirty = isDraftDirty();
   draftModal.camposOpcionaisAbertos = !draftModal.camposOpcionaisAbertos;
+  App.render();
+  captureModalTextFields();
+  if(!wasDirty) draftModalSnapshot = JSON.stringify(draftModal);
+};
+/* So troca qual categoria de tipo esta sendo navegada (Procuracoes/Escrituras) - nao
+   e um dado do protocolo, entao nao pode contar como alteracao pro dirty-check (mesmo
+   cuidado do toggleCamposOpcionais acima). */
+App.setCategoriaAtivaTipo = function(cat){
+  var wasDirty = isDraftDirty();
+  draftModal.categoriaAtivaTipo = cat;
   App.render();
   captureModalTextFields();
   if(!wasDirty) draftModalSnapshot = JSON.stringify(draftModal);
@@ -2333,13 +2395,26 @@ App.openSettings = function(){ settingsOpen=true; modalJustOpened=true; App.rend
 App.closeSettings = function(){ settingsOpen=false; App.render(); };
 App.addTipoSettings = function(){
   var el = document.getElementById('settingsNovoTipo');
+  var catEl = document.getElementById('settingsNovoTipoCategoria');
   var v = el ? el.value.trim() : '';
   if(!v) return;
-  if(state.tiposAtos.indexOf(v)===-1){ state.tiposAtos.push(v); saveState(); }
+  if(state.tiposAtos.indexOf(v)===-1){
+    state.tiposAtos.push(v);
+    var catManual = catEl ? catEl.value : '';
+    state.categoriaPorTipo[v] = catManual || categorizarTipoPorNome(v) || null;
+    saveState();
+  }
+  if(el) el.value='';
   App.render();
 };
 App.removeTipoSettings = function(t){
   state.tiposAtos = state.tiposAtos.filter(function(x){ return x!==t; });
+  delete state.categoriaPorTipo[t];
+  saveState();
+  App.render();
+};
+App.setCategoriaDoTipo = function(tipo, categoria){
+  state.categoriaPorTipo[tipo] = categoria || null;
   saveState();
   App.render();
 };
@@ -3268,24 +3343,50 @@ function buildCanalChipsHtml(d){
     return '<button type="button" class="fm-chip canal'+(d.canais[c.key]?' active':'')+'" onclick="App.toggleCanal(\''+c.key+'\')">'+esc(c.label)+'</button>';
   }).join('');
 }
+/* Segmentado Procuracoes/Escrituras que so filtra a navegacao (chips/busca/"mais
+   usados"); nunca esconde um tipo ja selecionado de uma categoria diferente da aba
+   ativa — esses continuam visiveis via buildTipoSelecionadosOutraCategoriaHtml. */
+function buildCategoriaAtoSegButtons(d){
+  var cat = d.categoriaAtivaTipo || 'procuracao';
+  return ''+
+    '<button type="button" class="'+(cat==='procuracao'?'active':'')+'" onclick="App.setCategoriaAtivaTipo(\'procuracao\')">Procurações</button>'+
+    '<button type="button" class="'+(cat==='escritura'?'active':'')+'" onclick="App.setCategoriaAtivaTipo(\'escritura\')">Escrituras</button>';
+}
 function buildTipoChipsHtml(d){
+  var catOposta = categoriaOposta(d.categoriaAtivaTipo || 'procuracao');
   var tiposSelecionados = Object.keys(d.tipos||{});
-  var chipsBase = getTiposOrdenadosPorUso().slice(0,5);
-  var chipsExtras = tiposSelecionados.filter(function(t){ return chipsBase.indexOf(t)===-1; });
+  var chipsBase = getTiposOrdenadosPorUso().filter(function(t){ return getCategoriaDoTipo(t)!==catOposta; }).slice(0,5);
+  var chipsExtras = tiposSelecionados.filter(function(t){ return chipsBase.indexOf(t)===-1 && getCategoriaDoTipo(t)!==catOposta; });
   var chipsAll = chipsBase.concat(chipsExtras);
   return chipsAll.map(function(t){
     var checked = !!d.tipos[t];
     return '<button type="button" class="fm-chip'+(checked?' active':'')+'" onclick="App.toggleTipo(\''+jsAttr(t)+'\')">'+(checked?'&#10003; ':'')+esc(t)+'</button>';
   }).join('');
 }
+/* Tipos ja selecionados que ficam na categoria OPOSTA a aba ativa no momento — sem
+   isso, trocar de aba faria parecer que a selecao feita antes sumiu. */
+function buildTipoSelecionadosOutraCategoriaHtml(d){
+  var catAtiva = d.categoriaAtivaTipo || 'procuracao';
+  var catOposta = categoriaOposta(catAtiva);
+  var outros = Object.keys(d.tipos||{}).filter(function(t){ return getCategoriaDoTipo(t)===catOposta; });
+  if(!outros.length) return '';
+  var labelOposta = CATEGORIAS_ATO.filter(function(c){ return c.key===catOposta; })[0].label;
+  return '<div style="margin-top:6px;font-size:11px;color:var(--apagado-2);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'+
+    '<span>também selecionado ('+esc(labelOposta)+'):</span>'+
+    outros.map(function(t){ return '<button type="button" class="fm-chip active" onclick="App.toggleTipo(\''+jsAttr(t)+'\')">&#10003; '+esc(t)+'</button>'; }).join('')+
+  '</div>';
+}
 function buildTipoDropdownHtml(d){
   var tq = (d.tipoSearch||'').trim().toLowerCase();
   if(!tq) return '';
-  var tipoMatches = state.tiposAtos.filter(function(t){ return t.toLowerCase().indexOf(tq)!==-1; }).slice(0,8);
+  var catOposta = categoriaOposta(d.categoriaAtivaTipo || 'procuracao');
+  var tipoMatches = state.tiposAtos.filter(function(t){
+    return t.toLowerCase().indexOf(tq)!==-1 && getCategoriaDoTipo(t)!==catOposta;
+  }).slice(0,8);
   return '<div class="fm-dropdown">'+
     (tipoMatches.length ? tipoMatches.map(function(t){
       return '<div class="fm-dropdown-item" onclick="App.pickTipoFromSearch(\''+jsAttr(t)+'\')">'+(d.tipos[t]?'&#10003; ':'')+esc(t)+'</div>';
-    }).join('') : '<div class="fm-dropdown-empty">Nenhum tipo encontrado com esse termo.</div>')+
+    }).join('') : '<div class="fm-dropdown-empty">Nenhum tipo encontrado com esse termo nesta categoria.</div>')+
   '</div>';
 }
 
@@ -3299,8 +3400,11 @@ function renderModalQuickBody(d){
     '</div>'+
     '<div><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa">'+buildPessoaSegButtons(d)+'</div></div>'+
     '<div>'+
-      '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;"><span class="fm-label" style="margin-bottom:0;">Tipo de ato</span><span style="font-size:10.5px;color:var(--apagado-2);">mais usados recentemente</span></div>'+
+      '<span class="fm-label">Tipo de ato</span>'+
+      '<div class="fm-seg-pessoa" style="margin-bottom:8px;">'+buildCategoriaAtoSegButtons(d)+'</div>'+
+      '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;"><span style="font-size:10.5px;color:var(--apagado-2);">mais usados recentemente</span></div>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+buildTipoChipsHtml(d)+'</div>'+
+      buildTipoSelecionadosOutraCategoriaHtml(d)+
       '<div class="fm-tiposearch-wrap" style="margin-top:8px;">'+
         '<input type="text" id="tipoSearchInput" class="fm-input dashed" placeholder="Buscar entre os '+state.tiposAtos.length+' tipos…" value="'+esc(d.tipoSearch||'')+'" oninput="App.setTipoSearch(this.value)">'+
         buildTipoDropdownHtml(d)+
@@ -3530,11 +3634,13 @@ function renderModal(){
   var sec2Html = ''+
   '<div class="fm-sec">'+
     '<div class="fm-sec-head"><span class="fm-sec-label">2 &middot; Ato</span><span class="fm-sec-rule"></span>'+(tiposSelecionados.length?'<span class="fm-sec-count">'+tiposSelecionados.length+' selecionado'+(tiposSelecionados.length>1?'s':'')+'</span>':'')+'</div>'+
+    '<div class="fm-seg-pessoa" style="margin-bottom:10px;">'+buildCategoriaAtoSegButtons(d)+'</div>'+
     '<div class="fm-tiposearch-wrap">'+
       '<input type="text" id="tipoSearchInput" class="fm-input" placeholder="Buscar entre os '+state.tiposAtos.length+' tipos de ato…" value="'+esc(d.tipoSearch||'')+'" oninput="App.setTipoSearch(this.value)">'+
       tipoDropdownHtml+
     '</div>'+
     (tipoChipsHtml ? '<div><span class="fm-label">mais usados recentemente</span><div style="display:flex;gap:6px;flex-wrap:wrap;">'+tipoChipsHtml+'</div></div>' : '')+
+    buildTipoSelecionadosOutraCategoriaHtml(d)+
     '<div class="add-tipo-row"><input type="text" id="novoTipoModalInput" class="fm-input" placeholder="Adicionar novo tipo de ato…"><button type="button" class="btn-ghost outlined" onclick="App.addTipoFromModal()">Adicionar</button></div>'+
   '</div>';
 
@@ -3661,9 +3767,33 @@ function renderModal(){
 
 /* ---- Modal configurações ---- */
 function renderSettingsModal(){
-  var tiposRows = state.tiposAtos.map(function(t){
-    return '<div class="list-row"><span>'+esc(t)+'</span><button class="remove-x" onclick="App.removeTipoSettings(\''+jsAttr(t)+'\')" title="Remover">&times;</button></div>';
-  }).join('') || '<div class="hint">Nenhum tipo cadastrado.</div>';
+  function renderTipoRowSettings(t){
+    var cat = getCategoriaDoTipo(t) || '';
+    var opts = '<option value=""'+(cat===''?' selected':'')+'>sem categoria</option>'+
+      CATEGORIAS_ATO.map(function(c){ return '<option value="'+c.key+'"'+(cat===c.key?' selected':'')+'>'+esc(c.label)+'</option>'; }).join('');
+    return '<div class="list-row">'+
+      '<span style="flex:1;">'+esc(t)+'</span>'+
+      '<select style="padding:4px 6px;border:1px solid var(--line);border-radius:3px;font-size:11.5px;" onchange="App.setCategoriaDoTipo(\''+jsAttr(t)+'\', this.value)">'+opts+'</select>'+
+      '<button class="remove-x" onclick="App.removeTipoSettings(\''+jsAttr(t)+'\')" title="Remover">&times;</button>'+
+    '</div>';
+  }
+  var tiposPorCategoria = {procuracao:[], escritura:[], '':[]};
+  state.tiposAtos.forEach(function(t){
+    var cat = getCategoriaDoTipo(t) || '';
+    (tiposPorCategoria[cat] || tiposPorCategoria['']).push(t);
+  });
+  function grupoTiposHtml(titulo, lista, corTitulo){
+    return '<div style="margin-bottom:10px;">'+
+      '<div style="font-size:11px;font-weight:600;color:'+(corTitulo||'var(--ink-soft,#666)')+';margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;">'+esc(titulo)+'</div>'+
+      (lista.length ? lista.map(renderTipoRowSettings).join('') : '<div class="hint">Nenhum tipo nesta categoria.</div>')+
+    '</div>';
+  }
+  var tiposRows = ''+
+    grupoTiposHtml('Procurações', tiposPorCategoria.procuracao)+
+    grupoTiposHtml('Escrituras', tiposPorCategoria.escritura)+
+    (tiposPorCategoria[''].length ? grupoTiposHtml('Sem categoria — escolha uma pra cada um', tiposPorCategoria[''], 'var(--carimbo,#8C2A20)') : '');
+  var categoriaNovoTipoOptions = '<option value="">(detectar pelo nome)</option>'+
+    CATEGORIAS_ATO.map(function(c){ return '<option value="'+c.key+'">'+esc(c.label)+'</option>'; }).join('');
 
   var statusRows = state.statusList.map(function(s, idx){
     var inUse = state.protocolos.some(function(p){ return p.status===s.key; });
@@ -3776,7 +3906,7 @@ function renderSettingsModal(){
       '<div class="settings-section">'+
         '<h3>Tipos de procuração / escritura</h3>'+
         '<div class="checklist" style="max-height:150px;">'+tiposRows+'</div>'+
-        '<div class="add-tipo-row"><input type="text" id="settingsNovoTipo" placeholder="Novo tipo de ato…"><button type="button" class="btn-ghost outlined" onclick="App.addTipoSettings()">Adicionar</button></div>'+
+        '<div class="add-tipo-row"><input type="text" id="settingsNovoTipo" placeholder="Novo tipo de ato…"><select id="settingsNovoTipoCategoria" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+categoriaNovoTipoOptions+'</select><button type="button" class="btn-ghost outlined" onclick="App.addTipoSettings()">Adicionar</button></div>'+
       '</div>'+
 
       '<div class="settings-section">'+
