@@ -600,6 +600,24 @@ select.sortsel{
 .diario-ts{font-family:var(--font-mono);font-size:10px;color:var(--apagado);}
 .diario-txt{font-size:12.5px;line-height:1.5;color:var(--tinta-media);margin-top:4px;text-wrap:pretty;}
 
+/* Painel de vinculo dedicado (5b) */
+.vp-search-wrap{position:relative;}
+.vp-sec-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:9px;}
+.vp-sec-hint{font-size:10.5px;color:var(--apagado-2);}
+.vp-linha{display:grid;grid-template-columns:22px 1fr;gap:11px;align-items:flex-start;background:var(--painel);border:1px solid var(--borda);border-radius:9px;padding:11px 12px;}
+.vp-linha.sel{background:var(--apoio);border-color:var(--ink);}
+.vp-check{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--borda-forte);background:var(--painel);color:var(--painel);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;cursor:pointer;margin-top:1px;flex-shrink:0;}
+.vp-check.on{background:var(--ink);border-color:var(--ink);}
+.vp-linha-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.vp-num{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--ink);}
+.vp-quando{font-family:var(--font-mono);font-size:9.5px;color:var(--apagado-2);}
+.vp-tipo{font-size:12.5px;color:var(--tinta-media);margin-top:4px;text-wrap:pretty;}
+.vp-motivo-row{display:flex;align-items:center;gap:10px;margin-top:6px;}
+.vp-motivo{font-family:var(--font-mono);font-size:9.5px;color:var(--apagado);}
+.vp-dispensar{border:none;background:none;color:var(--apagado-2);font-size:10.5px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:0;}
+.vp-dispensar:hover{color:var(--carimbo);}
+.vp-nota{background:var(--apoio);border:1px dashed var(--borda-forte);border-radius:9px;padding:11px 13px;font-size:11.5px;line-height:1.5;color:var(--tinta-media-2);margin-top:16px;text-wrap:pretty;}
+
 @media (max-width:700px){
   .cp{grid-template-columns:5px 1fr;}
   .cp-prazo{grid-column:2;border-left:none;border-top:1px solid var(--borda-ficha);flex-direction:row;align-items:center;flex-wrap:wrap;}
@@ -751,6 +769,10 @@ var historicoAbertos = {};
 var obsAbertos = {};
 var vinculadosAbertos = {};
 var diariosGrupoId = null;
+var vinculoPanelFor = null;
+var vinculoPanelSearch = '';
+var vinculoPanelSelected = {};
+var vinculoPanelDispensados = {};
 var documentosAbertos = {};
 var justOpenedKey = null;
 var justCreatedId = null;
@@ -1175,6 +1197,38 @@ function jsAttr(s){
   return v;
 }
 function uid(){ return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+/* Mesma logica de merge de grupoVinculoId usada em App.saveProtocolo, extraida para uso
+   fora do formulario (painel de vinculo dedicado — 5b), onde o protocolo de origem ja
+   existe em state.protocolos. Nao reaproveitada DENTRO de saveProtocolo para nao mexer
+   num fluxo ja testado (la o payload ainda nao esta no array no momento do merge). */
+function applyVinculoManual(protocoloId, selectedIdsRaw){
+  var original = state.protocolos.filter(function(p){ return p.id===protocoloId; })[0];
+  if(!original) return;
+  var selectedVinculoIds = selectedIdsRaw.filter(function(vid){ return vid!==protocoloId; });
+  var previousGroupId = original.grupoVinculoId;
+  var previousMemberIds = previousGroupId ? state.protocolos.filter(function(p){ return p.grupoVinculoId===previousGroupId && p.id!==protocoloId; }).map(function(p){return p.id;}) : [];
+  var removedIds = previousMemberIds.filter(function(id){ return selectedVinculoIds.indexOf(id)===-1; });
+  var candidateGroupIds = [];
+  var finalGroupId = null;
+
+  if(selectedVinculoIds.length){
+    var keepsAnOriginalMember = previousGroupId && selectedVinculoIds.some(function(id){ return previousMemberIds.indexOf(id)!==-1; });
+    if(keepsAnOriginalMember) candidateGroupIds.push(previousGroupId);
+    selectedVinculoIds.forEach(function(vid){
+      var vp = state.protocolos.filter(function(p){ return p.id===vid; })[0];
+      if(vp && vp.grupoVinculoId && candidateGroupIds.indexOf(vp.grupoVinculoId)===-1) candidateGroupIds.push(vp.grupoVinculoId);
+    });
+    finalGroupId = candidateGroupIds.length ? candidateGroupIds[0] : uid();
+  }
+
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===protocoloId){ p.grupoVinculoId = finalGroupId; return p; }
+    if(finalGroupId && selectedVinculoIds.indexOf(p.id)!==-1){ p.grupoVinculoId = finalGroupId; return p; }
+    if(finalGroupId && candidateGroupIds.length>1 && candidateGroupIds.indexOf(p.grupoVinculoId)!==-1){ p.grupoVinculoId = finalGroupId; return p; }
+    if(removedIds.indexOf(p.id)!==-1){ p.grupoVinculoId = null; return p; }
+    return p;
+  });
+}
 function removeAccents(str){ return str.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
 function slugify(str){
   return removeAccents(str).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'status';
@@ -1287,6 +1341,45 @@ App.desvincularGrupo = function(grupoId){
   saveState();
   if(diariosGrupoId===grupoId) diariosGrupoId = null;
   App.render();
+};
+
+/* ---- Painel de vinculo dedicado (5b), aberto direto da ficha ---- */
+App.abrirPainelVinculo = function(id){
+  var p = state.protocolos.filter(function(x){ return x.id===id; })[0];
+  if(!p) return;
+  vinculoPanelFor = id;
+  vinculoPanelSearch = '';
+  var pre = {};
+  getVinculados(p).forEach(function(v){ pre[v.id]=true; });
+  vinculoPanelSelected = pre;
+  vinculoPanelDispensados = {};
+  modalJustOpened = true;
+  App.render();
+};
+App.fecharPainelVinculo = function(){
+  vinculoPanelFor = null;
+  App.render();
+};
+App.setVinculoPanelSearch = function(v){
+  vinculoPanelSearch = v;
+  App.render();
+};
+App.toggleVinculoPanelSelecao = function(id){
+  if(vinculoPanelSelected[id]) delete vinculoPanelSelected[id]; else vinculoPanelSelected[id]=true;
+  App.render();
+};
+App.dispensarSugestaoVinculo = function(id){
+  vinculoPanelDispensados[id] = true;
+  App.render();
+};
+App.confirmarVinculoPainel = function(){
+  var ids = Object.keys(vinculoPanelSelected);
+  var protocoloId = vinculoPanelFor;
+  applyVinculoManual(protocoloId, ids);
+  saveState();
+  vinculoPanelFor = null;
+  App.render();
+  App.showToast('Vínculo atualizado.');
 };
 App.toggleDocumentosView = function(id){
   var opening = !documentosAbertos[id];
@@ -2209,7 +2302,8 @@ function renderAll(){
     (settingsOpen ? renderSettingsModal() : '') +
     (clienteHistoryModal ? renderClienteHistoryModal() : '') +
     (dailyReportOpen ? renderDailyReportModal() : '')+
-    (atosBalcaoModalOpen ? renderAtosBalcaoModal() : '');
+    (atosBalcaoModalOpen ? renderAtosBalcaoModal() : '')+
+    (vinculoPanelFor ? renderPainelVinculo() : '');
   app.innerHTML = html;
   justOpenedKey = null;
   justCreatedId = null;
@@ -2551,6 +2645,7 @@ function renderFicha(p, dentroDeGrupo){
         '<select class="chip-status" style="background:var(--'+st.cor+'-soft);color:var(--'+st.cor+');" onchange="App.changeStatusQuick(\''+p.id+'\', this.value)" title="Mudar status">'+statusOptions+'</select>'+
         (canais ? '<span class="cp-canais">'+esc(canais)+'</span>' : '')+
         '<span class="cp-acoes">'+
+          '<button class="ib28" title="Vincular a outro protocolo" onclick="App.abrirPainelVinculo(\''+p.id+'\')">&#128279;</button>'+
           '<button class="ib28" title="Imprimir ficha" onclick="App.printFicha(\''+p.id+'\')">&#9113;</button>'+
           '<button class="ib28" title="Editar" onclick="App.openEdit(\''+p.id+'\')">&#9998;</button>'+
           '<button class="ib28" title="Excluir" onclick="App.deleteProtocolo(\''+p.id+'\')">&times;</button>'+
@@ -2674,6 +2769,112 @@ function renderDiariosLadoALado(){
   '</div>'+
   '<div class="diarios-grid">'+colsHtml+'</div>';
 }
+
+/* ---- Painel de vinculo dedicado (5b) ---- */
+function computeSugestoesVinculoPanel(p){
+  if(!p.cliente || !p.cliente.trim()) return [];
+  var nomeNorm = p.cliente.trim().toLowerCase();
+  return state.protocolos.filter(function(x){
+    return x.id!==p.id && !x.naLixeira && (x.cliente||'').trim().toLowerCase()===nomeNorm && !vinculoPanelDispensados[x.id];
+  });
+}
+function computeBuscaVinculoPanel(p, query){
+  var q = query.trim().toLowerCase();
+  if(!q) return [];
+  return state.protocolos.filter(function(x){
+    if(x.id===p.id || x.naLixeira) return false;
+    var hay = ((x.cliente||'')+' '+(x.numeroProtocolo||'')).toLowerCase();
+    return hay.indexOf(q)!==-1;
+  }).slice(0,10);
+}
+function renderLinhaVinculoPanel(x, motivo){
+  var st = getStatusOf(x);
+  var checked = !!vinculoPanelSelected[x.id];
+  return ''+
+  '<div class="vp-linha'+(checked?' sel':'')+'">'+
+    '<div class="vp-check'+(checked?' on':'')+'" onclick="App.toggleVinculoPanelSelecao(\''+x.id+'\')">'+(checked?'&#10003;':'')+'</div>'+
+    '<div style="min-width:0;">'+
+      '<div class="vp-linha-top">'+
+        '<span class="vp-num">'+(x.numeroProtocolo?('nº '+esc(x.numeroProtocolo)):'sem nº')+'</span>'+
+        '<span class="chip-status" style="cursor:default;background:var(--'+st.cor+'-soft);color:var(--'+st.cor+');font-size:10.5px;padding:3px 9px;"><span class="pt" style="background:var(--'+st.cor+');"></span>'+esc(st.label)+'</span>'+
+        '<div style="flex:1"></div>'+
+        '<span class="vp-quando">'+esc(formatBR(x.dataProtocolo))+'</span>'+
+      '</div>'+
+      '<div class="vp-tipo">'+((x.tipos&&x.tipos.length)?esc(x.tipos.join(' · ')):'sem tipo de ato')+'</div>'+
+      (motivo ? ('<div class="vp-motivo-row"><span class="vp-motivo">'+esc(motivo)+'</span><div style="flex:1"></div><button type="button" class="vp-dispensar" onclick="event.stopPropagation();App.dispensarSugestaoVinculo(\''+x.id+'\')">não é a mesma pessoa</button></div>') : '')+
+    '</div>'+
+  '</div>';
+}
+function renderPainelVinculo(){
+  var p = state.protocolos.filter(function(x){ return x.id===vinculoPanelFor; })[0];
+  if(!p) return '';
+  /* Membros JA vinculados (antes de qualquer alteracao nesta sessao do painel) tem
+     sua propria secao, sempre visivel — sem isso, um membro do grupo que nao
+     compartilha o nome (e por isso nao aparece em "sugestoes") ficaria contando no
+     total de selecionados sem nenhuma linha visivel pra explicar quem e. */
+  var jaVinculados = getVinculados(p);
+  var jaVinculadosIds = {};
+  jaVinculados.forEach(function(v){ jaVinculadosIds[v.id]=true; });
+
+  var sugestoes = computeSugestoesVinculoPanel(p).filter(function(x){ return !jaVinculadosIds[x.id]; });
+  var sugestoesIds = {};
+  sugestoes.forEach(function(s){ sugestoesIds[s.id]=true; });
+  var q = vinculoPanelSearch.trim();
+  var buscaResultados = q ? computeBuscaVinculoPanel(p, q).filter(function(x){ return !sugestoesIds[x.id] && !jaVinculadosIds[x.id]; }) : [];
+
+  var jaVinculadosHtml = jaVinculados.map(function(x){ return renderLinhaVinculoPanel(x, null); }).join('');
+  var sugestoesHtml = sugestoes.map(function(x){ return renderLinhaVinculoPanel(x, 'nome idêntico'); }).join('');
+  var buscaHtml = buscaResultados.length
+    ? buscaResultados.map(function(x){ return renderLinhaVinculoPanel(x, null); }).join('')
+    : (q ? '<div class="fm-hint">Nenhum protocolo encontrado.</div>' : '');
+
+  var qtdSelecionados = Object.keys(vinculoPanelSelected).length;
+
+  return ''+
+  '<div class="side-overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.fecharPainelVinculo()">'+
+    '<div class="side-panel w-520'+(modalJustOpened?' entering':'')+'">'+
+      '<div class="side-panel-head">'+
+        '<div class="fm-label" style="margin-bottom:3px;">'+(p.numeroProtocolo?('nº '+esc(p.numeroProtocolo)+' · '):'')+esc(p.cliente||'Sem identificação')+'</div>'+
+        '<h2 style="margin:0;">Vincular protocolos</h2>'+
+        '<div class="fm-hint" style="margin-top:5px;">O vínculo é só para ver junto — não altera status, prazo nem numeração de nenhum protocolo.</div>'+
+      '</div>'+
+      '<div class="side-panel-body">'+
+        '<div class="vp-search-wrap">'+
+          '<span class="search-icon">&#8981;</span>'+
+          '<input type="text" class="fm-input" style="padding-left:30px;" placeholder="Buscar por nome ou nº de protocolo…" value="'+esc(vinculoPanelSearch)+'" oninput="App.setVinculoPanelSearch(this.value)">'+
+        '</div>'+
+        (jaVinculados.length ? (
+          '<div style="margin-top:16px;">'+
+            '<div class="vp-sec-head"><span class="fm-sec-label">Já vinculados</span></div>'+
+            '<div style="display:flex;flex-direction:column;gap:8px;">'+jaVinculadosHtml+'</div>'+
+          '</div>'
+        ) : '')+
+        (sugestoes.length ? (
+          '<div style="margin-top:16px;">'+
+            '<div class="vp-sec-head"><span class="fm-sec-label">Sugestões pelo nome</span><span class="vp-sec-hint">'+sugestoes.length+' encontrada'+(sugestoes.length>1?'s':'')+' &middot; nada é vinculado automaticamente</span></div>'+
+            '<div style="display:flex;flex-direction:column;gap:8px;">'+sugestoesHtml+'</div>'+
+          '</div>'
+        ) : '')+
+        (q ? (
+          '<div style="margin-top:16px;">'+
+            '<div class="vp-sec-head"><span class="fm-sec-label">Resultados da busca</span></div>'+
+            '<div style="display:flex;flex-direction:column;gap:8px;">'+buscaHtml+'</div>'+
+          '</div>'
+        ) : '')+
+        '<div class="vp-nota">Dispensar uma sugestão só esconde aquele par — o protocolo continua na lista normalmente e pode ser vinculado depois pela busca.</div>'+
+      '</div>'+
+      '<div class="side-panel-foot">'+
+        '<span class="side-esc-hint">'+qtdSelecionados+' selecionado'+(qtdSelecionados===1?'':'s')+'</span>'+
+        '<div style="flex:1"></div>'+
+        '<div class="side-panel-foot-right">'+
+          '<button class="btn-ghost" onclick="App.fecharPainelVinculo()">Cancelar</button>'+
+          '<button class="btn btn-primary" onclick="App.confirmarVinculoPainel()">Vincular</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
 function renderListArea(){
   if(diariosGrupoId){
     return renderDiariosLadoALado();
@@ -3466,6 +3667,7 @@ document.addEventListener('keydown', function(e){
   var typing = t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.tagName==='SELECT' || t.isContentEditable);
   if(e.key==='Escape'){
     if(draftModal){ App.closeModal(); }
+    else if(vinculoPanelFor){ App.fecharPainelVinculo(); }
     else if(settingsOpen){ App.closeSettings(); }
     else if(clienteHistoryModal){ App.closeClienteHistory(); }
     else if(dailyReportOpen){ App.closeDailyReport(); }
@@ -3476,7 +3678,7 @@ document.addEventListener('keydown', function(e){
     return;
   }
   if(typing || e.metaKey || e.ctrlKey || e.altKey) return;
-  if(draftModal || settingsOpen || clienteHistoryModal || dailyReportOpen || atosBalcaoModalOpen) return;
+  if(draftModal || vinculoPanelFor || settingsOpen || clienteHistoryModal || dailyReportOpen || atosBalcaoModalOpen) return;
   if(e.key==='n' || e.key==='N'){ e.preventDefault(); App.openNew(); }
   else if(e.key==='/'){ e.preventDefault(); var s=document.getElementById('searchInput'); if(s){ s.focus(); s.select(); } }
 });
