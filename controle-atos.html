@@ -1333,11 +1333,21 @@ function slugify(str){
   return removeAccents(str).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'status';
 }
 
+/* Containers com rolagem propria que sobrevivem (por seletor, nao por referencia —
+   o no antigo e destruido no re-render) a uma passada de renderAll(): o modal antigo
+   (Configuracoes/Historico do cliente/Relatorio do dia), o corpo do painel lateral e
+   as duas colunas da edicao em grade. So existe no maximo um de cada por vez. */
+var SCROLL_CONTAINER_SELECTORS = ['.overlay', '.side-panel-body', '.fm-edit-col-left', '.fm-edit-col-right'];
 function withFocus(fn){
   var active = document.activeElement;
   var id = active && active.id;
   var start = (active && typeof active.selectionStart==='number') ? active.selectionStart : null;
   var end = (active && typeof active.selectionEnd==='number') ? active.selectionEnd : null;
+  var winScrollY = window.scrollY;
+  var scrollPositions = SCROLL_CONTAINER_SELECTORS.map(function(sel){
+    var el = document.querySelector(sel);
+    return el ? el.scrollTop : null;
+  });
   fn();
   if(id){
     var el = document.getElementById(id);
@@ -1346,6 +1356,12 @@ function withFocus(fn){
       if(start!=null && el.setSelectionRange){ try{ el.setSelectionRange(start,end); }catch(e){} }
     }
   }
+  SCROLL_CONTAINER_SELECTORS.forEach(function(sel, i){
+    if(scrollPositions[i]==null) return;
+    var el = document.querySelector(sel);
+    if(el) el.scrollTop = scrollPositions[i];
+  });
+  window.scrollTo(0, winScrollY);
 }
 
 /* ===================== App ===================== */
