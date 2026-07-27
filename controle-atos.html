@@ -672,6 +672,19 @@ select.sortsel{
 .ab-strip-ver-semana{border:none;background:none;color:var(--tinta-media-2);font-size:11.5px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}
 .ab-strip-ver-semana:hover{color:var(--ink);}
 
+.agenda-strip-wrap{margin-bottom:14px;}
+.agenda-strip{display:flex;align-items:center;gap:10px;background:var(--apoio);padding:12px 20px;border-radius:var(--r-card);flex-wrap:wrap;}
+.agenda-chip{border:1px solid var(--borda-forte);background:var(--painel);color:var(--tinta-media-2);border-radius:var(--r-chip);padding:6px 13px;font:500 12px var(--font-body);cursor:pointer;white-space:nowrap;}
+.agenda-chip:hover{border-color:var(--ink);}
+.agenda-chip.active{background:var(--ink);color:var(--painel);border-color:var(--ink);font-weight:600;}
+.agenda-chip-num{font-family:var(--font-mono);font-weight:700;}
+.agenda-strip-painel{background:var(--ficha);border:1px solid var(--borda-forte);border-top:none;border-radius:0 0 var(--r-card) var(--r-card);margin-top:-14px;padding:12px 20px 14px;display:flex;flex-direction:column;gap:8px;}
+.agenda-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--divisor-suave);}
+.agenda-row:last-child{border-bottom:none;}
+.agenda-row-nome{font-weight:600;color:var(--tinta-media);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+.agenda-row-desc{color:var(--tinta-media-2);flex:1;min-width:120px;}
+.agenda-row-meta{font-family:var(--font-mono);font-size:11px;color:var(--apagado);white-space:nowrap;}
+
 /* ---------- Lixeira (7a) ---------- */
 .cp.lixeira{border-style:dashed;border-color:var(--borda-forte);background:var(--apoio-2);}
 .cp-lx-nome{font-family:var(--font-display);font-size:18px;font-weight:600;line-height:1.2;color:var(--tinta-media-2);text-decoration:line-through;text-decoration-color:#C9C2AD;}
@@ -887,7 +900,8 @@ var backupRunning = false;
 var ui = {
   search:'', statusFilter:'all', canalFilter:'all', pessoaFilter:'all',
   onlyOverdue:false, onlyDueToday:false, onlyPendingDocs:false,
-  sortBy:'prazo', viewMode:'lista', agruparPessoa:false, filtrosAbertos:false
+  sortBy:'prazo', viewMode:'lista', agruparPessoa:false, filtrosAbertos:false,
+  agendaFiltroAberto:null
 };
 var draftModal = null;
 var draftModalSnapshot = null;
@@ -912,6 +926,9 @@ var obsDraftEtiqueta = {};
 var obsEditando = {};
 var obsEditDraftText = {};
 var obsEditDraftEtiqueta = {};
+var pendenciasAbertos = {};
+var pendenciaConcluindoId = null;
+var pendenciaNotaDraft = '';
 var ETIQUETAS_OBS = [
   {key:'ligou', label:'ligou', viva:'#2C3E5C', suave:'#E3E8F1'},
   {key:'enviou_doc', label:'enviou doc', viva:'#1F6F66', suave:'#DCEDEA'},
@@ -985,6 +1002,7 @@ function migrate(raw){
     if(p.valorAto==null) p.valorAto=null;
     if(!p.documentosMarcados) p.documentosMarcados={};
     if(!p.documentosExtras) p.documentosExtras=[];
+    if(!p.pendencias) p.pendencias=[];
     if(!p.tipos) p.tipos=[];
     if(!p.canais){ p.canais = p.canal ? [p.canal] : ['balcao']; }
     if(!p.observacoesHistorico){
@@ -1335,6 +1353,32 @@ function needsDigitalizacaoGate(p){
 function getVinculados(p){
   if(!p.grupoVinculoId) return [];
   return state.protocolos.filter(function(x){ return x.grupoVinculoId===p.grupoVinculoId && x.id!==p.id && !x.naLixeira; });
+}
+
+/* ===================== Agenda de pendencias ===================== */
+function pendenciasPendentes(p){
+  return (p.pendencias||[]).filter(function(x){ return x.situacao==='pendente'; });
+}
+/* Agrupa as pendencias pendentes de todos os protocolos ativos (fora da lixeira) em
+   4 baldes pra visao compacta da agenda. "Sem proximo passo" = protocolo ativo (nao
+   arquivado, nao na lixeira) sem NENHUMA pendencia pendente, mesmo que ja tenha
+   concluida/cancelada no historico. */
+function computeAgendaBuckets(){
+  var hoje = todayISO();
+  var limite7 = toISO(addDays(new Date(), 7));
+  var vencidas=[], hojeList=[], semana=[], semProximo=[];
+  state.protocolos.forEach(function(p){
+    if(p.naLixeira) return;
+    pendenciasPendentes(p).forEach(function(pd){
+      if(pd.dataPrevista < hoje) vencidas.push({p:p, pd:pd});
+      else if(pd.dataPrevista === hoje) hojeList.push({p:p, pd:pd});
+      else if(pd.dataPrevista <= limite7) semana.push({p:p, pd:pd});
+    });
+    if(!isArquivado(p) && pendenciasPendentes(p).length===0) semProximo.push(p);
+  });
+  vencidas.sort(function(a,b){ return a.pd.dataPrevista<b.pd.dataPrevista?-1:1; });
+  semana.sort(function(a,b){ return a.pd.dataPrevista<b.pd.dataPrevista?-1:1; });
+  return {vencidas:vencidas, hoje:hojeList, semana:semana, semProximo:semProximo};
 }
 
 function computePrazo(p){
@@ -2160,6 +2204,113 @@ App.confirmarCorrecaoObs = function(protocoloId){
   App.render();
 };
 
+/* ---- Agenda de pendencias (por protocolo) ----
+   Nunca mistura com observacoesHistorico/historico de status - fica em p.pendencias,
+   cada uma com seu proprio historico de transicoes (pendente/concluida/cancelada). */
+App.pendenciaInlineOpen = {};
+App.togglePendenciasView = function(id){
+  var opening = !pendenciasAbertos[id];
+  pendenciasAbertos[id] = opening;
+  if(opening) justOpenedKey='pend:'+id;
+  App.render();
+};
+App.showPendenciaField = function(id){ App.pendenciaInlineOpen[id]=true; justOpenedKey='pendadd:'+id; App.render(); };
+App.cancelarPendenciaInline = function(id){
+  App.pendenciaInlineOpen[id] = false;
+  App.render();
+};
+App.addPendencia = function(id){
+  var descEl = document.getElementById('pendDesc_'+id);
+  var dataEl = document.getElementById('pendData_'+id);
+  var respEl = document.getElementById('pendResp_'+id);
+  var descricao = descEl ? descEl.value.trim() : '';
+  var dataPrevista = dataEl ? dataEl.value : '';
+  var responsavel = respEl ? respEl.value : '';
+  if(!descricao || !dataPrevista) return;
+  var nova = {
+    id: uid(), descricao: descricao, dataPrevista: dataPrevista, responsavel: responsavel,
+    situacao: 'pendente', notaConclusao: null,
+    historico: [{situacao:'pendente', ts:Date.now(), nota:null}],
+    createdAt: Date.now()
+  };
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id){ p.pendencias = p.pendencias || []; p.pendencias.push(nova); }
+    return p;
+  });
+  saveState();
+  App.pendenciaInlineOpen[id] = false;
+  App.render();
+};
+App.iniciarConcluirPendencia = function(pendId){
+  pendenciaConcluindoId = pendId;
+  pendenciaNotaDraft = '';
+  App.render();
+};
+App.updatePendenciaNotaDraft = function(v){ pendenciaNotaDraft = v; };
+App.cancelarConcluirPendencia = function(){
+  pendenciaConcluindoId = null;
+  pendenciaNotaDraft = '';
+  App.render();
+};
+App.confirmarConcluirPendencia = function(protocoloId, pendId){
+  var nota = (pendenciaNotaDraft||'').trim() || null;
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===protocoloId){
+      p.pendencias = (p.pendencias||[]).map(function(pd){
+        if(pd.id===pendId){
+          pd.situacao = 'concluida';
+          pd.notaConclusao = nota;
+          pd.historico.push({situacao:'concluida', ts:Date.now(), nota:nota});
+        }
+        return pd;
+      });
+    }
+    return p;
+  });
+  saveState();
+  pendenciaConcluindoId = null;
+  pendenciaNotaDraft = '';
+  App.render();
+};
+App.cancelarPendencia = function(protocoloId, pendId){
+  if(!window.confirm('Cancelar esta pendência?')) return;
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===protocoloId){
+      p.pendencias = (p.pendencias||[]).map(function(pd){
+        if(pd.id===pendId){
+          pd.situacao = 'cancelada';
+          pd.historico.push({situacao:'cancelada', ts:Date.now(), nota:null});
+        }
+        return pd;
+      });
+    }
+    return p;
+  });
+  saveState();
+  App.render();
+};
+App.reabrirPendencia = function(protocoloId, pendId){
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===protocoloId){
+      p.pendencias = (p.pendencias||[]).map(function(pd){
+        if(pd.id===pendId){
+          pd.situacao = 'pendente';
+          pd.notaConclusao = null;
+          pd.historico.push({situacao:'pendente', ts:Date.now(), nota:null});
+        }
+        return pd;
+      });
+    }
+    return p;
+  });
+  saveState();
+  App.render();
+};
+App.toggleAgendaFiltro = function(key){
+  ui.agendaFiltroAberto = (ui.agendaFiltroAberto===key) ? null : key;
+  App.render();
+};
+
 /* ---- Kanban drag and drop ---- */
 App.dragStart = function(ev, id){
   ev.dataTransfer.setData('text/plain', id);
@@ -2975,6 +3126,70 @@ function renderDocumentosChecklist(p){
   '</div></div>';
 }
 
+/* Agenda de pendencias/proximos passos, por protocolo - widget colapsavel igual ao do
+   checklist, direto no card da ficha. Nunca mistura com observacoes/historico de
+   status (secoes separadas, cada uma com seu proprio toggle). */
+function renderPendenciasFicha(p){
+  var lista = p.pendencias || [];
+  var pendentes = pendenciasPendentes(p);
+  var isOpen = pendenciasAbertos[p.id];
+  var toggle = '<button class="hist-toggle" onclick="App.togglePendenciasView(\''+p.id+'\')">'+(isOpen?'Ocultar agenda':'Agenda ('+pendentes.length+' pendente'+(pendentes.length!==1?'s':'')+')')+'</button>';
+  if(!isOpen) return '<div style="margin-top:8px;">'+toggle+'</div>';
+  var situLabel = {pendente:'pendente', concluida:'concluída', cancelada:'cancelada'};
+  var situCor = {pendente:'var(--ink)', concluida:'var(--stamp-green,#3E6B4B)', cancelada:'var(--ink-soft,#9A9587)'};
+  var rows = lista.slice().sort(function(a,b){
+    if(a.situacao==='pendente' && b.situacao!=='pendente') return -1;
+    if(a.situacao!=='pendente' && b.situacao==='pendente') return 1;
+    if(a.situacao==='pendente') return a.dataPrevista<b.dataPrevista?-1:1;
+    return b.createdAt-a.createdAt;
+  }).map(function(pd){
+    var respTxt = pd.responsavel ? esc(pd.responsavel) : '—';
+    var acoes;
+    if(pd.situacao==='pendente'){
+      if(pendenciaConcluindoId===pd.id){
+        acoes = '<div style="margin-top:4px;">'+
+          '<textarea placeholder="Nota opcional…" oninput="App.updatePendenciaNotaDraft(this.value)" style="width:100%;min-height:36px;padding:5px 7px;border:1px solid var(--line);border-radius:3px;font-size:12px;font-family:var(--font-body);">'+esc(pendenciaNotaDraft)+'</textarea>'+
+          '<div style="display:flex;gap:6px;margin-top:4px;">'+
+            '<button class="btn-ghost outlined" onclick="App.confirmarConcluirPendencia(\''+p.id+'\',\''+pd.id+'\')">Confirmar conclusão</button>'+
+            '<button class="btn-ghost" onclick="App.cancelarConcluirPendencia()">Cancelar</button>'+
+          '</div>'+
+        '</div>';
+      }else{
+        acoes = '<button class="btn-ghost outlined" onclick="App.iniciarConcluirPendencia(\''+pd.id+'\')">Concluir</button> <button class="btn-ghost" onclick="App.cancelarPendencia(\''+p.id+'\',\''+pd.id+'\')">Cancelar</button>';
+      }
+    }else{
+      acoes = '<button class="btn-ghost" onclick="App.reabrirPendencia(\''+p.id+'\',\''+pd.id+'\')">Reabrir</button>';
+    }
+    return '<div class="hist-row" style="display:block;">'+
+      '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">'+
+        '<strong style="font-weight:600;">'+esc(pd.descricao)+'</strong>'+
+        '<span style="color:var(--ink-soft,#888);font-size:11.5px;">'+esc(formatBR(pd.dataPrevista))+' · '+respTxt+'</span>'+
+        '<span style="color:'+situCor[pd.situacao]+';font-size:11px;font-weight:600;">'+situLabel[pd.situacao]+'</span>'+
+      '</div>'+
+      (pd.situacao==='concluida' && pd.notaConclusao ? '<div style="font-size:11.5px;color:var(--ink-soft,#888);margin-top:2px;">nota: '+esc(pd.notaConclusao)+'</div>' : '')+
+      '<div style="margin-top:4px;">'+acoes+'</div>'+
+    '</div>';
+  }).join('') || '<div class="hint">Nenhuma pendência registrada ainda.</div>';
+  var addUi;
+  if(App.pendenciaInlineOpen[p.id]){
+    var respOptions = '<option value="">— Responsável —</option>'+state.responsaveis.map(function(r){ return '<option value="'+esc(r)+'">'+esc(r)+'</option>'; }).join('');
+    addUi = '<div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">'+
+      '<input type="text" id="pendDesc_'+p.id+'" placeholder="Descrição (ex.: Cobrar matrícula atualizada)" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;font-family:var(--font-body);">'+
+      '<div style="display:flex;gap:6px;">'+
+        '<input type="date" id="pendData_'+p.id+'" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+
+        '<select id="pendResp_'+p.id+'" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+respOptions+'</select>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;">'+
+        '<button class="btn-ghost outlined" onclick="App.addPendencia(\''+p.id+'\')">Adicionar pendência</button>'+
+        '<button class="btn-ghost" onclick="App.cancelarPendenciaInline(\''+p.id+'\')">Cancelar</button>'+
+      '</div>'+
+    '</div>';
+  }else{
+    addUi = '<button class="btn-ghost" onclick="App.showPendenciaField(\''+p.id+'\')">+ Adicionar pendência</button>';
+  }
+  return '<div style="margin-top:8px;">'+toggle+'<div class="hist-box'+(justOpenedKey==='pend:'+p.id?' anim-in':'')+'">'+rows+'<div style="margin-top:6px;">'+addUi+'</div></div></div>';
+}
+
 function renderLixeiraItem(p){
   var st = getStatusOf(p);
   var dataExcStr = p.dataExclusao ? formatBR(toISO(new Date(p.dataExclusao))) : '';
@@ -3112,6 +3327,7 @@ function renderFicha(p, dentroDeGrupo){
       (dentroDeGrupo ? '' : renderVinculados(p))+
       renderTimelineFicha(p)+
       renderDocumentosChecklist(p)+
+      renderPendenciasFicha(p)+
     '</div>'+
     renderColunaPrazo(p)+
   '</div>';
@@ -3335,9 +3551,9 @@ function renderListArea(){
   if(diariosGrupoId){
     return renderDiariosLadoALado();
   }
-  /* Faixa rapida de atos de balcao (6b): so na visao Lista, pra nao abrir nada durante
-     o atendimento. Kanban/Arquivados/Lixeira ficam sem ela (fora de escopo/ruido). */
-  var stripHtml = (ui.viewMode==='lista') ? renderAtosBalcaoStrip() : '';
+  /* Faixas rapidas (agenda + atos de balcao): so na visao Lista, pra nao abrir nada
+     durante o atendimento. Kanban/Arquivados/Lixeira ficam sem elas (fora de escopo). */
+  var stripHtml = (ui.viewMode==='lista') ? (renderAgendaStrip()+renderAtosBalcaoStrip()) : '';
   if(state.protocolos.length===0){
     return stripHtml+'<div class="empty-state">'+
       '<div class="big">Nenhum protocolo registrado ainda</div>Clique em "+ Novo Protocolo" para começar o controle.'+
@@ -4250,6 +4466,54 @@ function renderAtosBalcaoModal(){
       '</div>'+
     '</div>'+
   '</div>';
+}
+
+/* ---- Agenda: faixa compacta no topo da lista com os 4 baldes (vencidas/hoje/
+   proximos 7 dias/sem proximo passo). Clicar num balde abre/fecha um painel com as
+   linhas daquele balde, sem abrir nenhum protocolo — so ao clicar no nome. ---- */
+function renderAgendaStrip(){
+  var buckets = computeAgendaBuckets();
+  var aberto = ui.agendaFiltroAberto;
+  function chip(key, label, qtd, corDestaque){
+    var ativo = aberto===key;
+    var corStyle = (corDestaque && qtd>0 && !ativo) ? ('color:'+corDestaque+';') : '';
+    return '<button type="button" class="agenda-chip'+(ativo?' active':'')+'" style="'+corStyle+'" onclick="App.toggleAgendaFiltro(\''+key+'\')"><span class="agenda-chip-num">'+qtd+'</span> '+esc(label)+'</button>';
+  }
+  var chipsHtml = ''+
+    chip('vencidas','vencidas',buckets.vencidas.length,'var(--carimbo,#8C2A20)')+
+    chip('hoje','hoje',buckets.hoje.length,'var(--gold,#A26A1C)')+
+    chip('semana','próx. 7 dias',buckets.semana.length,null)+
+    chip('semproximo','sem próximo passo',buckets.semProximo.length,null);
+  var painelHtml = aberto ? ('<div class="agenda-strip-painel no-print">'+renderAgendaPainel(aberto, buckets)+'</div>') : '';
+  return '<div class="agenda-strip-wrap no-print">'+
+    '<div class="agenda-strip">'+
+      '<span class="fm-label" style="margin-bottom:0;">agenda</span>'+
+      chipsHtml+
+    '</div>'+
+    painelHtml+
+  '</div>';
+}
+function renderAgendaPainel(tipo, buckets){
+  if(tipo==='semproximo'){
+    var lista = buckets.semProximo;
+    if(!lista.length) return '<div class="hint">Todos os protocolos ativos já têm um próximo passo agendado.</div>';
+    return lista.map(function(p){
+      return '<div class="agenda-row">'+
+        '<span class="agenda-row-nome" onclick="App.openEdit(\''+p.id+'\')">'+esc(p.cliente||'Sem identificação')+'</span>'+
+        '<span class="agenda-row-meta">'+(p.numeroProtocolo?('nº '+esc(p.numeroProtocolo)):'sem nº')+'</span>'+
+      '</div>';
+    }).join('');
+  }
+  var itens = buckets[tipo] || [];
+  if(!itens.length) return '<div class="hint">Nada por aqui.</div>';
+  return itens.map(function(it){
+    var p = it.p, pd = it.pd;
+    return '<div class="agenda-row">'+
+      '<span class="agenda-row-nome" onclick="App.openEdit(\''+p.id+'\')">'+esc(p.cliente||'Sem identificação')+'</span>'+
+      '<span class="agenda-row-desc">'+esc(pd.descricao)+'</span>'+
+      '<span class="agenda-row-meta">'+esc(formatBR(pd.dataPrevista))+(pd.responsavel?(' · '+esc(pd.responsavel)):'')+'</span>'+
+    '</div>';
+  }).join('');
 }
 
 /* ---- 6b: faixa rapida no topo da lista, sem abrir nada ---- */
