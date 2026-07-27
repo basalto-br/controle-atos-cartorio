@@ -838,8 +838,7 @@ var settingsOpen = false;
 var clienteHistoryModal = null;
 var dailyReportOpen = false;
 var atosBalcaoModalOpen = false;
-var historicoAbertos = {};
-var obsAbertos = {};
+var timelineFichaAbertos = {};
 var vinculadosAbertos = {};
 var diariosGrupoId = null;
 var vinculoPanelFor = null;
@@ -1426,9 +1425,9 @@ App.limparFiltros = function(){
   ui.statusFilter='all'; ui.canalFilter='all'; ui.pessoaFilter='all'; ui.agruparPessoa=false;
   App.render();
 };
-App.toggleHistorico = function(id){
-  var opening = !historicoAbertos[id];
-  historicoAbertos[id]=opening;
+App.toggleTimelineFicha = function(id){
+  var opening = !timelineFichaAbertos[id];
+  timelineFichaAbertos[id]=opening;
   if(opening) justOpenedKey='hist:'+id;
   App.render();
 };
@@ -1942,13 +1941,21 @@ App.marcarRascunhoDigitalizado = function(id){
 
 /* ---- Observações (histórico datado) ---- */
 App.obsInlineOpen = {};
-App.toggleObsView = function(id){
-  var opening = !obsAbertos[id];
-  obsAbertos[id]=opening;
-  if(opening) justOpenedKey='obs:'+id;
+App.showObsField = function(id){ App.obsInlineOpen[id]=true; justOpenedKey='obsadd:'+id; App.render(); };
+/* Cancela a caixa de nova observação da ficha da Lista (que abre/fecha por botao):
+   fecha e descarta o rascunho, sem salvar nada. */
+App.cancelarObsInline = function(id){
+  App.obsInlineOpen[id] = false;
+  delete obsDraftText[id];
   App.render();
 };
-App.showObsField = function(id){ App.obsInlineOpen[id]=true; justOpenedKey='obsadd:'+id; App.render(); };
+/* Cancela o rascunho da caixa de observação do painel de edição (que fica sempre
+   aberta, sem esconder/mostrar): so limpa o texto/etiqueta digitados. */
+App.cancelarObsDraft = function(id){
+  delete obsDraftText[id];
+  delete obsDraftEtiqueta[id];
+  App.render();
+};
 App.addObservacaoQuick = function(id){
   var ta = document.getElementById('obsnew_'+id);
   var texto = ta ? ta.value.trim() : '';
@@ -2698,40 +2705,56 @@ function renderFichaPrazo(p){
   return '<div class="prazo-info"><span class="prazo-text '+cls+'">'+esc(text)+'</span>'+renderDots(info)+'</div>';
 }
 
-function renderHistorico(p){
-  var isOpen = historicoAbertos[p.id];
+/* Junta historico de status + observacoes numa unica timeline cronologica (mais
+   recente primeiro), sem misturar os dados de origem — cada item so guarda uma
+   referencia ao registro original, nada e duplicado no state. Reaproveitado tanto
+   pelo card da ficha na Lista quanto pela coluna do painel de criar/editar. */
+function buildTimelineUnificada(p){
   var statusMap = getStatusMap();
-  var toggle = '<button class="hist-toggle" onclick="App.toggleHistorico(\''+p.id+'\')">'+(isOpen?'Ocultar histórico':'Ver histórico (' + p.historico.length + ')')+'</button>';
-  if(!isOpen) return toggle;
-  var rows = p.historico.map(function(h,idx){
-    var st = statusMap[h.status] || {label:h.status};
-    var d = new Date(h.ts);
-    var dstr = pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes());
-    var dur = '';
-    var endTs = (idx+1<p.historico.length) ? p.historico[idx+1].ts : Date.now();
+  var hist = p.historico || [];
+  var itensStatus = hist.map(function(h, idx){
+    var st = statusMap[h.status] || {label:h.status, cor:'gray'};
+    var endTs = (idx+1<hist.length) ? hist[idx+1].ts : Date.now();
     var diasCorridos = Math.max(0, Math.round((endTs-h.ts)/86400000));
-    dur = (idx+1<p.historico.length) ? (diasCorridos+' dia(s) nesta fase') : (diasCorridos+' dia(s) até agora');
-    return '<div class="hist-row"><span>'+esc(st.label)+'</span><span class="hd">'+esc(dstr)+' — '+dur+'</span></div>';
-  }).reverse().join('');
-  return toggle+'<div class="hist-box'+(justOpenedKey==='hist:'+p.id?' anim-in':'')+'">'+rows+'</div>';
+    var duracaoTxt = (idx+1<hist.length) ? (diasCorridos+' dia(s) nesta fase') : (diasCorridos+' dia(s) até agora');
+    return {tipo:'status', ts:h.ts, statusLabel:st.label, statusCor:st.cor, duracaoTxt:duracaoTxt};
+  });
+  var itensObs = (p.observacoesHistorico||[]).map(function(o){
+    return {tipo:'obs', ts:o.ts, obs:o};
+  });
+  return itensStatus.concat(itensObs).sort(function(a,b){ return b.ts-a.ts; });
 }
-
-function renderObservacoes(p){
-  var list = p.observacoesHistorico || [];
-  var isOpen = obsAbertos[p.id];
-  var toggle = list.length ? '<button class="hist-toggle" onclick="App.toggleObsView(\''+p.id+'\')">'+(isOpen?'Ocultar observações':'Ver observações (' + list.length + ')')+'</button>' : '';
+function renderTipoTagTimeline(tipo){
+  var isStatus = tipo==='status';
+  return '<span style="display:inline-block;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:3px;margin-right:5px;background:'+(isStatus?'#E7E4DA':'#E3E8F1')+';color:'+(isStatus?'#57544B':'#2C3E5C')+';">'+(isStatus?'status':'obs')+'</span>';
+}
+function renderTimelineFicha(p){
+  var itens = buildTimelineUnificada(p);
+  var isOpen = timelineFichaAbertos[p.id];
+  var toggle = itens.length ? '<button class="hist-toggle" onclick="App.toggleTimelineFicha(\''+p.id+'\')">'+(isOpen?'Ocultar histórico':'Ver histórico (' + itens.length + ')')+'</button>' : '';
   var box = '';
-  if(isOpen && list.length){
-    var rows = list.slice().reverse().map(function(o){
-      var d = new Date(o.ts);
+  if(isOpen && itens.length){
+    var rows = itens.map(function(it){
+      var d = new Date(it.ts);
       var dstr = pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes());
-      return '<div class="hist-row" style="display:block;"><div class="hd">'+esc(dstr)+'</div><div>'+esc(o.texto)+'</div></div>';
+      if(it.tipo==='status'){
+        return '<div class="hist-row"><span>'+renderTipoTagTimeline('status')+esc(it.statusLabel)+'</span><span class="hd">'+esc(dstr)+' — '+esc(it.duracaoTxt)+'</span></div>';
+      }
+      var o = it.obs;
+      var extras = (o.etiqueta?(' '+renderPilulaEtiqueta(o.etiqueta)):'')+(o.editadoEm?' <span style="font-size:10px;font-style:italic;color:var(--tinta-fraca,var(--ink-soft));">editado</span>':'');
+      return '<div class="hist-row" style="display:block;"><div class="hd">'+renderTipoTagTimeline('obs')+esc(dstr)+extras+'</div><div>'+esc(o.texto)+'</div></div>';
     }).join('');
-    box = '<div class="hist-box'+(justOpenedKey==='obs:'+p.id?' anim-in':'')+'">'+rows+'</div>';
+    box = '<div class="hist-box'+(justOpenedKey==='hist:'+p.id?' anim-in':'')+'">'+rows+'</div>';
   }
   var addUi;
   if(App.obsInlineOpen[p.id]){
-    addUi = '<div class="'+(justOpenedKey==='obsadd:'+p.id?'anim-in':'')+'" style="margin-top:6px;"><textarea id="obsnew_'+p.id+'" placeholder="Nova observação… (Enter salva, Shift+Enter quebra linha)" oninput="App.updateObsDraft(\''+p.id+'\', this.value)" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();App.addObservacaoQuick(\''+p.id+'\');}" style="width:100%;min-height:50px;padding:7px 9px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;font-family:var(--font-body);">'+esc(obsDraftText[p.id]||'')+'</textarea><button class="btn-ghost outlined" style="margin-top:4px;" onclick="App.addObservacaoQuick(\''+p.id+'\')">Salvar observação</button></div>';
+    addUi = '<div class="'+(justOpenedKey==='obsadd:'+p.id?'anim-in':'')+'" style="margin-top:6px;">'+
+      '<textarea id="obsnew_'+p.id+'" placeholder="Nova observação… (Enter salva, Shift+Enter quebra linha)" oninput="App.updateObsDraft(\''+p.id+'\', this.value)" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();App.addObservacaoQuick(\''+p.id+'\');}" style="width:100%;min-height:50px;padding:7px 9px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;font-family:var(--font-body);">'+esc(obsDraftText[p.id]||'')+'</textarea>'+
+      '<div style="display:flex;gap:8px;margin-top:4px;">'+
+        '<button class="btn-ghost outlined" onclick="App.addObservacaoQuick(\''+p.id+'\')">Salvar observação</button>'+
+        '<button class="btn-ghost" onclick="App.cancelarObsInline(\''+p.id+'\')">Cancelar</button>'+
+      '</div>'+
+    '</div>';
   }else{
     addUi = '<button class="btn-ghost" onclick="App.showObsField(\''+p.id+'\')">+ Adicionar observação</button>';
   }
@@ -2910,8 +2933,7 @@ function renderFicha(p, dentroDeGrupo){
       '</div>'+
       renderGateDigitalizacao(p)+
       (dentroDeGrupo ? '' : renderVinculados(p))+
-      renderObservacoes(p)+
-      renderHistorico(p)+
+      renderTimelineFicha(p)+
       renderDocumentosChecklist(p)+
     '</div>'+
     renderColunaPrazo(p)+
@@ -3324,25 +3346,6 @@ function renderPrazoLeituraHtml(original){
 
 /* ---- Coluna direita da edicao: Andamento (sempre visivel) + diario de observacoes
    (salva na hora, reusando App.addObservacaoQuick/updateObsDraft ja usados na ficha) ---- */
-function renderAndamentoColuna(p){
-  var statusMap = getStatusMap();
-  var rows = (p.historico||[]).slice().reverse().map(function(h){
-    var st = statusMap[h.status] || {label:h.status, cor:'gray'};
-    var dt = new Date(h.ts);
-    var dstr = pad(dt.getDate())+'/'+pad(dt.getMonth()+1)+'/'+dt.getFullYear()+' '+pad(dt.getHours())+':'+pad(dt.getMinutes());
-    return '<div style="display:flex;gap:9px;align-items:flex-start;">'+
-      '<span style="width:7px;height:7px;border-radius:50%;background:var(--'+st.cor+');margin-top:5px;flex-shrink:0;"></span>'+
-      '<div style="min-width:0;">'+
-        '<div style="font-size:12px;color:var(--ink);line-height:1.25;font-weight:500;">'+esc(st.label)+'</div>'+
-        '<div style="font-family:var(--font-mono);font-size:10px;color:var(--apagado);margin-top:1px;">'+esc(dstr)+'</div>'+
-      '</div>'+
-    '</div>';
-  }).join('');
-  return '<div class="fm-diario-bloco">'+
-    '<div class="fm-label" style="margin-bottom:10px;">Andamento</div>'+
-    '<div style="display:flex;flex-direction:column;gap:9px;">'+rows+'</div>'+
-  '</div>';
-}
 function renderEtiquetaChipsPicker(protocoloId, ativa, setterFnName){
   return '<div style="display:flex;gap:5px;flex-wrap:wrap;">'+ETIQUETAS_OBS.map(function(e){
     var on = ativa===e.key;
@@ -3357,12 +3360,22 @@ function renderPilulaEtiqueta(key){
   if(!e) return '';
   return '<span style="font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:10px;background:'+e.suave+';color:'+e.viva+';white-space:nowrap;">'+esc(e.label)+'</span>';
 }
-function renderObservacoesColuna(p){
-  var list = p.observacoesHistorico || [];
+function renderDiarioUnificado(p){
+  var itens = buildTimelineUnificada(p);
   var editandoTs = obsEditando[p.id]!=null ? obsEditando[p.id] : null;
-  var rows = list.slice().reverse().map(function(o){
-    var dt = new Date(o.ts);
+  var rows = itens.map(function(it){
+    var dt = new Date(it.ts);
     var dstr = pad(dt.getDate())+'/'+pad(dt.getMonth()+1)+'/'+dt.getFullYear()+' '+pad(dt.getHours())+':'+pad(dt.getMinutes());
+    if(it.tipo==='status'){
+      return '<div style="display:flex;gap:9px;align-items:flex-start;">'+
+        '<span style="width:7px;height:7px;border-radius:50%;background:var(--'+it.statusCor+');margin-top:5px;flex-shrink:0;"></span>'+
+        '<div style="min-width:0;">'+
+          '<div style="font-size:12px;color:var(--ink);line-height:1.25;font-weight:500;">'+esc(it.statusLabel)+'</div>'+
+          '<div style="font-family:var(--font-mono);font-size:10px;color:var(--apagado);margin-top:1px;">'+esc(dstr)+' — '+esc(it.duracaoTxt)+'</div>'+
+        '</div>'+
+      '</div>';
+    }
+    var o = it.obs;
     if(editandoTs===o.ts){
       return '<div style="border-left:2px solid var(--borda-forte);padding-left:10px;">'+
         '<div class="fm-obs-box">'+
@@ -3388,13 +3401,17 @@ function renderObservacoesColuna(p){
       '<div style="font-size:12px;line-height:1.45;color:var(--tinta-media);text-wrap:pretty;margin-top:3px;">'+esc(o.texto)+'</div>'+
     '</div>';
   }).join('');
+  var temDraft = !!((obsDraftText[p.id]||'').trim()) || !!obsDraftEtiqueta[p.id];
   return '<div class="fm-diario-bloco" style="flex:1;">'+
-    '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;"><span class="fm-label" style="margin-bottom:0;">Observações</span>'+(list.length?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--apagado-2);">'+list.length+'</span>':'')+'</div>'+
+    '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;"><span class="fm-label" style="margin-bottom:0;">Andamento e observações</span>'+(itens.length?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--apagado-2);">'+itens.length+'</span>':'')+'</div>'+
     '<div class="fm-obs-box">'+
       '<textarea id="obsnew_'+p.id+'" placeholder="Escrever observação…" oninput="App.updateObsDraft(\''+p.id+'\', this.value)" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();App.addObservacaoQuick(\''+p.id+'\');}">'+esc(obsDraftText[p.id]||'')+'</textarea>'+
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:7px;padding-top:7px;border-top:1px solid var(--divisor-suave);">'+
         renderEtiquetaChipsPicker(p.id, obsDraftEtiqueta[p.id]||null, 'setObsEtiquetaDraft')+
-        '<span style="font-family:var(--font-mono);font-size:9px;color:var(--apagado-2);white-space:nowrap;">Enter salva</span>'+
+        '<div style="display:flex;align-items:center;gap:10px;">'+
+          (temDraft?'<button type="button" style="border:none;background:none;color:var(--apagado-2);font-size:10.5px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:0;" onclick="App.cancelarObsDraft(\''+p.id+'\')">Cancelar</button>':'')+
+          '<span style="font-family:var(--font-mono);font-size:9px;color:var(--apagado-2);white-space:nowrap;">Enter salva</span>'+
+        '</div>'+
       '</div>'+
     '</div>'+
     '<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">'+rows+'</div>'+
@@ -3596,8 +3613,7 @@ function renderModal(){
             sec1Html+sec2Html+sec3Html+sec4Html+
           '</div>'+
           '<div class="fm-edit-col-right">'+
-            renderAndamentoColuna(original)+
-            renderObservacoesColuna(original)+
+            renderDiarioUnificado(original)+
           '</div>'+
         '</div>'+
         '<div class="side-panel-foot">'+
