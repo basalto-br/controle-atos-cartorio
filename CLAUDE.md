@@ -70,6 +70,10 @@ de cada ato. Está no plano Pro do Claude.
   de prazo.
 - **`atosBalcao`**: `{ 'YYYY-MM-DD': quantidade }` — contador simples de atos que não
   geram protocolo (atendimento só de balcão). Completamente separado dos protocolos.
+- **`atosBalcaoLancamentos`**: `{ 'YYYY-MM-DD': [{qtd, ts}, ...] }` — ao lado de
+  `atosBalcao`, guarda cada lançamento individual (pra "desfazer último lançamento" e
+  pra mostrar as pílulas com horário). Só incrementos **positivos** viram lançamento
+  aqui; correções com -1 ou edição direta do total não entram nessa lista.
 - **`documentosChecklist`** / `documentosMarcados` (por protocolo): **campo já existe no
   modelo de dados e na migração, mas a UI nunca foi construída** — é uma ideia
   (checklist de documentos específicos por tipo de ato, tipo "RG, CPF, comprovante de
@@ -93,7 +97,13 @@ de cada ato. Está no plano Pro do Claude.
 - **Vínculo entre protocolos** é manual (não por nome/CPF automático) — serve só para
   visualizar junto, não é um "processo" com identidade própria. A sugestão automática
   por nome do cliente é só um atalho pra facilitar o vínculo manual, nunca vincula
-  sozinha.
+  sozinha. A função `applyVinculoManual(protocoloId, selectedIdsRaw)` (chamada pelo
+  painel dedicado de vínculo) **duplica de propósito** a lógica de merge de
+  `grupoVinculoId` que já existe dentro de `App.saveProtocolo`, em vez de extrair um
+  helper compartilhado — no momento do merge dentro de `saveProtocolo` o payload ainda
+  não está em `state.protocolos`, o que tornaria um helper único arriscado de mexer
+  sem re-testar o fluxo de salvar já validado. Se for refatorar, testar os dois
+  caminhos (criar/editar com vínculo E o painel dedicado) separadamente.
 - **PF/PJ**: badge na ficha + filtro + opção de agrupar em seções — as três formas
   coexistem, nenhuma substitui a outra.
 - **Responsável** é sempre um só por protocolo (seleção única), nunca múltiplo.
@@ -122,6 +132,50 @@ de cada ato. Está no plano Pro do Claude.
 - Enter salva observação; Shift+Enter quebra linha.
 - Tipos de ato mais usados recentemente aparecem no topo da lista de seleção do
   formulário (não em Configurações, que mantém ordem original).
+- **Confirmação de ações destrutivas**: duas abordagens coexistem por design, não por
+  inconsistência. `window.confirm()` nativo continua em uso em pontos "de fora pra
+  dentro" (ex.: `App.deleteProtocolo` mover-para-lixeira, `App.desvincularGrupo`).
+  Já a Lixeira usa um cartão de confirmação inline (`.lx-confirm-card`, controlado por
+  `confirmandoExclusaoId` — guarda o id do protocolo ou o literal `'__todos__'` pra
+  "esvaziar tudo") porque excluir de vez é irreversível e merecia ficar visível no
+  contexto, não num popup do navegador. Ao introduzir uma nova ação destrutiva,
+  escolher conscientemente: se for reversível/já tem rede de segurança, `confirm()`
+  nativo basta; se for definitivo, preferir o padrão de cartão inline.
+
+### Sistema visual (redesign `design_handoff_protocolos`)
+
+Todas as 6 telas do app (Lista, Quadro/Kanban, Criar/Editar, Vínculo entre protocolos,
+Atos de balcão, Lixeira) passaram por um redesign visual completo, feito em fases e
+já 100% mesclado em `main`. A pasta `design_handoff_protocolos/` (README.md + o
+protótipo `Protocolos - Lista e Quadro.dc.html`) é a fonte da linguagem visual — útil
+como referência caso surjam dúvidas de intenção de design, mas o app já implementa
+tudo que estava especificado lá.
+
+- **Tokens CSS** (`:root`, topo do `<style>`): `--painel`, `--ficha`, `--apoio`,
+  `--apoio-2`, `--barra-filtros`, `--tinta-media`, `--tinta-media-2`, `--apagado`,
+  `--apagado-2`, `--carimbo`, `--borda`, `--borda-ficha`, `--borda-forte`,
+  `--borda-atraso`, `--trilho`, `--divisor-suave`, `--r-card`, `--r-field`,
+  `--r-chip`, `--r-selo`. Usar esses tokens (não cor hexadecimal solta) em qualquer
+  CSS novo dentro dessas telas, pra manter consistência com o resto.
+- **Container de painel lateral (`.side-overlay` + `.side-panel`)**: padrão
+  compartilhado por Criar/Editar, painel de vínculo dedicado e o painel de Atos de
+  balcão — desliza da direita, largura default 640px, com modificadores
+  `.w-440`/`.w-520`/`.w-1000` pras variações de largura. **Configurações, Histórico do
+  cliente e Relatório do dia continuam usando o `.overlay`/`.modal` antigo** (diálogo
+  centralizado) — isso foi deliberado, pra limitar o raio de mudança do redesign;
+  não converter essas três telas pro side-panel sem o usuário pedir.
+  `.segmented`/`.seg-btn` (antigo) permanece só nos toggles internos PF/PJ e
+  tipo-de-documento do formulário de criar/editar; o `.seg2`/`.seg2-btn` (novo) é
+  exclusivo do controle Lista/Quadro/Arquivados/Lixeira na Lista — são famílias
+  separadas de propósito, pra não colidir uma com a outra.
+- **Famílias de classe por tela**: `.regua*` (régua de números/stats no topo),
+  `.cp*` (cartão de ficha/protocolo na Lista, com modificador `.cp.lixeira`), `.selo`
+  e `.tag-atraso` (selos de status/atraso), `.chip-status`, `.kb-*` (cartões e colunas
+  do Kanban), `.fm-*` (campos do formulário de criar/editar — label, input, chip,
+  dropdown, disclosure, etc.), `.grp-*`/`.pill-vinculo`/`.diarios-*`/`.diario-*`
+  (agrupamento por vínculo e visão lado-a-lado), `.vp-*` (painel dedicado de vínculo),
+  `.ab-*` (Atos de balcão — modal e faixa/strip), `.lx-*`/`.cp-lx-*`/`.btn-lx-*`
+  (Lixeira). `.ib28` é um botão de ícone 28px reutilizado em várias telas.
 
 ## Armadilhas já encontradas (não reintroduzir)
 
@@ -141,12 +195,41 @@ de cada ato. Está no plano Pro do Claude.
    `animation:` direto numa classe CSS de algo que é recriado em toda renderização
    (fichas, cabeçalhos de grupo, cartões do kanban). Usar as flags de "um disparo só"
    citadas acima.
+4. **Falso positivo no dirty-check do painel de criar/editar** (`draftModalSnapshot` /
+   `isDraftDirty()`, usado pra confirmar antes de fechar com Esc/clique fora): se o
+   snapshot for tirado logo depois de montar `draftModal`, sem passar pela captura dos
+   campos de texto, valores padrão "fantasma" (ex.: data de hoje) só entram no
+   `draftModal` na primeira chamada de `captureModalTextFields()` — daí um Esc
+   imediato, sem nenhuma mudança real, aparentava "alterações não salvas". Corrigido
+   ao garantir a ordem `App.render()` → `captureModalTextFields()` → só então tirar o
+   snapshot (ver `App.openNew`/`App.openEdit`). Qualquer novo fluxo que abra o painel
+   precisa seguir essa mesma ordem.
+5. **Mesmo falso positivo ao expandir campos opcionais**: em `App.toggleCamposOpcionais`
+   (abertura rápida), revelar campos com valor padrão (nº/data do protocolo) disparava
+   o mesmo problema do item 4. Corrigido medindo `isDraftDirty()` **antes** de
+   expandir; depois de expandir+renderizar+capturar, só atualiza o snapshot se ainda
+   não estava sujo antes (preserva alteração real do usuário, absorve só o ruído dos
+   defaults recém-revelados).
 
 ## Fluxo de trabalho até aqui
 
-Todo o desenvolvimento foi feito por chat, com o Claude gerando o HTML inteiro,
-testando com Playwright (headless) antes de cada entrega, e publicando como artifact
-do Claude.ai. O usuário teve problemas recorrentes com o artifact publicado não
-puxar atualizações novas automaticamente (causa nunca confirmada — pode ser
-infraestrutura do Claude.ai) — por isso a migração para o Claude Code com repositório
-próprio no GitHub, buscando um fluxo mais confiável baseado em git/PR.
+O projeto começou publicado como artifact do Claude.ai, testado com Playwright antes
+de cada entrega. O usuário teve problemas recorrentes com o artifact publicado não
+puxar atualizações novas automaticamente (causa nunca confirmada) — por isso migrou
+pro Claude Code com repositório próprio no GitHub (`fabricio-lv/controle-atos-cartorio`),
+app servido pelo GitHub Pages, buscando um fluxo mais confiável baseado em git/PR.
+
+- **Ciclo de trabalho padrão**: `git checkout -b feat/xxx` → implementar/testar →
+  commit (mensagem detalhada em português, terminando com
+  `Co-Authored-By: Claude <modelo> <noreply@anthropic.com>`) → `git push -u origin
+  feat/xxx` → o usuário revisa/pede o PR e responde "mescla e continua" → checar se o
+  GitHub já mesclou (`git fetch origin`); se não, `git checkout main && git merge
+  --ff-only origin/feat/xxx && git push origin main` → faxina: apagar a branch local e
+  remota e confirmar que só `main` restou. Se um `git push` inesperadamente reportar
+  non-fast-forward, é sinal de que o GitHub já tem um merge commit que o repo local
+  não tem ainda — resolver com `git merge --ff-only origin/main` (nunca force-push).
+- **Teste manual/automatizado**: sem Node/Python/PHP disponíveis nesta máquina, o
+  servidor de desenvolvimento é um script PowerShell puro (`.claude/serve.ps1`,
+  configurado em `.claude/launch.json`, porta 8123). Testes de UI usam as ferramentas
+  de browser (`preview_start` → `navigate` → `javascript_exec`/`computer` →
+  `read_console_messages`) em vez de Playwright.
