@@ -373,7 +373,6 @@ select.sortsel{
 .fm-diario-bloco:last-child{border-bottom:none;}
 .fm-obs-box{border:1px solid var(--borda-forte);background:var(--ficha);border-radius:var(--r-field);padding:9px 11px;}
 .fm-obs-box textarea{width:100%;box-sizing:border-box;border:none;outline:none;background:transparent;resize:none;min-height:38px;color:var(--ink);font-family:var(--font-body);font-size:12px;line-height:1.5;padding:0;}
-.fm-obs-hint{font-family:var(--font-mono);font-size:9.5px;color:var(--apagado-2);border-top:1px solid var(--divisor-suave);padding-top:7px;margin-top:4px;}
 @media (max-width:760px){
   .side-panel-body.edit-grid{grid-template-columns:1fr;}
   .fm-edit-col-right{border-left:none;border-top:1px solid var(--borda-forte);}
@@ -846,7 +845,6 @@ var diariosGrupoId = null;
 var vinculoPanelFor = null;
 var vinculoPanelSearch = '';
 var vinculoPanelSelected = {};
-var vinculoPanelDispensados = {};
 var edicaoTotalBalcaoAberta = false;
 var confirmandoExclusaoId = null;
 var documentosAbertos = {};
@@ -854,6 +852,22 @@ var justOpenedKey = null;
 var justCreatedId = null;
 var justSwitchedView = false;
 var obsDraftText = {};
+var obsDraftEtiqueta = {};
+var obsEditando = {};
+var obsEditDraftText = {};
+var obsEditDraftEtiqueta = {};
+var ETIQUETAS_OBS = [
+  {key:'ligou', label:'ligou', viva:'#2C3E5C', suave:'#E3E8F1'},
+  {key:'enviou_doc', label:'enviou doc', viva:'#1F6F66', suave:'#DCEDEA'},
+  {key:'compareceu', label:'compareceu', viva:'#5B3A5C', suave:'#EEE2EE'},
+  {key:'aguard_retorno', label:'aguard. retorno', viva:'#A26A1C', suave:'#F2E4C9'}
+];
+function getEtiquetaObs(key){
+  return ETIQUETAS_OBS.filter(function(e){ return e.key===key; })[0] || null;
+}
+function chaveDispensaVinculo(idA, idB){
+  return idA<idB ? idA+'|'+idB : idB+'|'+idA;
+}
 var modalJustOpened = false;
 
 function defaultState(){
@@ -867,7 +881,8 @@ function defaultState(){
     feriadosExtras: [],
     feriadosMoveis: {carnaval:true, corpusChristi:true, sextaSanta:true},
     atosBalcao: {},
-    atosBalcaoLancamentos: {}
+    atosBalcaoLancamentos: {},
+    sugestoesDispensadas: {}
   };
 }
 
@@ -891,6 +906,7 @@ function migrate(raw){
   if(!s.feriadosMoveis) s.feriadosMoveis={carnaval:true,corpusChristi:true,sextaSanta:true};
   if(!s.atosBalcao) s.atosBalcao={};
   if(!s.atosBalcaoLancamentos) s.atosBalcaoLancamentos={};
+  if(!s.sugestoesDispensadas) s.sugestoesDispensadas={};
   s.protocolos = (s.protocolos||[]).map(function(p){
     if(!p.historico || !p.historico.length) p.historico=[{status:p.status, ts:p.createdAt||Date.now()}];
     if(!p.tipoPessoa) p.tipoPessoa='pf';
@@ -909,6 +925,11 @@ function migrate(raw){
     if(!p.observacoesHistorico){
       p.observacoesHistorico = (p.observacoes && p.observacoes.trim()) ? [{texto:p.observacoes.trim(), ts:p.createdAt||Date.now()}] : [];
     }
+    p.observacoesHistorico = p.observacoesHistorico.map(function(o){
+      if(o.etiqueta===undefined) o.etiqueta=null;
+      if(o.editadoEm===undefined) o.editadoEm=null;
+      return o;
+    });
     if(p.rascunhoDigitalizado===undefined){
       var stAtMigration = statusMapForMigration[p.status];
       if(stAtMigration && stAtMigration.isFinal){
@@ -1430,7 +1451,6 @@ App.abrirPainelVinculo = function(id){
   var pre = {};
   getVinculados(p).forEach(function(v){ pre[v.id]=true; });
   vinculoPanelSelected = pre;
-  vinculoPanelDispensados = {};
   modalJustOpened = true;
   App.render();
 };
@@ -1447,7 +1467,9 @@ App.toggleVinculoPanelSelecao = function(id){
   App.render();
 };
 App.dispensarSugestaoVinculo = function(id){
-  vinculoPanelDispensados[id] = true;
+  if(!vinculoPanelFor) return;
+  state.sugestoesDispensadas[chaveDispensaVinculo(vinculoPanelFor, id)] = true;
+  saveState();
   App.render();
 };
 App.confirmarVinculoPainel = function(){
@@ -1703,7 +1725,7 @@ App.saveProtocolo = function(){
   }
   var observacoesHistorico = original ? original.observacoesHistorico.slice() : [];
   var novaObs = (d.novaObservacao||'').trim();
-  if(novaObs) observacoesHistorico.push({texto:novaObs, ts:Date.now()});
+  if(novaObs) observacoesHistorico.push({texto:novaObs, ts:Date.now(), etiqueta:null, editadoEm:null});
   var payload = {
     id: d.id || uid(),
     numeroProtocolo:(d.numeroProtocolo||'').trim(),
@@ -1915,19 +1937,73 @@ App.addObservacaoQuick = function(id){
   var ta = document.getElementById('obsnew_'+id);
   var texto = ta ? ta.value.trim() : '';
   if(!texto) return;
+  var etiqueta = obsDraftEtiqueta[id] || null;
   state.protocolos = state.protocolos.map(function(p){
     if(p.id===id){
       p.observacoesHistorico = p.observacoesHistorico || [];
-      p.observacoesHistorico.push({texto:texto, ts:Date.now()});
+      p.observacoesHistorico.push({texto:texto, ts:Date.now(), etiqueta:etiqueta, editadoEm:null});
     }
     return p;
   });
   saveState();
   App.obsInlineOpen[id]=false;
   delete obsDraftText[id];
+  delete obsDraftEtiqueta[id];
   App.render();
 };
 App.updateObsDraft = function(id, v){ obsDraftText[id]=v; };
+App.setObsEtiquetaDraft = function(id, key){
+  obsDraftEtiqueta[id] = (obsDraftEtiqueta[id]===key) ? null : key;
+  App.render();
+};
+/* Corrigir uma observação já salva: nunca apaga, só edita texto/etiqueta e marca
+   editadoEm. Entrada identificada pelo próprio ts (surrogate key), só uma em edição
+   por protocolo de cada vez. */
+App.iniciarCorrecaoObs = function(protocoloId, ts){
+  var p = state.protocolos.filter(function(x){ return x.id===protocoloId; })[0];
+  if(!p) return;
+  var entry = (p.observacoesHistorico||[]).filter(function(o){ return o.ts===ts; })[0];
+  if(!entry) return;
+  obsEditando[protocoloId] = ts;
+  obsEditDraftText[protocoloId] = entry.texto;
+  obsEditDraftEtiqueta[protocoloId] = entry.etiqueta || null;
+  App.render();
+  var ta = document.getElementById('obsedit_'+protocoloId);
+  if(ta) ta.focus();
+};
+App.updateObsEditDraft = function(id, v){ obsEditDraftText[id]=v; };
+App.setObsEditEtiquetaDraft = function(id, key){
+  obsEditDraftEtiqueta[id] = (obsEditDraftEtiqueta[id]===key) ? null : key;
+  App.render();
+};
+App.cancelarCorrecaoObs = function(id){
+  delete obsEditando[id];
+  delete obsEditDraftText[id];
+  delete obsEditDraftEtiqueta[id];
+  App.render();
+};
+App.confirmarCorrecaoObs = function(protocoloId){
+  var ts = obsEditando[protocoloId];
+  if(ts==null) return;
+  var ta = document.getElementById('obsedit_'+protocoloId);
+  var novoTexto = ta ? ta.value.trim() : '';
+  if(!novoTexto) return;
+  var novaEtiqueta = obsEditDraftEtiqueta[protocoloId] || null;
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===protocoloId){
+      p.observacoesHistorico = (p.observacoesHistorico||[]).map(function(o){
+        if(o.ts===ts){ o.texto=novoTexto; o.etiqueta=novaEtiqueta; o.editadoEm=Date.now(); }
+        return o;
+      });
+    }
+    return p;
+  });
+  saveState();
+  delete obsEditando[protocoloId];
+  delete obsEditDraftText[protocoloId];
+  delete obsEditDraftEtiqueta[protocoloId];
+  App.render();
+};
 
 /* ---- Kanban drag and drop ---- */
 App.dragStart = function(ev, id){
@@ -2940,7 +3016,7 @@ function computeSugestoesVinculoPanel(p){
   if(!p.cliente || !p.cliente.trim()) return [];
   var nomeNorm = p.cliente.trim().toLowerCase();
   return state.protocolos.filter(function(x){
-    return x.id!==p.id && !x.naLixeira && (x.cliente||'').trim().toLowerCase()===nomeNorm && !vinculoPanelDispensados[x.id];
+    return x.id!==p.id && !x.naLixeira && (x.cliente||'').trim().toLowerCase()===nomeNorm && !state.sugestoesDispensadas[chaveDispensaVinculo(p.id, x.id)];
   });
 }
 function computeBuscaVinculoPanel(p, query){
@@ -3251,21 +3327,59 @@ function renderAndamentoColuna(p){
     '<div style="display:flex;flex-direction:column;gap:9px;">'+rows+'</div>'+
   '</div>';
 }
+function renderEtiquetaChipsPicker(protocoloId, ativa, setterFnName){
+  return '<div style="display:flex;gap:5px;flex-wrap:wrap;">'+ETIQUETAS_OBS.map(function(e){
+    var on = ativa===e.key;
+    var bg = on ? e.viva : 'var(--painel)';
+    var cor = on ? '#FBFAF6' : 'var(--tinta-media-2)';
+    var borda = on ? e.viva : 'var(--borda-forte)';
+    return '<button type="button" onclick="App.'+setterFnName+'(\''+protocoloId+'\',\''+e.key+'\')" style="border:1px solid '+borda+';background:'+bg+';color:'+cor+';border-radius:12px;padding:3px 10px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;">'+esc(e.label)+'</button>';
+  }).join('')+'</div>';
+}
+function renderPilulaEtiqueta(key){
+  var e = getEtiquetaObs(key);
+  if(!e) return '';
+  return '<span style="font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:10px;background:'+e.suave+';color:'+e.viva+';white-space:nowrap;">'+esc(e.label)+'</span>';
+}
 function renderObservacoesColuna(p){
   var list = p.observacoesHistorico || [];
+  var editandoTs = obsEditando[p.id]!=null ? obsEditando[p.id] : null;
   var rows = list.slice().reverse().map(function(o){
     var dt = new Date(o.ts);
     var dstr = pad(dt.getDate())+'/'+pad(dt.getMonth()+1)+'/'+dt.getFullYear()+' '+pad(dt.getHours())+':'+pad(dt.getMinutes());
+    if(editandoTs===o.ts){
+      return '<div style="border-left:2px solid var(--borda-forte);padding-left:10px;">'+
+        '<div class="fm-obs-box">'+
+          '<textarea id="obsedit_'+p.id+'" oninput="App.updateObsEditDraft(\''+p.id+'\', this.value)">'+esc(obsEditDraftText[p.id]||'')+'</textarea>'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:7px;padding-top:7px;border-top:1px solid var(--divisor-suave);">'+
+            renderEtiquetaChipsPicker(p.id, obsEditDraftEtiqueta[p.id]||null, 'setObsEditEtiquetaDraft')+
+            '<div style="display:flex;gap:8px;">'+
+              '<button type="button" class="btn-ghost" onclick="App.cancelarCorrecaoObs(\''+p.id+'\')">Cancelar</button>'+
+              '<button type="button" class="btn btn-primary" style="padding:5px 12px;font-size:11.5px;" onclick="App.confirmarCorrecaoObs(\''+p.id+'\')">Salvar correção</button>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    }
     return '<div style="border-left:2px solid var(--borda-forte);padding-left:10px;">'+
-      '<div style="font-size:12px;line-height:1.45;color:var(--tinta-media);text-wrap:pretty;">'+esc(o.texto)+'</div>'+
-      '<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--apagado);margin-top:3px;">'+esc(dstr)+'</div>'+
+      '<div style="display:flex;align-items:baseline;gap:7px;">'+
+        (o.etiqueta?renderPilulaEtiqueta(o.etiqueta):'')+
+        '<span style="font-family:var(--font-mono);font-size:9.5px;color:var(--apagado);">'+esc(dstr)+'</span>'+
+        (o.editadoEm?'<span style="font-size:10px;font-style:italic;color:var(--apagado-2);">editado</span>':'')+
+        '<div style="flex:1"></div>'+
+        '<button type="button" style="border:none;background:none;color:var(--apagado-2);font-size:10.5px;cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:0;" onclick="App.iniciarCorrecaoObs(\''+p.id+'\','+o.ts+')">corrigir</button>'+
+      '</div>'+
+      '<div style="font-size:12px;line-height:1.45;color:var(--tinta-media);text-wrap:pretty;margin-top:3px;">'+esc(o.texto)+'</div>'+
     '</div>';
   }).join('');
   return '<div class="fm-diario-bloco" style="flex:1;">'+
     '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;"><span class="fm-label" style="margin-bottom:0;">Observações</span>'+(list.length?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--apagado-2);">'+list.length+'</span>':'')+'</div>'+
     '<div class="fm-obs-box">'+
       '<textarea id="obsnew_'+p.id+'" placeholder="Escrever observação…" oninput="App.updateObsDraft(\''+p.id+'\', this.value)" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();App.addObservacaoQuick(\''+p.id+'\');}">'+esc(obsDraftText[p.id]||'')+'</textarea>'+
-      '<div class="fm-obs-hint">Enter salva &middot; Shift+Enter quebra linha</div>'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:7px;padding-top:7px;border-top:1px solid var(--divisor-suave);">'+
+        renderEtiquetaChipsPicker(p.id, obsDraftEtiqueta[p.id]||null, 'setObsEtiquetaDraft')+
+        '<span style="font-family:var(--font-mono);font-size:9px;color:var(--apagado-2);white-space:nowrap;">Enter salva</span>'+
+      '</div>'+
     '</div>'+
     '<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">'+rows+'</div>'+
   '</div>';
