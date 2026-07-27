@@ -361,6 +361,7 @@ select.sortsel{
 .side-panel{background:var(--painel);width:100%;max-width:640px;height:100vh;display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.18);}
 .side-panel.w-1000{max-width:1000px;}
 .side-panel.w-520{max-width:520px;}
+.side-panel.w-440{max-width:440px;}
 .side-panel.entering{animation:panelSlideIn .2s cubic-bezier(.2,.8,.3,1);}
 .side-panel-head{padding:22px 26px 16px;border-bottom:1px solid var(--borda-forte);flex-shrink:0;}
 .side-panel-head h2{font-family:var(--font-display);font-size:21px;margin:0;}
@@ -618,6 +619,59 @@ select.sortsel{
 .vp-dispensar:hover{color:var(--carimbo);}
 .vp-nota{background:var(--apoio);border:1px dashed var(--borda-forte);border-radius:9px;padding:11px 13px;font-size:11.5px;line-height:1.5;color:var(--tinta-media-2);margin-top:16px;text-wrap:pretty;}
 
+/* ---------- Atos de balcao (6a painel + 6b faixa) ---------- */
+.ab-total-box{background:var(--ficha);border:1px solid var(--borda-forte);border-radius:12px;padding:20px;display:flex;align-items:center;gap:18px;}
+.ab-total-num{font-family:var(--font-mono);font-weight:700;font-size:52px;line-height:1;color:var(--ink);}
+.ab-editar-link{border:none;background:none;color:var(--apagado-2);font-size:11px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+.ab-editar-link:hover{color:var(--ink);}
+.ab-total-edit-input{width:90px;font-family:var(--font-mono);font-size:28px;font-weight:700;text-align:center;border:1px solid var(--ink);border-radius:8px;padding:4px 6px;background:var(--painel);color:var(--ink);}
+.ab-acoes-col{display:flex;flex-direction:column;gap:8px;align-items:stretch;}
+.ab-btn-mais1{border:1px solid var(--ink);background:var(--ink);color:var(--painel);border-radius:10px;padding:16px 26px;font-family:var(--font-mono);font-size:20px;font-weight:700;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,.18);transition:background .12s ease;}
+.ab-btn-mais1:hover{background:var(--carimbo);border-color:var(--carimbo);}
+.ab-btn-mais1:active{transform:scale(.96);}
+.ab-btn-menos1{border:1px solid var(--borda-forte);background:var(--painel);color:var(--tinta-media-2);border-radius:8px;padding:6px 10px;font-family:var(--font-mono);font-size:13px;font-weight:700;cursor:pointer;}
+.ab-btn-menos1:hover{border-color:var(--carimbo);color:var(--carimbo);}
+.ab-somar-row{display:flex;align-items:flex-end;gap:8px;}
+.ab-somar-input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--borda-forte);border-radius:8px;background:var(--ficha);color:var(--ink);font-family:var(--font-mono);font-size:15px;font-weight:700;text-align:center;}
+.ab-somar-btn{flex-shrink:0;border:1px solid var(--ink);background:var(--painel);color:var(--ink);border-radius:8px;padding:11px 16px;font:600 12.5px var(--font-body);cursor:pointer;}
+.ab-somar-btn:hover{background:var(--ink);color:var(--painel);}
+.ab-lancamentos-box{background:var(--apoio);border-radius:9px;padding:12px 14px;}
+.ab-lancamentos-head{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;}
+.ab-desfazer-link{border:none;background:none;color:var(--carimbo);font-size:11px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+.ab-pilulas{display:flex;gap:6px;flex-wrap:wrap;}
+.ab-pilula{display:inline-flex;align-items:baseline;gap:5px;padding:4px 9px;border-radius:14px;background:var(--ficha);border:1px solid var(--borda-forte);}
+.ab-pilula-qtd{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--ink);}
+.ab-pilula-ts{font-family:var(--font-mono);font-size:9.5px;color:var(--apagado);}
+.ab-sec-head{display:flex;align-items:baseline;gap:8px;margin-bottom:12px;}
+.ab-sec-total{font-family:var(--font-mono);font-size:10px;color:var(--apagado);}
+.ab-semana-bars{display:flex;align-items:flex-end;gap:9px;height:96px;}
+.ab-dia-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.ab-dia-num{font-family:var(--font-mono);font-size:10.5px;}
+.ab-dia-barra{width:100%;border-radius:3px;}
+.ab-dia-lbl{font-family:var(--font-mono);font-size:9.5px;}
+.ab-mes-row{display:grid;grid-template-columns:44px 1fr 26px;gap:9px;align-items:center;}
+.ab-mes-faixa{font-family:var(--font-mono);font-size:10px;color:var(--apagado);}
+.ab-mes-trilho{height:9px;background:var(--trilho);border-radius:5px;overflow:hidden;}
+.ab-mes-fill{height:9px;border-radius:5px;}
+.ab-mes-qtd{font-family:var(--font-mono);font-size:10.5px;font-weight:700;color:var(--ink);text-align:right;}
+
+.ab-strip{display:flex;align-items:center;gap:16px;background:var(--apoio);padding:14px 20px;border-radius:var(--r-card);margin-bottom:14px;flex-wrap:wrap;}
+.ab-strip-total{display:flex;align-items:baseline;gap:9px;}
+.ab-strip-num{font-family:var(--font-mono);font-weight:700;font-size:24px;line-height:1;color:var(--ink);}
+.ab-strip-acoes{display:flex;align-items:center;gap:6px;}
+.ab-strip-mais1{border:1px solid var(--ink);background:var(--ink);color:var(--painel);border-radius:8px;padding:9px 18px;font-family:var(--font-mono);font-size:14px;font-weight:700;cursor:pointer;}
+.ab-strip-mais1:hover{background:var(--carimbo);border-color:var(--carimbo);}
+.ab-strip-mais1:active{transform:scale(.95);}
+.ab-strip-menos1{border:1px solid var(--borda-forte);background:var(--painel);color:var(--tinta-media-2);border-radius:8px;padding:9px 12px;font-family:var(--font-mono);font-size:13px;font-weight:700;cursor:pointer;}
+.ab-strip-menos1:hover{border-color:var(--carimbo);color:var(--carimbo);}
+.ab-strip-input{width:52px;box-sizing:border-box;padding:9px 8px;border:1px solid var(--borda-forte);border-radius:8px;background:var(--ficha);color:var(--ink);font-family:var(--font-mono);font-size:13px;font-weight:700;text-align:center;}
+.ab-strip-somar{border:1px solid var(--ink);background:var(--painel);color:var(--ink);border-radius:8px;padding:9px 13px;font:600 12px var(--font-body);cursor:pointer;}
+.ab-strip-somar:hover{background:var(--ink);color:var(--painel);}
+.ab-strip-barras{display:flex;align-items:flex-end;gap:4px;height:34px;}
+.ab-strip-barra{width:8px;max-height:34px;border-radius:2px;}
+.ab-strip-ver-semana{border:none;background:none;color:var(--tinta-media-2);font-size:11.5px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}
+.ab-strip-ver-semana:hover{color:var(--ink);}
+
 @media (max-width:700px){
   .cp{grid-template-columns:5px 1fr;}
   .cp-prazo{grid-column:2;border-left:none;border-top:1px solid var(--borda-ficha);flex-direction:row;align-items:center;flex-wrap:wrap;}
@@ -773,6 +827,7 @@ var vinculoPanelFor = null;
 var vinculoPanelSearch = '';
 var vinculoPanelSelected = {};
 var vinculoPanelDispensados = {};
+var edicaoTotalBalcaoAberta = false;
 var documentosAbertos = {};
 var justOpenedKey = null;
 var justCreatedId = null;
@@ -790,7 +845,8 @@ function defaultState(){
     documentosChecklist: DEFAULT_DOCUMENTOS_CHECKLIST.slice(),
     feriadosExtras: [],
     feriadosMoveis: {carnaval:true, corpusChristi:true, sextaSanta:true},
-    atosBalcao: {}
+    atosBalcao: {},
+    atosBalcaoLancamentos: {}
   };
 }
 
@@ -813,6 +869,7 @@ function migrate(raw){
   if(s.ultimoResponsavel==null) s.ultimoResponsavel='';
   if(!s.feriadosMoveis) s.feriadosMoveis={carnaval:true,corpusChristi:true,sextaSanta:true};
   if(!s.atosBalcao) s.atosBalcao={};
+  if(!s.atosBalcaoLancamentos) s.atosBalcaoLancamentos={};
   s.protocolos = (s.protocolos||[]).map(function(p){
     if(!p.historico || !p.historico.length) p.historico=[{status:p.status, ts:p.createdAt||Date.now()}];
     if(!p.tipoPessoa) p.tipoPessoa='pf';
@@ -1920,25 +1977,57 @@ App.printFicha = function(id){
 };
 
 /* ---- Atos de balcão (sem protocolo) ---- */
-App.openAtosBalcao = function(){ atosBalcaoModalOpen=true; modalJustOpened=true; App.render(); };
+App.openAtosBalcao = function(){ atosBalcaoModalOpen=true; modalJustOpened=true; edicaoTotalBalcaoAberta=false; App.render(); };
 App.closeAtosBalcao = function(){ atosBalcaoModalOpen=false; App.render(); };
+/* Registra um lancamento (soma positiva) na lista "lancamentos de hoje", usada para as
+   pilulas "+N hh:mm" e o "desfazer ultimo". Correcoes (-1, editar total) NAO viram
+   lancamento — sao formas de correcao, nao atendimentos novos. */
+function registrarLancamentoBalcao(qtd){
+  if(qtd<=0) return;
+  var hoje = todayISO();
+  if(!state.atosBalcaoLancamentos[hoje]) state.atosBalcaoLancamentos[hoje]=[];
+  state.atosBalcaoLancamentos[hoje].push({qtd:qtd, ts:Date.now()});
+}
 App.ajustarAtoBalcao = function(delta){
   var hoje = todayISO();
   var atual = state.atosBalcao[hoje] || 0;
-  var novo = Math.max(0, atual + delta);
-  state.atosBalcao[hoje] = novo;
+  state.atosBalcao[hoje] = Math.max(0, atual + delta);
+  if(delta>0) registrarLancamentoBalcao(delta);
   saveState();
   App.render();
 };
-App.adicionarQuantidadeBalcao = function(){
-  var el = document.getElementById('qtdBalcaoInput');
+App.adicionarQuantidadeBalcao = function(inputId){
+  var el = document.getElementById(inputId || 'qtdBalcaoInput');
   var n = el ? parseInt(el.value, 10) : NaN;
   if(isNaN(n) || n===0) return;
   var hoje = todayISO();
   var atual = state.atosBalcao[hoje] || 0;
   state.atosBalcao[hoje] = Math.max(0, atual + n);
+  if(n>0) registrarLancamentoBalcao(n);
   saveState();
   if(el) el.value='';
+  App.render();
+};
+App.desfazerUltimoLancamentoBalcao = function(){
+  var hoje = todayISO();
+  var lista = state.atosBalcaoLancamentos[hoje];
+  if(!lista || !lista.length) return;
+  var ultimo = lista.pop();
+  var atual = state.atosBalcao[hoje] || 0;
+  state.atosBalcao[hoje] = Math.max(0, atual - ultimo.qtd);
+  saveState();
+  App.render();
+};
+App.abrirEdicaoTotalBalcao = function(){
+  edicaoTotalBalcaoAberta = true;
+  App.render();
+};
+App.confirmarEdicaoTotalBalcao = function(){
+  var el = document.getElementById('totalBalcaoEditInput');
+  var n = el ? parseInt(el.value, 10) : NaN;
+  edicaoTotalBalcaoAberta = false;
+  if(!isNaN(n) && n>=0) state.atosBalcao[todayISO()] = n;
+  saveState();
   App.render();
 };
 App.exportAtosBalcaoCSV = function(){
@@ -2879,8 +2968,11 @@ function renderListArea(){
   if(diariosGrupoId){
     return renderDiariosLadoALado();
   }
+  /* Faixa rapida de atos de balcao (6b): so na visao Lista, pra nao abrir nada durante
+     o atendimento. Kanban/Arquivados/Lixeira ficam sem ela (fora de escopo/ruido). */
+  var stripHtml = (ui.viewMode==='lista') ? renderAtosBalcaoStrip() : '';
   if(state.protocolos.length===0){
-    return '<div class="empty-state">'+
+    return stripHtml+'<div class="empty-state">'+
       '<div class="big">Nenhum protocolo registrado ainda</div>Clique em "+ Novo Protocolo" para começar o controle.'+
     '</div>';
   }
@@ -2893,17 +2985,17 @@ function renderListArea(){
     return list.map(renderLixeiraItem).join('');
   }
   if(list.length===0){
-    return '<div class="empty-state">Nenhum protocolo encontrado com os filtros atuais.</div>';
+    return stripHtml+'<div class="empty-state">Nenhum protocolo encontrado com os filtros atuais.</div>';
   }
   if(ui.agruparPessoa){
     var pf = list.filter(function(p){ return p.tipoPessoa==='pf'; });
     var pj = list.filter(function(p){ return p.tipoPessoa==='pj'; });
-    return groupHeader('Pessoa Física', pf.length)+
+    return stripHtml+groupHeader('Pessoa Física', pf.length)+
       (pf.length ? renderListaComVinculo(pf) : '<div class="empty-state">Nenhum protocolo de pessoa física com os filtros atuais.</div>')+
       groupHeader('Pessoa Jurídica', pj.length)+
       (pj.length ? renderListaComVinculo(pj) : '<div class="empty-state">Nenhum protocolo de pessoa jurídica com os filtros atuais.</div>');
   }
-  return renderListaComVinculo(list);
+  return stripHtml+renderListaComVinculo(list);
 }
 
 function renderKanbanCard(p){
@@ -3568,48 +3660,151 @@ function renderDailyReportModal(){
   '</div>';
 }
 
+/* ---- Agregacoes para os graficos de atos de balcao ---- */
+function computeSemanaBalcao(){
+  var hoje = new Date();
+  var domingo = addDays(hoje, -hoje.getDay());
+  var dias = [];
+  var max = 0;
+  for(var i=0;i<7;i++){
+    var iso = toISO(addDays(domingo, i));
+    var qtd = state.atosBalcao[iso] || 0;
+    if(qtd>max) max = qtd;
+    dias.push({iso:iso, qtd:qtd, isHoje: iso===todayISO()});
+  }
+  return {dias:dias, max:max, total: dias.reduce(function(s,d){ return s+d.qtd; }, 0)};
+}
+function computeMesBalcaoPorSemana(){
+  var hoje = new Date();
+  var ano = hoje.getFullYear(), mes = hoje.getMonth();
+  var ultimoDia = new Date(ano, mes+1, 0).getDate();
+  var semanas = [];
+  var max = 0;
+  for(var inicio=1; inicio<=ultimoDia; inicio+=7){
+    var fim = Math.min(inicio+6, ultimoDia);
+    var total = 0;
+    for(var dia=inicio; dia<=fim; dia++){
+      total += state.atosBalcao[ano+'-'+pad(mes+1)+'-'+pad(dia)] || 0;
+    }
+    if(total>max) max = total;
+    semanas.push({faixa: inicio+'-'+fim, qtd: total});
+  }
+  return {semanas:semanas, max:max, total: semanas.reduce(function(s,w){ return s+w.qtd; }, 0)};
+}
+var DIAS_ABREV = ['dom','seg','ter','qua','qui','sex','sáb'];
+var MESES_NOMES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
 function renderAtosBalcaoModal(){
   var hoje = todayISO();
-  var anoMes = hoje.slice(0,7);
-  var ano = hoje.slice(0,4);
   var totalHoje = state.atosBalcao[hoje] || 0;
-  var totalMes = 0, totalAno = 0;
-  var datas = Object.keys(state.atosBalcao).sort().reverse();
-  datas.forEach(function(d){
-    var v = state.atosBalcao[d] || 0;
-    if(d.slice(0,7)===anoMes) totalMes += v;
-    if(d.slice(0,4)===ano) totalAno += v;
-  });
-  var historicoRows = datas.filter(function(d){ return state.atosBalcao[d]>0; }).map(function(d){
-    return '<div class="report-row"><span>'+esc(formatBR(d))+'</span><span style="font-family:var(--font-mono);">'+state.atosBalcao[d]+'</span></div>';
-  }).join('') || '<div class="report-empty">Nenhum registro ainda.</div>';
+  var hojeDate = new Date();
+  var diasExt = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  var hojeExt = diasExt[hojeDate.getDay()]+', '+hojeDate.getDate()+' de '+MESES_NOMES[hojeDate.getMonth()]+' de '+hojeDate.getFullYear();
 
-  return '<div class="overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeAtosBalcao()">'+
-    '<div class="modal'+(modalJustOpened?' entering':'')+'">'+
-      '<h2>Atos de balcão (sem protocolo)</h2>'+
-      '<div class="hint">Para atos que você atende só no balcão e não abrem protocolo — apenas uma contagem, sem prazo nem status.</div>'+
-      '<div style="text-align:center;padding:16px 0;">'+
-        '<div style="font-family:var(--font-mono);font-size:42px;font-weight:700;">'+totalHoje+'</div>'+
-        '<div class="eyebrow">Hoje</div>'+
+  var lancamentosHoje = (state.atosBalcaoLancamentos[hoje]||[]).slice().reverse();
+  var pilulasHtml = lancamentosHoje.length ? lancamentosHoje.map(function(l){
+    var d = new Date(l.ts);
+    return '<span class="ab-pilula"><span class="ab-pilula-qtd">+'+l.qtd+'</span><span class="ab-pilula-ts">'+pad(d.getHours())+':'+pad(d.getMinutes())+'</span></span>';
+  }).join('') : '<span class="fm-hint">Nenhum lançamento ainda hoje.</span>';
+
+  var semana = computeSemanaBalcao();
+  var semanaHtml = semana.dias.map(function(d){
+    var alturaPct = semana.max>0 ? Math.max(10, Math.round((d.qtd/semana.max)*100)) : 6;
+    var cor = d.isHoje ? 'var(--ink)' : (d.qtd>0 ? 'var(--apagado-2)' : 'var(--trilho)');
+    var lblCor = d.isHoje ? 'var(--ink)' : 'var(--apagado)';
+    var pesoLbl = d.isHoje ? '700' : '500';
+    var diaSemana = parseISODate(d.iso).getDay();
+    return '<div class="ab-dia-col">'+
+      '<span class="ab-dia-num" style="color:'+lblCor+';font-weight:'+pesoLbl+';">'+(d.qtd||'&ndash;')+'</span>'+
+      '<div class="ab-dia-barra" style="height:'+(12+alturaPct*0.66)+'px;background:'+cor+';"></div>'+
+      '<span class="ab-dia-lbl" style="color:'+lblCor+';font-weight:'+pesoLbl+';">'+DIAS_ABREV[diaSemana]+'</span>'+
+    '</div>';
+  }).join('');
+
+  var mesInfo = computeMesBalcaoPorSemana();
+  var nomeMes = MESES_NOMES[hojeDate.getMonth()];
+  var mesHtml = mesInfo.semanas.map(function(m){
+    var pct = mesInfo.max>0 ? Math.round((m.qtd/mesInfo.max)*100) : 0;
+    var cor = m.qtd>0 ? 'var(--ink)' : 'var(--trilho)';
+    return '<div class="ab-mes-row">'+
+      '<span class="ab-mes-faixa">'+m.faixa+'</span>'+
+      '<div class="ab-mes-trilho"><div class="ab-mes-fill" style="width:'+pct+'%;background:'+cor+';"></div></div>'+
+      '<span class="ab-mes-qtd">'+m.qtd+'</span>'+
+    '</div>';
+  }).join('');
+
+  var totalEditHtml = edicaoTotalBalcaoAberta
+    ? '<input type="text" id="totalBalcaoEditInput" class="ab-total-edit-input" value="'+totalHoje+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.confirmarEdicaoTotalBalcao();}">'
+    : ('<span class="ab-total-num">'+totalHoje+'</span><button type="button" class="ab-editar-link" onclick="App.abrirEdicaoTotalBalcao()">editar</button>');
+
+  return '<div class="side-overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeAtosBalcao()">'+
+    '<div class="side-panel w-440'+(modalJustOpened?' entering':'')+'">'+
+      '<div class="side-panel-head" style="display:flex;align-items:flex-start;gap:12px;">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div class="fm-label" style="margin-bottom:3px;">'+esc(hojeExt)+'</div>'+
+          '<h2 style="margin:0;">Atos de balcão</h2>'+
+          '<div class="fm-hint" style="margin-top:5px;">Atendimentos que não geram protocolo. Só a contagem do dia é guardada.</div>'+
+        '</div>'+
+        '<button type="button" class="ib28" style="width:30px;height:30px;" title="Fechar" onclick="App.closeAtosBalcao()">&times;</button>'+
       '</div>'+
-      '<div style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;">'+
-        '<button class="btn btn-primary" onclick="App.ajustarAtoBalcao(1)" style="font-size:18px;padding:10px 22px;">+1</button>'+
-        '<button class="btn-ghost outlined" onclick="App.ajustarAtoBalcao(-1)" style="font-size:18px;padding:10px 22px;">-1</button>'+
+      '<div class="side-panel-body">'+
+        '<div class="ab-total-box">'+
+          '<div style="flex:1;">'+
+            '<div class="fm-label" style="margin-bottom:0;">total de hoje</div>'+
+            '<div style="display:flex;align-items:baseline;gap:8px;margin-top:2px;">'+totalEditHtml+'</div>'+
+          '</div>'+
+          '<div class="ab-acoes-col">'+
+            '<button type="button" class="ab-btn-mais1" onclick="App.ajustarAtoBalcao(1)">+1</button>'+
+            '<button type="button" class="ab-btn-menos1" onclick="App.ajustarAtoBalcao(-1)">&minus;1</button>'+
+          '</div>'+
+        '</div>'+
+        '<div class="ab-somar-row" style="margin-top:18px;">'+
+          '<div style="flex:1;"><span class="fm-label">Somar quantidade</span><input type="text" id="qtdBalcaoInput" class="ab-somar-input" placeholder="Ex: 4" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.adicionarQuantidadeBalcao();}"></div>'+
+          '<button type="button" class="ab-somar-btn" onclick="App.adicionarQuantidadeBalcao()">Somar ao dia</button>'+
+        '</div>'+
+        '<div class="ab-lancamentos-box" style="margin-top:18px;">'+
+          '<div class="ab-lancamentos-head"><span class="fm-label" style="margin-bottom:0;">Lançamentos de hoje</span><div style="flex:1;"></div>'+(lancamentosHoje.length?'<button type="button" class="ab-desfazer-link" onclick="App.desfazerUltimoLancamentoBalcao()">desfazer último</button>':'')+'</div>'+
+          '<div class="ab-pilulas">'+pilulasHtml+'</div>'+
+        '</div>'+
+        '<div style="margin-top:20px;">'+
+          '<div class="ab-sec-head"><span class="fm-sec-label">Esta semana</span><div style="flex:1;"></div><span class="ab-sec-total">'+semana.total+' atos</span></div>'+
+          '<div class="ab-semana-bars">'+semanaHtml+'</div>'+
+        '</div>'+
+        '<div style="margin-top:20px;">'+
+          '<div class="ab-sec-head"><span class="fm-sec-label">'+esc(nomeMes.charAt(0).toUpperCase()+nomeMes.slice(1))+' por semana</span><div style="flex:1;"></div><span class="ab-sec-total">'+mesInfo.total+' no mês</span></div>'+
+          '<div style="display:flex;flex-direction:column;gap:7px;">'+mesHtml+'</div>'+
+        '</div>'+
       '</div>'+
-      '<div class="field-row" style="align-items:flex-end;">'+
-        '<div class="field"><label>Somar quantidade (use negativo para corrigir)</label><input type="text" id="qtdBalcaoInput" placeholder="Ex: 5 ou -2" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.adicionarQuantidadeBalcao();}"></div>'+
-        '<button type="button" class="btn-ghost outlined" style="margin-bottom:15px;" onclick="App.adicionarQuantidadeBalcao()">Adicionar</button>'+
-      '</div>'+
-      '<div class="stats-bar" style="margin:16px 0;">'+
-        '<div class="stat"><div class="num">'+totalMes+'</div><div class="lbl">Este mês</div></div>'+
-        '<div class="stat"><div class="num">'+totalAno+'</div><div class="lbl">Este ano</div></div>'+
-      '</div>'+
-      '<div class="report-section"><h3>Histórico por dia</h3><div style="max-height:220px;overflow-y:auto;">'+historicoRows+'</div></div>'+
-      '<div class="modal-actions">'+
-        '<button class="btn-ghost" onclick="App.closeAtosBalcao()">Fechar</button>'+
-        '<div class="modal-actions-right"><button class="btn-ghost outlined" onclick="App.exportAtosBalcaoCSV()">Exportar CSV</button></div>'+
+      '<div class="side-panel-foot">'+
+        '<button type="button" class="btn-ghost" onclick="App.exportAtosBalcaoCSV()">Exportar CSV</button>'+
+        '<div style="flex:1;"></div>'+
+        '<button class="btn btn-primary" onclick="App.closeAtosBalcao()">Concluído</button>'+
       '</div>'+
     '</div>'+
+  '</div>';
+}
+
+/* ---- 6b: faixa rapida no topo da lista, sem abrir nada ---- */
+function renderAtosBalcaoStrip(){
+  var totalHoje = state.atosBalcao[todayISO()] || 0;
+  var semana = computeSemanaBalcao();
+  var barrasHtml = semana.dias.map(function(d){
+    var alturaPct = semana.max>0 ? Math.max(15, Math.round((d.qtd/semana.max)*100)) : 15;
+    var cor = d.isHoje ? 'var(--ink)' : (d.qtd>0 ? 'var(--apagado-2)' : 'var(--trilho)');
+    return '<div class="ab-strip-barra" style="height:'+alturaPct+'%;background:'+cor+';"></div>';
+  }).join('');
+  return ''+
+  '<div class="ab-strip no-print">'+
+    '<div class="ab-strip-total"><span class="fm-label" style="margin-bottom:0;">balcão hoje</span><span class="ab-strip-num">'+totalHoje+'</span></div>'+
+    '<div class="ab-strip-acoes">'+
+      '<button type="button" class="ab-strip-mais1" onclick="App.ajustarAtoBalcao(1)">+1</button>'+
+      '<button type="button" class="ab-strip-menos1" onclick="App.ajustarAtoBalcao(-1)">&minus;1</button>'+
+      '<input type="text" id="qtdBalcaoStripInput" class="ab-strip-input" placeholder="4" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.adicionarQuantidadeBalcao(\'qtdBalcaoStripInput\');}">'+
+      '<button type="button" class="ab-strip-somar" onclick="App.adicionarQuantidadeBalcao(\'qtdBalcaoStripInput\')">somar</button>'+
+    '</div>'+
+    '<div style="flex:1"></div>'+
+    '<div class="ab-strip-barras">'+barrasHtml+'</div>'+
+    '<button type="button" class="ab-strip-ver-semana" onclick="App.openAtosBalcao()">ver semana</button>'+
   '</div>';
 }
 
