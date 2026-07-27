@@ -672,6 +672,26 @@ select.sortsel{
 .ab-strip-ver-semana{border:none;background:none;color:var(--tinta-media-2);font-size:11.5px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}
 .ab-strip-ver-semana:hover{color:var(--ink);}
 
+/* ---------- Lixeira (7a) ---------- */
+.cp.lixeira{border-style:dashed;border-color:var(--borda-forte);background:var(--apoio-2);}
+.cp-lx-nome{font-family:var(--font-display);font-size:18px;font-weight:600;line-height:1.2;color:var(--tinta-media-2);text-decoration:line-through;text-decoration-color:#C9C2AD;}
+.cp-lx-tipo{font-size:12.5px;color:#8A8578;margin-top:3px;text-wrap:pretty;}
+.cp-lx-excluido{font-family:var(--font-mono);font-size:10px;color:var(--apagado);}
+.cp-lx-acoes{border-left:1px dashed var(--borda-forte);padding:14px;display:flex;flex-direction:column;justify-content:center;gap:8px;}
+.btn-lx-restaurar{border:1px solid var(--ink);background:var(--ink);color:var(--painel);border-radius:8px;padding:9px 10px;font:600 12px var(--font-body);cursor:pointer;transition:background .12s ease,border-color .12s ease;}
+.btn-lx-restaurar:hover{background:var(--green);border-color:var(--green);}
+.btn-lx-excluir{border:1px solid var(--borda);background:transparent;color:var(--carimbo);border-radius:8px;padding:8px 10px;font:500 11.5px var(--font-body);cursor:pointer;}
+.btn-lx-excluir:hover{border-color:var(--carimbo);}
+.lx-header-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.lx-header-nota{font-size:12px;line-height:1.5;color:var(--tinta-media-2);flex:1;min-width:260px;text-wrap:pretty;}
+.btn-esvaziar{border:1px solid var(--borda-forte);background:transparent;color:var(--carimbo);border-radius:8px;padding:8px 13px;font:500 12px var(--font-body);cursor:pointer;white-space:nowrap;}
+.btn-esvaziar:hover{border-color:var(--carimbo);}
+.lx-confirm-card{margin:6px 0;background:var(--ficha);border:1px solid var(--borda-atraso);border-radius:10px;padding:16px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.lx-confirm-titulo{font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--carimbo);}
+.lx-confirm-corpo{font-size:12px;line-height:1.5;color:var(--tinta-media-2);margin-top:4px;text-wrap:pretty;}
+.btn-lx-confirmar{border:1px solid var(--carimbo);background:var(--carimbo);color:var(--painel);border-radius:8px;padding:9px 16px;font:600 12.5px var(--font-body);cursor:pointer;}
+.btn-lx-confirmar:hover{background:#7A231A;}
+
 @media (max-width:700px){
   .cp{grid-template-columns:5px 1fr;}
   .cp-prazo{grid-column:2;border-left:none;border-top:1px solid var(--borda-ficha);flex-direction:row;align-items:center;flex-wrap:wrap;}
@@ -828,6 +848,7 @@ var vinculoPanelSearch = '';
 var vinculoPanelSelected = {};
 var vinculoPanelDispensados = {};
 var edicaoTotalBalcaoAberta = false;
+var confirmandoExclusaoId = null;
 var documentosAbertos = {};
 var justOpenedKey = null;
 var justCreatedId = null;
@@ -1781,9 +1802,29 @@ App.restaurarProtocolo = function(id){
   saveState();
   App.render();
 };
-App.excluirDefinitivamente = function(id){
-  if(!window.confirm('Excluir DEFINITIVAMENTE este protocolo? Ele será perdido para sempre, sem possibilidade de restaurar.')) return;
+/* Substitui o window.confirm() nativo por um cartao de confirmacao inline na propria
+   lixeira (7a) — mais visivel e menos generico que o dialogo padrao do navegador. */
+App.pedirExclusaoDefinitiva = function(id){
+  confirmandoExclusaoId = id;
+  App.render();
+};
+App.pedirEsvaziarLixeira = function(){
+  confirmandoExclusaoId = '__todos__';
+  App.render();
+};
+App.cancelarExclusaoDefinitiva = function(){
+  confirmandoExclusaoId = null;
+  App.render();
+};
+App.confirmarExclusaoDefinitiva = function(id){
   state.protocolos = state.protocolos.filter(function(p){ return p.id!==id; });
+  confirmandoExclusaoId = null;
+  saveState();
+  App.render();
+};
+App.confirmarEsvaziarLixeira = function(){
+  state.protocolos = state.protocolos.filter(function(p){ return !p.naLixeira; });
+  confirmandoExclusaoId = null;
   saveState();
   App.render();
 };
@@ -2518,7 +2559,12 @@ function renderFiltersBar(){
   (ui.search ? '<div class="hint no-print" style="margin:-6px 0 10px;">'+getFilteredSorted().length+' resultado(s) para &ldquo;'+esc(ui.search)+'&rdquo;</div>' : '')+
   (ui.viewMode==='quadro' ? '<div class="kanban-hint no-print">Arraste um cartão para outra coluna para mudar o status. Clique no cartão para editar os detalhes.</div>' : '')+
   (ui.viewMode==='arquivados' ? '<div class="kanban-hint no-print">Protocolos finalizados (já digitalizados) ou com cliente desistente. Mude o status na ficha para reabrir, se precisar.</div>' : '')+
-  (isLixeira ? '<div class="kanban-hint no-print">Protocolos excluídos ficam aqui até você restaurar ou excluir definitivamente — não somem sozinhos.</div>' : '');
+  (isLixeira ? (
+    '<div class="lx-header-row no-print">'+
+      '<div class="lx-header-nota">Nada é apagado automaticamente. Um protocolo restaurado volta para a lista com status, prazo, diário e vínculos intactos.</div>'+
+      (lixeiraCount>0 ? '<button type="button" class="btn-esvaziar" onclick="App.pedirEsvaziarLixeira()">Esvaziar lixeira</button>' : '')+
+    '</div>'
+  ) : '');
 }
 
 function renderDots(info){
@@ -2640,23 +2686,53 @@ function renderDocumentosChecklist(p){
 function renderLixeiraItem(p){
   var st = getStatusOf(p);
   var dataExcStr = p.dataExclusao ? formatBR(toISO(new Date(p.dataExclusao))) : '';
+  var tipoLinha = (p.tipos && p.tipos.length) ? esc(p.tipos.join(' · ')) : 'sem tipo de ato';
   return ''+
-  '<div class="ficha">'+
-    '<div class="ficha-bar" style="background:var(--stamp-red);"></div>'+
-    '<div class="ficha-body">'+
-      '<div class="ficha-top">'+
-        '<div class="ficha-ident">'+
-          '<span class="ficha-date">'+esc(formatBR(p.dataProtocolo))+'</span>'+
-          (p.numeroProtocolo ? '<span class="ficha-num">Protocolo nº '+esc(p.numeroProtocolo)+'</span>' : '')+
-          '<span class="ficha-cliente empty">'+esc(p.cliente||'Sem identificação')+'</span>'+
-          '<span class="ficha-sub">Excluído em '+esc(dataExcStr)+'</span>'+
-        '</div>'+
-        '<div class="ficha-actions">'+
-          '<span class="stamp '+st.cor+'" style="transform:none;">'+esc(st.label)+'</span>'+
-          '<button class="btn-ghost outlined" onclick="App.restaurarProtocolo(\''+p.id+'\')">Restaurar</button>'+
-          '<button class="btn-danger" onclick="App.excluirDefinitivamente(\''+p.id+'\')">Excluir definitivamente</button>'+
-        '</div>'+
+  '<div class="cp lixeira">'+
+    '<div class="cp-barra" style="background:var(--'+st.cor+');opacity:.45;"></div>'+
+    '<div class="cp-corpo">'+
+      '<div class="cp-meta">'+
+        (p.numeroProtocolo ? '<span class="cp-num">nº '+esc(p.numeroProtocolo)+'</span>' : '<span class="cp-num" style="opacity:.6;">sem nº</span>')+
+        '<span class="selo '+(p.tipoPessoa==='pj'?'pj':'pf')+'" style="opacity:.75;">'+(p.tipoPessoa==='pj'?'PJ':'PF')+'</span>'+
+        '<div style="flex:1"></div>'+
+        '<span class="cp-lx-excluido">excluído em '+esc(dataExcStr)+'</span>'+
       '</div>'+
+      '<div>'+
+        '<div class="cp-lx-nome">'+esc(p.cliente||'Sem identificação')+'</div>'+
+        '<div class="cp-lx-tipo">'+tipoLinha+'</div>'+
+      '</div>'+
+      '<div class="cp-rodape">'+
+        '<span class="chip-status" style="cursor:default;background:var(--'+st.cor+'-soft);color:var(--'+st.cor+');opacity:.7;"><span class="pt" style="background:var(--'+st.cor+');"></span>'+esc(st.label)+'</span>'+
+      '</div>'+
+    '</div>'+
+    '<div class="cp-lx-acoes">'+
+      '<button type="button" class="btn-lx-restaurar" onclick="App.restaurarProtocolo(\''+p.id+'\')">&#8618; Restaurar</button>'+
+      '<button type="button" class="btn-lx-excluir" onclick="App.pedirExclusaoDefinitiva(\''+p.id+'\')">Excluir de vez</button>'+
+    '</div>'+
+  '</div>'+
+  (confirmandoExclusaoId===p.id ? renderConfirmExclusaoCard(p, 1) : '');
+}
+function renderConfirmExclusaoCard(p, count){
+  var titulo, corpo, confirmAction;
+  if(p){
+    var quem = p.numeroProtocolo ? ('o nº '+esc(p.numeroProtocolo)) : (p.cliente ? esc(p.cliente) : 'este protocolo');
+    titulo = 'Excluir de vez '+quem+'?';
+    corpo = 'Apaga a ficha, o diário de observações e o histórico de status. Não há como desfazer.';
+    confirmAction = "App.confirmarExclusaoDefinitiva('"+p.id+"')";
+  }else{
+    titulo = 'Esvaziar toda a lixeira? ('+count+' protocolo'+(count>1?'s':'')+')';
+    corpo = 'Apaga definitivamente todas as fichas da lixeira, com diário de observações e histórico de status. Não há como desfazer.';
+    confirmAction = 'App.confirmarEsvaziarLixeira()';
+  }
+  return ''+
+  '<div class="lx-confirm-card">'+
+    '<div style="flex:1;min-width:260px;">'+
+      '<div class="lx-confirm-titulo">'+titulo+'</div>'+
+      '<div class="lx-confirm-corpo">'+corpo+'</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;">'+
+      '<button type="button" class="btn-ghost outlined" onclick="App.cancelarExclusaoDefinitiva()">Manter na lixeira</button>'+
+      '<button type="button" class="btn-lx-confirmar" onclick="'+confirmAction+'">Excluir definitivamente</button>'+
     '</div>'+
   '</div>';
 }
@@ -2982,7 +3058,8 @@ function renderListArea(){
   }
   if(ui.viewMode==='lixeira'){
     if(list.length===0) return '<div class="empty-state">A lixeira está vazia.</div>';
-    return list.map(renderLixeiraItem).join('');
+    var confirmTopoHtml = (confirmandoExclusaoId==='__todos__') ? renderConfirmExclusaoCard(null, list.length) : '';
+    return confirmTopoHtml+list.map(renderLixeiraItem).join('');
   }
   if(list.length===0){
     return stripHtml+'<div class="empty-state">Nenhum protocolo encontrado com os filtros atuais.</div>';
