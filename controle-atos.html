@@ -566,10 +566,46 @@ select.sortsel{
 .kb-col.alvo{background:#EAF3F1;}
 .kb-col.alvo .kb-dropzone{background:#CDE7E2;}
 
+/* ---------- Vinculo entre protocolos (5a/5b/5c) ---------- */
+.pill-vinculo{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:12px;background:var(--plum-soft);color:var(--plum);white-space:nowrap;}
+.grp-wrap{margin-bottom:12px;}
+.grp-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:2px 0 8px;}
+.grp-nome{font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--ink);}
+.grp-link{border:none;background:none;color:var(--tinta-media-2);font-size:11px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:0;}
+.grp-link:hover{color:var(--ink);}
+.grp-link.danger{color:var(--apagado-2);}
+.grp-link.danger:hover{color:var(--carimbo);}
+.grp-grid{display:grid;grid-template-columns:26px 1fr;gap:0;}
+.grp-chave{position:relative;}
+.grp-fio{position:absolute;left:11px;top:22px;bottom:22px;width:2px;background:var(--plum);border-radius:1px;}
+.grp-fio::before,.grp-fio::after{content:'';position:absolute;left:0;width:12px;height:2px;background:var(--plum);}
+.grp-fio::before{top:0;}
+.grp-fio::after{bottom:0;}
+.grp-disco{position:absolute;left:2px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;background:var(--plum-soft);border:1.5px solid var(--plum);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;font-weight:700;color:var(--plum);}
+.grp-fichas{display:flex;flex-direction:column;gap:8px;min-width:0;}
+
+.diarios-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:14px;margin-bottom:14px;border-bottom:1.5px solid var(--ink);}
+.diarios-nome{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--ink);}
+.diarios-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0;border:1px solid var(--borda);border-radius:var(--r-card);overflow:hidden;background:var(--ficha);}
+.diario-col{padding:16px 20px 22px;border-right:1px solid var(--borda);}
+.diario-col:last-child{border-right:none;}
+.diario-col.alt{background:var(--apoio-2);}
+.diario-col-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-bottom:11px;border-bottom:1px solid var(--divisor-suave);}
+.diario-num{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--ink);}
+.diario-prazo{font-family:var(--font-mono);font-size:10px;font-weight:700;}
+.diario-tipo{font-size:12px;color:var(--tinta-media-2);margin-top:8px;}
+.diario-entries{display:flex;flex-direction:column;margin-top:6px;}
+.diario-entry{padding:11px 0;border-bottom:1px solid var(--divisor-suave);}
+.diario-entry:last-child{border-bottom:none;}
+.diario-ts{font-family:var(--font-mono);font-size:10px;color:var(--apagado);}
+.diario-txt{font-size:12.5px;line-height:1.5;color:var(--tinta-media);margin-top:4px;text-wrap:pretty;}
+
 @media (max-width:700px){
   .cp{grid-template-columns:5px 1fr;}
   .cp-prazo{grid-column:2;border-left:none;border-top:1px solid var(--borda-ficha);flex-direction:row;align-items:center;flex-wrap:wrap;}
   .btn-avancar{width:auto;margin-top:0;margin-left:auto;}
+  .grp-grid{grid-template-columns:16px 1fr;}
+  .diario-col{border-right:none;border-bottom:1px solid var(--borda);}
 }
 
 /* stats clicáveis + alerta de urgência */
@@ -714,6 +750,7 @@ var atosBalcaoModalOpen = false;
 var historicoAbertos = {};
 var obsAbertos = {};
 var vinculadosAbertos = {};
+var diariosGrupoId = null;
 var documentosAbertos = {};
 var justOpenedKey = null;
 var justCreatedId = null;
@@ -1230,6 +1267,25 @@ App.toggleVinculadosView = function(id){
   var opening = !vinculadosAbertos[id];
   vinculadosAbertos[id]=opening;
   if(opening) justOpenedKey='vinc:'+id;
+  App.render();
+};
+App.abrirDiariosLadoALado = function(grupoId){
+  diariosGrupoId = grupoId;
+  App.render();
+};
+App.fecharDiarios = function(){
+  diariosGrupoId = null;
+  App.render();
+};
+App.desvincularGrupo = function(grupoId){
+  var membros = state.protocolos.filter(function(p){ return p.grupoVinculoId===grupoId; });
+  if(!window.confirm('Desvincular estes '+membros.length+' protocolos? Isso só afeta a visualização em conjunto — nenhum dado de cada protocolo muda.')) return;
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.grupoVinculoId===grupoId) p.grupoVinculoId = null;
+    return p;
+  });
+  saveState();
+  if(diariosGrupoId===grupoId) diariosGrupoId = null;
   App.render();
 };
 App.toggleDocumentosView = function(id){
@@ -2465,7 +2521,7 @@ function renderColunaPrazo(p){
     avancar+
   '</div>';
 }
-function renderFicha(p){
+function renderFicha(p, dentroDeGrupo){
   var st = getStatusOf(p);
   var info = computePrazo(p);
   var atrasado = !!(info && info.isOverdue);
@@ -2474,20 +2530,23 @@ function renderFicha(p){
     return '<option value="'+esc(s.key)+'"'+(s.key===p.status?' selected':'')+'>'+esc(s.label)+'</option>';
   }).join('');
   var tipoLinha = (p.tipos && p.tipos.length) ? esc(p.tipos.join(' · ')) : '<span style="color:var(--apagado);font-style:italic;">sem tipo de ato</span>';
+  var nomeHtml = dentroDeGrupo
+    ? '<div class="cp-tipo" style="font-size:14px;font-weight:500;color:var(--ink);">'+tipoLinha+'</div>'
+    : (
+      (p.cliente ? '<div class="cp-nome" title="Ver histórico deste cliente" onclick="App.showClienteHistory(\''+jsAttr(p.cliente)+'\')">'+esc(p.cliente)+'</div>' : '<div class="cp-nome vazio">Sem identificação de cliente</div>')+
+      '<div class="cp-tipo">'+tipoLinha+'</div>'
+    );
   return ''+
   '<div class="cp'+(atrasado?' atraso':'')+(justCreatedId===p.id?' ficha-new':'')+'">'+
     '<div class="cp-barra" style="background:var(--'+st.cor+');"></div>'+
     '<div class="cp-corpo">'+
       '<div class="cp-meta">'+
         (p.numeroProtocolo ? '<span class="cp-num">nº '+esc(p.numeroProtocolo)+'</span>' : '<span class="cp-num" style="opacity:.6;">sem nº</span>')+
-        '<span class="selo '+(p.tipoPessoa==='pj'?'pj':'pf')+'">'+(p.tipoPessoa==='pj'?'PJ':'PF')+'</span>'+
+        (dentroDeGrupo ? '' : '<span class="selo '+(p.tipoPessoa==='pj'?'pj':'pf')+'">'+(p.tipoPessoa==='pj'?'PJ':'PF')+'</span>')+
         (atrasado ? '<span class="tag-atraso">ATRASADO</span>' : '')+
         (p.responsavel ? '<span class="cp-resp">'+esc(p.responsavel)+'</span>' : '')+
       '</div>'+
-      '<div>'+
-        (p.cliente ? '<div class="cp-nome" title="Ver histórico deste cliente" onclick="App.showClienteHistory(\''+jsAttr(p.cliente)+'\')">'+esc(p.cliente)+'</div>' : '<div class="cp-nome vazio">Sem identificação de cliente</div>')+
-        '<div class="cp-tipo">'+tipoLinha+'</div>'+
-      '</div>'+
+      '<div>'+nomeHtml+'</div>'+
       '<div class="cp-rodape">'+
         '<select class="chip-status" style="background:var(--'+st.cor+'-soft);color:var(--'+st.cor+');" onchange="App.changeStatusQuick(\''+p.id+'\', this.value)" title="Mudar status">'+statusOptions+'</select>'+
         (canais ? '<span class="cp-canais">'+esc(canais)+'</span>' : '')+
@@ -2498,7 +2557,7 @@ function renderFicha(p){
         '</span>'+
       '</div>'+
       renderGateDigitalizacao(p)+
-      renderVinculados(p)+
+      (dentroDeGrupo ? '' : renderVinculados(p))+
       renderObservacoes(p)+
       renderHistorico(p)+
       renderDocumentosChecklist(p)+
@@ -2511,7 +2570,114 @@ function groupHeader(title, count){
   return '<div class="group-header"><span>'+esc(title)+'</span><span class="cnt">'+count+'</span></div>';
 }
 
+/* Reordena a lista ja ordenada para que membros do mesmo grupoVinculoId fiquem
+   adjacentes (na posicao do primeiro membro encontrado), sem mudar a ordem entre
+   grupos/itens soltos. So altera a APRESENTACAO — nao mexe em dados. */
+function regroupByVinculo(list){
+  var seen = {};
+  var out = [];
+  list.forEach(function(p){
+    if(seen[p.id]) return;
+    out.push(p);
+    seen[p.id] = true;
+    if(p.grupoVinculoId){
+      list.forEach(function(m){
+        if(m.id!==p.id && !seen[m.id] && m.grupoVinculoId===p.grupoVinculoId){
+          out.push(m);
+          seen[m.id] = true;
+        }
+      });
+    }
+  });
+  return out;
+}
+function renderGrupoVinculado(items){
+  var head = items[0];
+  var nome = head.cliente ? esc(head.cliente) : '<span style="color:var(--apagado);font-style:italic;">Sem identificação</span>';
+  var seloHtml = '<span class="selo '+(head.tipoPessoa==='pj'?'pj':'pf')+'">'+(head.tipoPessoa==='pj'?'PJ':'PF')+'</span>';
+  var pillHtml = '<span class="pill-vinculo">vinculado &middot; '+items.length+'</span>';
+  var fichasHtml = items.map(function(p){ return renderFicha(p, true); }).join('');
+  return ''+
+  '<div class="grp-wrap">'+
+    '<div class="grp-head">'+
+      '<span class="grp-nome">'+nome+'</span>'+seloHtml+pillHtml+
+      '<div style="flex:1"></div>'+
+      '<button type="button" class="grp-link" onclick="App.abrirDiariosLadoALado(\''+head.grupoVinculoId+'\')">ver diários lado a lado</button>'+
+      '<button type="button" class="grp-link danger" onclick="App.desvincularGrupo(\''+head.grupoVinculoId+'\')">desvincular</button>'+
+    '</div>'+
+    '<div class="grp-grid">'+
+      '<div class="grp-chave"><span class="grp-fio"></span><span class="grp-disco">'+items.length+'</span></div>'+
+      '<div class="grp-fichas">'+fichasHtml+'</div>'+
+    '</div>'+
+  '</div>';
+}
+function renderListaComVinculo(list){
+  var grouped = regroupByVinculo(list);
+  var html = '';
+  var i = 0;
+  while(i < grouped.length){
+    var p = grouped[i];
+    if(p.grupoVinculoId){
+      var items = [p];
+      var j = i+1;
+      while(j < grouped.length && grouped[j].grupoVinculoId===p.grupoVinculoId){ items.push(grouped[j]); j++; }
+      /* So mostra a chave/cabecalho de grupo quando 2+ membros estao na lista atual
+         (filtros/busca podem deixar so 1 visivel — nesse caso e so uma ficha comum). */
+      html += items.length>1 ? renderGrupoVinculado(items) : renderFicha(items[0]);
+      i = j;
+    }else{
+      html += renderFicha(p);
+      i++;
+    }
+  }
+  return html;
+}
+function renderDiariosLadoALado(){
+  var membros = state.protocolos.filter(function(p){ return p.grupoVinculoId===diariosGrupoId && !p.naLixeira; });
+  if(!membros.length){
+    return '<div class="empty-state">Este grupo não existe mais. <button type="button" class="btn-ghost outlined" onclick="App.fecharDiarios()">Voltar à lista</button></div>';
+  }
+  var nome = membros[0].cliente ? esc(membros[0].cliente) : 'Sem identificação';
+  var statusMap = getStatusMap();
+  var colsHtml = membros.map(function(p, idx){
+    var st = statusMap[p.status] || {label:p.status, cor:'gray'};
+    var info = computePrazo(p);
+    var prazoHtml = '';
+    if(info){
+      var cor = info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)');
+      var txt = info.isOverdue ? (info.diasAtraso+'d atraso') : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d restantes');
+      prazoHtml = '<span class="diario-prazo" style="color:'+cor+';">'+esc(txt)+'</span>';
+    }
+    var obsRows = (p.observacoesHistorico||[]).slice().reverse().map(function(o){
+      var dt = new Date(o.ts);
+      var dstr = pad(dt.getDate())+'/'+pad(dt.getMonth()+1)+'/'+dt.getFullYear()+' '+pad(dt.getHours())+':'+pad(dt.getMinutes());
+      return '<div class="diario-entry"><div class="diario-ts">'+esc(dstr)+'</div><div class="diario-txt">'+esc(o.texto)+'</div></div>';
+    }).join('') || '<div class="fm-hint">Nenhuma observação ainda.</div>';
+    return ''+
+    '<div class="diario-col'+(idx%2===1?' alt':'')+'">'+
+      '<div class="diario-col-head">'+
+        '<span class="diario-num">'+(p.numeroProtocolo?('nº '+esc(p.numeroProtocolo)):'sem nº')+'</span>'+
+        '<span class="chip-status" style="cursor:default;background:var(--'+st.cor+'-soft);color:var(--'+st.cor+');"><span class="pt" style="background:var(--'+st.cor+');"></span>'+esc(st.label)+'</span>'+
+        '<div style="flex:1"></div>'+
+        prazoHtml+
+      '</div>'+
+      '<div class="diario-tipo">'+((p.tipos&&p.tipos.length)?esc(p.tipos.join(' · ')):'sem tipo de ato')+'</div>'+
+      '<div class="diario-entries">'+obsRows+'</div>'+
+    '</div>';
+  }).join('');
+  return ''+
+  '<div class="diarios-head">'+
+    '<span class="diarios-nome">'+nome+'</span>'+
+    '<span class="pill-vinculo">vinculado &middot; '+membros.length+'</span>'+
+    '<div style="flex:1"></div>'+
+    '<button type="button" class="btn-ghost outlined" onclick="App.fecharDiarios()">Voltar à lista</button>'+
+  '</div>'+
+  '<div class="diarios-grid">'+colsHtml+'</div>';
+}
 function renderListArea(){
+  if(diariosGrupoId){
+    return renderDiariosLadoALado();
+  }
   if(state.protocolos.length===0){
     return '<div class="empty-state">'+
       '<div class="big">Nenhum protocolo registrado ainda</div>Clique em "+ Novo Protocolo" para começar o controle.'+
@@ -2532,11 +2698,11 @@ function renderListArea(){
     var pf = list.filter(function(p){ return p.tipoPessoa==='pf'; });
     var pj = list.filter(function(p){ return p.tipoPessoa==='pj'; });
     return groupHeader('Pessoa Física', pf.length)+
-      (pf.length ? pf.map(renderFicha).join('') : '<div class="empty-state">Nenhum protocolo de pessoa física com os filtros atuais.</div>')+
+      (pf.length ? renderListaComVinculo(pf) : '<div class="empty-state">Nenhum protocolo de pessoa física com os filtros atuais.</div>')+
       groupHeader('Pessoa Jurídica', pj.length)+
-      (pj.length ? pj.map(renderFicha).join('') : '<div class="empty-state">Nenhum protocolo de pessoa jurídica com os filtros atuais.</div>');
+      (pj.length ? renderListaComVinculo(pj) : '<div class="empty-state">Nenhum protocolo de pessoa jurídica com os filtros atuais.</div>');
   }
-  return list.map(renderFicha).join('');
+  return renderListaComVinculo(list);
 }
 
 function renderKanbanCard(p){
