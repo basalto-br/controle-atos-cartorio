@@ -308,27 +308,13 @@ select.sortsel{
 .kanban-hint{font-size:12px;color:var(--ink-soft);margin:0 0 12px;}
 
 /* ---------- Modal ---------- */
-.overlay{
-  position:fixed;inset:0;background:rgba(34,31,26,0.55);
-  display:flex;align-items:flex-start;justify-content:center;
-  padding:30px 16px;overflow-y:auto;z-index:50;
-}
-.overlay.entering{animation:fadeIn .18s ease;}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 @keyframes fadeSlideIn{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:translateY(0);}}
-@keyframes modalPop{from{opacity:0;transform:scale(0.96) translateY(8px);}to{opacity:1;transform:scale(1) translateY(0);}}
 .anim-in{animation:fadeSlideIn .2s ease;}
 @keyframes highlightNew{0%{background:var(--gold-soft);box-shadow:0 0 0 2px var(--gold);}75%{background:var(--gold-soft);box-shadow:0 0 0 2px var(--gold);}100%{background:var(--card);box-shadow:0 0 0 0 rgba(0,0,0,0);}}
 .ficha-new{animation:highlightNew 1.8s ease;}
 .ficha{transition:box-shadow .15s ease;}
 .ficha:hover{box-shadow:0 2px 10px rgba(34,31,26,0.06);}
-.modal{
-  background:var(--card);border-radius:6px;max-width:580px;width:100%;
-  padding:24px 26px 26px;box-shadow:0 12px 40px rgba(0,0,0,0.25);
-}
-.modal.entering{animation:modalPop .2s cubic-bezier(.2,.8,.3,1);}
-.modal.wide{max-width:640px;}
-.modal h2{font-family:var(--font-display);font-size:21px;margin:0 0 18px;}
 .field{margin-bottom:15px;}
 .field label{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:5px;font-weight:600;}
 .field input[type=text], .field input[type=date], .field textarea, .field select{
@@ -349,12 +335,11 @@ select.sortsel{
 .checklist input[type=checkbox]{margin:0;}
 .add-tipo-row{display:flex;gap:6px;margin-top:8px;}
 .add-tipo-row input{flex:1;padding:7px 10px;border:1px solid var(--line);border-radius:var(--radius);font-size:12.5px;}
-.modal-actions{display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}
-.modal-actions-right{display:flex;gap:8px;}
 
 /* ---------- Painel lateral de criar/editar (Fase 2 do redesign) ----------
-   Classes proprias (side-*), independentes de .overlay/.modal, que continuam
-   servindo Configuracoes/Historico/Relatorio/Atos de balcao sem alteracao. */
+   Classes proprias (side-*) — hoje o unico container de modal/painel do app;
+   .overlay/.modal (dialogo centralizado antigo) foram removidos quando
+   Configuracoes/Historico do cliente/Relatorio do dia migraram pra ca. */
 @keyframes panelSlideIn{from{transform:translateX(28px);opacity:.3;}to{transform:translateX(0);opacity:1;}}
 .side-overlay{position:fixed;inset:0;background:rgba(34,31,26,0.45);display:flex;justify-content:flex-end;z-index:50;}
 .side-overlay.entering{animation:fadeIn .18s ease;}
@@ -467,11 +452,11 @@ select.sortsel{
 
 /* daily report */
 .report-section{margin-bottom:18px;}
-.report-section h3{font-family:var(--font-display);font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:8px;}
-.report-section h3 .count{font-family:var(--font-mono);font-size:12px;background:var(--bg-alt);padding:2px 8px;border-radius:10px;color:var(--ink-soft);}
-.report-row{font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;}
+.report-section h3{font-family:var(--font-display);font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:8px;color:var(--tinta-media);}
+.report-section h3 .count{font-family:var(--font-mono);font-size:12px;background:var(--apoio);padding:2px 8px;border-radius:10px;color:var(--apagado);}
+.report-row{font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--divisor-suave);display:flex;justify-content:space-between;gap:8px;color:var(--tinta-media-2);}
 .report-row:last-child{border-bottom:none;}
-.report-empty{font-size:12px;color:var(--ink-soft);font-style:italic;}
+.report-empty{font-size:12px;color:var(--apagado);font-style:italic;}
 
 @media (max-width:600px){
   .letterhead{flex-direction:column;align-items:flex-start;}
@@ -754,8 +739,6 @@ select.sortsel{
   #dailyReportPrint{position:absolute;left:0;top:0;width:100%;padding:10px;}
   body.printing-ficha #fichaPrintArea, body.printing-ficha #fichaPrintArea *{visibility:visible;}
   body.printing-ficha #fichaPrintArea{display:block;position:absolute;left:0;top:0;width:100%;padding:10px;}
-  .overlay{position:static !important;background:none !important;padding:0 !important;display:block !important;}
-  .modal{box-shadow:none !important;max-width:100% !important;}
   .no-print{display:none !important;}
 }
 </style>
@@ -898,6 +881,9 @@ var fsStatus = 'init';   /* init | connected | reconnect | error | offer | unsup
 var fsFolderName = '';
 var fsWriting = false;
 var fsPending = false;
+/* "lembrar depois" no banner de pasta local — so pra sessao atual (nao persiste no
+   state nem em localStorage), o banner volta a aparecer na proxima abertura. */
+var fsBannerDispensado = false;
 var backupRunning = false;
 var ui = {
   search:'', statusFilter:'all', canalFilter:'all', pessoaFilter:'all',
@@ -2582,6 +2568,11 @@ App.importBackupFile = function(inputEl){
   reader.readAsText(file);
 };
 
+App.dispensarFsBanner = function(){
+  fsBannerDispensado = true;
+  App.render();
+};
+
 /* ---- Armazenamento em pasta: conectar / reconectar / desconectar ---- */
 App.conectarPastaDados = function(){
   if(!fsSupported){ window.alert('Este navegador não permite salvar em pasta local. Abra a ferramenta no Google Chrome ou no Microsoft Edge.'); return Promise.resolve(); }
@@ -2826,7 +2817,8 @@ function renderFsBanner(){
     return '<div class="banner-warning no-print"><strong>Falha ao salvar na pasta.</strong> Verifique se ela ainda existe e reconecte, ou use o backup manual em Configurações. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.conectarPastaDados()">Reconectar pasta</button></div>';
   }
   if(fsSupported && !storageAvailable){
-    return '<div class="banner-info no-print"><strong>Salvar automaticamente numa pasta local (recomendado).</strong> Escolha uma pasta no computador e seus protocolos passam a salvar sozinhos, com backups automáticos 2×/dia — sem depender de backup manual o tempo todo. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.conectarPastaDados()">Conectar pasta de dados</button></div>';
+    if(fsBannerDispensado) return '';
+    return '<div class="banner-info no-print"><strong>Salvar automaticamente numa pasta local (recomendado).</strong> Escolha uma pasta no computador e seus protocolos passam a salvar sozinhos, com backups automáticos 2×/dia — sem depender de backup manual o tempo todo. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.conectarPastaDados()">Conectar pasta de dados</button> <button class="banner-link" onclick="App.dispensarFsBanner()">lembrar depois</button></div>';
   }
   if(!fsSupported && !storageAvailable){
     return '<div class="banner-warning no-print">Para salvar automaticamente, abra a ferramenta no <strong>Google Chrome</strong> ou no <strong>Microsoft Edge</strong>. Neste navegador os dados não ficam salvos permanentemente — use o backup manual em Configurações para não perdê-los.</div>';
@@ -3562,6 +3554,7 @@ function renderPainelVinculo(){
             '<div style="display:flex;flex-direction:column;gap:8px;">'+buscaHtml+'</div>'+
           '</div>'
         ) : '')+
+        (!jaVinculados.length && !sugestoes.length && !q ? '<div class="fm-hint" style="margin-top:16px;">Nenhuma sugestão pelo nome — use a busca acima pra encontrar o protocolo que quer vincular.</div>' : '')+
         '<div class="vp-nota">Dispensar uma sugestão só esconde aquele par — o protocolo continua na lista normalmente e pode ser vinculado depois pela busca.</div>'+
       '</div>'+
       '<div class="side-panel-foot">'+
@@ -4230,13 +4223,17 @@ function renderSettingsModal(){
 
   var fm = state.feriadosMoveis;
   return ''+
-  '<div class="overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeSettings()">'+
-    '<div class="modal wide'+(modalJustOpened?' entering':'')+'">'+
-      '<h2>Configurações</h2>'+
+  '<div class="side-overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeSettings()">'+
+    '<div class="side-panel'+(modalJustOpened?' entering':'')+'">'+
+      '<div class="side-panel-head" style="display:flex;align-items:flex-start;gap:12px;">'+
+        '<h2 style="margin:0;flex:1;">Configurações</h2>'+
+        '<button type="button" class="ib28" style="width:30px;height:30px;" title="Fechar" onclick="App.closeSettings()">&times;</button>'+
+      '</div>'+
+      '<div class="side-panel-body">'+
 
       '<div class="settings-section">'+
         '<h3>Backup (reserva de segurança)</h3>'+
-        '<div class="hint">Os protocolos já sincronizam automaticamente pela sua conta Claude. Ainda assim, baixe um backup de vez em quando: se este artifact for despublicado por qualquer motivo, os dados salvos são apagados permanentemente e não é possível publicar o mesmo artifact de novo — um backup é sua única rede de segurança contra isso.</div>'+
+        '<div class="hint">Backup manual complementa a pasta local e o armazenamento do navegador — é sua última rede de segurança se os dois falharem.</div>'+
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+
           '<button type="button" class="btn-ghost outlined" onclick="App.exportBackup()">Baixar backup completo</button>'+
           '<button type="button" class="btn-ghost outlined" onclick="App.triggerImportBackup()">Restaurar de um backup</button>'+
@@ -4247,7 +4244,7 @@ function renderSettingsModal(){
 
       '<div class="settings-section">'+
         '<h3>Armazenamento em pasta local (salva automático + backup)</h3>'+
-        '<div class="hint">Escolha uma pasta no computador: o app salva os dados nela automaticamente (<code>'+FS_DATA_FILE+'</code>) e ainda guarda backups 2×/dia (10:50 e 17:45) na subpasta <code>'+FS_BACKUP_DIR+'</code>. Tudo fica só neste computador — nada vai para a nuvem. Funciona no Chrome e no Edge. Dica: para não sincronizar na nuvem, use uma pasta fora do OneDrive/Google Drive (ex.: C:\\ControleAtos).</div>'+
+        '<div class="hint">Escolha uma pasta no computador: salva sozinho a cada mudança, mais backup automático 2×/dia. Tudo fica só aqui, nada vai pra nuvem. Funciona no Chrome e no Edge. Dica: use uma pasta fora do OneDrive/Google Drive pra não sincronizar sem querer.</div>'+
         '<div class="hint" style="color:var(--ink);margin-top:6px;">'+fsSectionStatus+'</div>'+
         (fsBackupInfo ? '<div class="hint" style="margin-top:4px;">'+fsBackupInfo+'</div>' : '')+
         (fsButtons ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">'+fsButtons+'</div>' : '')+
@@ -4262,7 +4259,7 @@ function renderSettingsModal(){
 
       '<div class="settings-section">'+
         '<h3>Fases de andamento</h3>'+
-        '<div class="hint">Adicione, edite, reordene ou remova as fases do fluxo. Uma fase marcada como "final" encerra o prazo e sai da contagem de protocolos ativos. Se além disso exigir digitalização, o protocolo só vai para "Arquivados" depois que você confirmar o rascunho digitalizado na ficha.</div>'+
+        '<div class="hint">Adicione, edite, reordene ou remova fases. Fase "final" encerra o prazo e sai da contagem de ativos; se também exigir digitalização, só arquiva depois de confirmar o rascunho na ficha.</div>'+
         '<div>'+statusRows+'</div>'+
         '<div class="new-status-form">'+
           '<input type="text" id="settingsNovoStatusLabel" placeholder="Nome da nova fase…" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+
@@ -4304,7 +4301,13 @@ function renderSettingsModal(){
         '<button type="button" class="btn-ghost outlined" onclick="App.addFeriadoExtra()">Adicionar feriado</button>'+
       '</div>'+
 
-      '<div class="modal-actions"><div></div><div class="modal-actions-right"><button class="btn btn-primary" onclick="App.closeSettings()">Concluído</button></div></div>'+
+      '</div>'+
+      '<div class="side-panel-foot">'+
+        '<span class="side-esc-hint">Esc para fechar</span>'+
+        '<div class="side-panel-foot-right">'+
+          '<button class="btn btn-primary" onclick="App.closeSettings()">Concluído</button>'+
+        '</div>'+
+      '</div>'+
     '</div>'+
   '</div>';
 }
@@ -4318,14 +4321,30 @@ function renderClienteHistoryModal(){
   }).sort(function(a,b){ return a.dataProtocolo<b.dataProtocolo?1:-1; });
   var rows = items.map(function(p){
     var st = statusMap[p.status] || {label:p.status, cor:'gray'};
-    return '<div class="list-row"><span>'+esc(formatBR(p.dataProtocolo))+(p.numeroProtocolo?(' — nº '+esc(p.numeroProtocolo)):'')+' — '+esc(p.tipos.join(', ') || 'sem tipo definido')+'</span><span class="stamp '+st.cor+'" style="transform:none;">'+esc(st.label)+'</span></div>';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--divisor-suave);">'+
+      '<span style="font-size:12.5px;color:var(--tinta-media);">'+esc(formatBR(p.dataProtocolo))+(p.numeroProtocolo?(' — nº '+esc(p.numeroProtocolo)):'')+' — '+esc(p.tipos.join(', ') || 'sem tipo definido')+'</span>'+
+      '<span class="chip-status" style="cursor:default;background:var(--'+st.cor+'-soft);color:var(--'+st.cor+');flex-shrink:0;"><span class="pt" style="background:var(--'+st.cor+');"></span>'+esc(st.label)+'</span>'+
+    '</div>';
   }).join('');
-  return '<div class="overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeClienteHistory()">'+
-    '<div class="modal'+(modalJustOpened?' entering':'')+'">'+
-      '<h2>Histórico — '+esc(nome)+'</h2>'+
-      '<div class="hint">'+items.length+' protocolo(s) encontrado(s) para este nome.</div>'+
-      '<div class="checklist" style="max-height:340px;">'+(rows||'<div class="hint">Nada encontrado.</div>')+'</div>'+
-      '<div class="modal-actions"><div></div><div class="modal-actions-right"><button class="btn btn-primary" onclick="App.closeClienteHistory()">Fechar</button></div></div>'+
+  return '<div class="side-overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeClienteHistory()">'+
+    '<div class="side-panel w-440'+(modalJustOpened?' entering':'')+'">'+
+      '<div class="side-panel-head" style="display:flex;align-items:flex-start;gap:12px;">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div class="fm-label" style="margin-bottom:3px;">histórico por nome</div>'+
+          '<h2 style="margin:0;">'+esc(nome)+'</h2>'+
+        '</div>'+
+        '<button type="button" class="ib28" style="width:30px;height:30px;" title="Fechar" onclick="App.closeClienteHistory()">&times;</button>'+
+      '</div>'+
+      '<div class="side-panel-body">'+
+        '<div class="fm-hint" style="margin-bottom:12px;">'+items.length+' protocolo(s) encontrado(s) para este nome.</div>'+
+        (rows || '<div class="fm-hint" style="font-style:italic;">Nada encontrado.</div>')+
+      '</div>'+
+      '<div class="side-panel-foot">'+
+        '<span class="side-esc-hint">Esc para fechar</span>'+
+        '<div class="side-panel-foot-right">'+
+          '<button class="btn btn-primary" onclick="App.closeClienteHistory()">Fechar</button>'+
+        '</div>'+
+      '</div>'+
     '</div>'+
   '</div>';
 }
@@ -4367,18 +4386,33 @@ function renderDailyReportModal(){
   var dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
   var meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   var extenso = dias[hoje.getDay()]+', '+hoje.getDate()+' de '+meses[hoje.getMonth()]+' de '+hoje.getFullYear();
-  return '<div class="overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeDailyReport()">'+
-    '<div class="modal wide'+(modalJustOpened?' entering':'')+'">'+
-      '<div id="dailyReportPrint">'+
-        '<div class="eyebrow" style="margin-bottom:4px;">Cartório de Notas — Controle de Atos</div>'+
-        '<h2>Relatório do dia — '+esc(extenso)+'</h2>'+
-        '<div class="report-section"><h3>Atrasados <span class="count">'+r.atrasados.length+'</span></h3>'+reportRows(r.atrasados,'Nenhum protocolo atrasado.')+'</div>'+
-        '<div class="report-section"><h3>Vencem hoje <span class="count">'+r.venceHoje.length+'</span></h3>'+reportRows(r.venceHoje,'Nenhum protocolo vence hoje.')+'</div>'+
-        '<div class="report-section"><h3>Aguardando documentos <span class="count">'+r.aguardDocs.length+'</span></h3>'+reportRows(r.aguardDocs,'Nenhum protocolo pendente de documentos.')+'</div>'+
-        '<div class="report-section"><h3>Novos protocolos hoje <span class="count">'+r.novos.length+'</span></h3>'+reportRows(r.novos,'Nenhum protocolo aberto hoje.')+'</div>'+
-        '<div class="report-section"><h3>Arquivados hoje <span class="count">'+r.finalizadosHoje.length+'</span></h3>'+reportRows(r.finalizadosHoje,'Nenhum protocolo arquivado hoje.')+'</div>'+
+  return '<div class="side-overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeDailyReport()">'+
+    '<div class="side-panel'+(modalJustOpened?' entering':'')+'">'+
+      '<div class="side-panel-head" style="display:flex;align-items:flex-start;gap:12px;">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div class="fm-label" style="margin-bottom:3px;">'+esc(extenso)+'</div>'+
+          '<h2 style="margin:0;">Relatório do dia</h2>'+
+        '</div>'+
+        '<button type="button" class="ib28" style="width:30px;height:30px;" title="Fechar" onclick="App.closeDailyReport()">&times;</button>'+
       '</div>'+
-      '<div class="modal-actions no-print"><button class="btn-ghost" onclick="App.closeDailyReport()">Fechar</button><div class="modal-actions-right"><button class="btn btn-primary" onclick="App.printDailyReport()">Imprimir relatório</button></div></div>'+
+      '<div class="side-panel-body">'+
+        '<div id="dailyReportPrint">'+
+          '<div class="eyebrow" style="margin-bottom:4px;">Cartório de Notas — Controle de Atos</div>'+
+          '<h2>Relatório do dia — '+esc(extenso)+'</h2>'+
+          '<div class="report-section"><h3>Atrasados <span class="count">'+r.atrasados.length+'</span></h3>'+reportRows(r.atrasados,'Nenhum protocolo atrasado.')+'</div>'+
+          '<div class="report-section"><h3>Vencem hoje <span class="count">'+r.venceHoje.length+'</span></h3>'+reportRows(r.venceHoje,'Nenhum protocolo vence hoje.')+'</div>'+
+          '<div class="report-section"><h3>Aguardando documentos <span class="count">'+r.aguardDocs.length+'</span></h3>'+reportRows(r.aguardDocs,'Nenhum protocolo pendente de documentos.')+'</div>'+
+          '<div class="report-section"><h3>Novos protocolos hoje <span class="count">'+r.novos.length+'</span></h3>'+reportRows(r.novos,'Nenhum protocolo aberto hoje.')+'</div>'+
+          '<div class="report-section"><h3>Arquivados hoje <span class="count">'+r.finalizadosHoje.length+'</span></h3>'+reportRows(r.finalizadosHoje,'Nenhum protocolo arquivado hoje.')+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="side-panel-foot no-print">'+
+        '<span class="side-esc-hint">Esc para fechar</span>'+
+        '<div class="side-panel-foot-right">'+
+          '<button class="btn-ghost" onclick="App.closeDailyReport()">Fechar</button>'+
+          '<button class="btn btn-primary" onclick="App.printDailyReport()">Imprimir relatório</button>'+
+        '</div>'+
+      '</div>'+
     '</div>'+
   '</div>';
 }
