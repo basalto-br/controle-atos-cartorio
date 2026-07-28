@@ -2110,6 +2110,21 @@ App.markDocsComplete = function(id){
   saveState();
   App.render();
 };
+App.docEditOpen = {};
+App.showDocEditField = function(id){ App.docEditOpen[id]=true; justOpenedKey='docedit:'+id; App.render(); };
+App.cancelarDocEdit = function(id){ App.docEditOpen[id]=false; App.render(); };
+App.updateDocDate = function(id){
+  var input = document.getElementById('doceditdate_'+id);
+  var dataISO = input ? input.value : '';
+  if(!dataISO) return;
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id) p.dataRecebimentoCompleto = dataISO;
+    return p;
+  });
+  saveState();
+  App.docEditOpen[id] = false;
+  App.render();
+};
 
 App.marcarRascunhoDigitalizado = function(id){
   state.protocolos = state.protocolos.map(function(p){
@@ -3193,11 +3208,11 @@ function renderPendenciasFicha(p){
   }).join('') || '<div class="hint">Nenhuma pendência registrada ainda.</div>';
   var addUi;
   if(App.pendenciaInlineOpen[p.id]){
-    var respOptions = '<option value="">— Responsável —</option>'+state.responsaveis.map(function(r){ return '<option value="'+esc(r)+'">'+esc(r)+'</option>'; }).join('');
+    var respOptions = '<option value="">— Responsável —</option>'+state.responsaveis.map(function(r){ return '<option value="'+esc(r)+'"'+(r===p.responsavel?' selected':'')+'>'+esc(r)+'</option>'; }).join('');
     addUi = '<div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">'+
       '<input type="text" id="pendDesc_'+p.id+'" placeholder="Descrição (ex.: Cobrar matrícula atualizada)" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;font-family:var(--font-body);">'+
       '<div style="display:flex;gap:6px;">'+
-        '<input type="date" id="pendData_'+p.id+'" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+
+        '<input type="date" id="pendData_'+p.id+'" value="'+esc(todayISO())+'" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+
         '<select id="pendResp_'+p.id+'" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+respOptions+'</select>'+
       '</div>'+
       '<div style="display:flex;gap:8px;">'+
@@ -3287,11 +3302,20 @@ function renderColunaPrazo(p){
       )+
     '</div>';
   }
+  var isEditingRecebido = App.docEditOpen[p.id];
+  var recebidoHtml = isEditingRecebido
+    ? '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">'+
+        '<input type="date" id="doceditdate_'+p.id+'" value="'+esc(p.dataRecebimentoCompleto)+'" style="font-family:var(--font-mono);font-size:11px;padding:3px 5px;border:1px solid var(--borda-forte);border-radius:6px;">'+
+        '<button class="grp-link" onclick="App.updateDocDate(\''+p.id+'\')">salvar</button>'+
+        '<button class="grp-link" onclick="App.cancelarDocEdit(\''+p.id+'\')">cancelar</button>'+
+      '</div>'
+    : '<span class="prazo-acao">recebida em '+esc(formatBR(p.dataRecebimentoCompleto))+' &middot; <button class="grp-link" onclick="App.showDocEditField(\''+p.id+'\')">editar</button></span>';
   var info = computePrazo(p);
   if(!info){
     return '<div class="cp-prazo sem">'+
       '<span class="prazo-rot">PRAZO</span>'+
-      '<span class="prazo-acao">'+(st.isFinal?'Sem prazo em contagem.':'Documentação completa em '+esc(formatBR(p.dataRecebimentoCompleto)))+'</span>'+
+      '<span class="prazo-acao">'+(st.isFinal?'Sem prazo em contagem.':'Documentação completa.')+'</span>'+
+      recebidoHtml+
     '</div>';
   }
   var cor = info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)');
@@ -3305,6 +3329,7 @@ function renderColunaPrazo(p){
     renderTrilha(info, cor)+
     '<span class="prazo-txt '+txtCls+'">'+esc(txt)+'</span>'+
     '<span class="prazo-vence">vence '+esc(formatBR(info.deadline).slice(0,5))+'</span>'+
+    recebidoHtml+
     avancar+
   '</div>';
 }
