@@ -25,6 +25,11 @@ andamento e histórico. Uso diário, em dias úteis, por um escrevente de cartó
 
 - `controle-atos.html` — app inteiro (dados, lógica, render, estilo).
 - `index.html` — redirect estático pra `controle-atos.html`.
+- `ARCHITECTURE.md` — mapa de seções do `controle-atos.html` por faixa de linha
+  (estado, persistência, CSS por área, render de lista/quadro etc.). **Consultar
+  antes de fazer `Read` do arquivo inteiro** — ele mostra direto o trecho certo em
+  vez de precisar explorar o arquivo às cegas. Reconferir as faixas se o arquivo
+  mudar de tamanho (linhas adicionadas/removidas, não só texto trocado).
 - `design_handoff_protocolos/` (pasta irmã, fora do repo) — referência visual do
   redesign já implementado; só consultar se surgir dúvida de intenção de design.
 
