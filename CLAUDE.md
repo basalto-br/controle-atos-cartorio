@@ -8,6 +8,8 @@ andamento e histórico. Uso diário, em dias úteis, por um escrevente de cartó
 
 - **Arquivo único `controle-atos.html`** — HTML + CSS + JS puro, sem framework, sem
   build, sem bundler. `index.html` só redireciona pra ele (usado pelo GitHub Pages).
+  **Nunca dividir em módulos/arquivos separados sem perguntar antes**, mesmo em
+  refatorações grandes.
 - **Sem testes automatizados** — verificação é manual, no navegador.
 - **Rodar localmente**: sem Node/Python/PHP nesta máquina. Servidor de dev é
   PowerShell puro (`.claude/serve.ps1`, config `.claude/launch.json`, nome
@@ -145,7 +147,8 @@ nunca editada pelo usuário), é idempotente, e cai pra "acrescenta no fim" se a
 
 ## Fluxo de trabalho
 
-Branch por feature (`feat/xxx`) → implementar e testar no navegador → commit em
-português (`Co-Authored-By: Claude`) → push → usuário revisa e pede "mescla e
-continua" → merge (`--ff-only` quando possível) → apagar a branch local e remota.
-Sem CI — testar manualmente antes de cada commit.
+Branch por feature/fix (`feat/xxx` ou `fix/xxx`) → implementar e testar no navegador →
+commit em português, em passos pequenos e descritivos (`Co-Authored-By: Claude`) →
+push → abrir PR com `gh pr create` resumindo a mudança → usuário revisa e pede
+"mescla e continua" → merge → apagar a branch local e remota. **Nunca commitar direto
+na `main`.** Sem CI — testar manualmente antes de cada commit.
