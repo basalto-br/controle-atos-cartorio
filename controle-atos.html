@@ -2772,7 +2772,7 @@ App.toggleFeriadoMovel = function(key){
 /* ===================== Render ===================== */
 function renderFsBanner(){
   if(fileMode && fsStatus==='connected'){
-    return '<div class="banner-ok no-print">Salvando automaticamente na pasta <strong>'+esc(fsFolderName)+'</strong> — com backups locais 2×/dia (10:50 e 17:45). <button class="banner-link" onclick="App.desconectarPasta()">desconectar</button></div>';
+    return '<div class="banner-ok no-print">Salvando automaticamente na pasta de dados <strong>'+esc(fsFolderName)+'</strong> — com backup automático 2×/dia (10:50 e 17:45). <button class="banner-link" onclick="App.desconectarPasta()">Desconectar</button></div>';
   }
   if(fsStatus==='reconnect'){
     return '<div class="banner-warning no-print"><strong>Reconecte sua pasta de dados</strong> para carregar e salvar seus protocolos neste computador. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.reconectarPasta()">Reconectar pasta de dados</button></div>';
@@ -2782,7 +2782,7 @@ function renderFsBanner(){
   }
   if(fsSupported && !storageAvailable){
     if(fsBannerDispensado) return '';
-    return '<div class="banner-info no-print"><strong>Salve seus protocolos automaticamente (recomendado).</strong> Conecte uma pasta no computador: os protocolos passam a salvar sozinhos, com backup automático 2×/dia. Você ainda pode exportar um backup manual quando quiser. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.conectarPastaDados()">Conectar pasta de dados</button> <button class="banner-link" onclick="App.dispensarFsBanner()">Lembrar depois</button></div>';
+    return '<div class="banner-info no-print"><strong>Salve seus protocolos automaticamente (recomendado).</strong> Conecte uma pasta de dados no computador: os protocolos passam a salvar sozinhos, com backup automático 2×/dia. Você ainda pode exportar um backup manual quando quiser. <button class="btn-ghost outlined" style="margin-left:6px;" onclick="App.conectarPastaDados()">Conectar pasta de dados</button> <button class="banner-link" onclick="App.dispensarFsBanner()">Lembrar depois</button></div>';
   }
   if(!fsSupported && !storageAvailable){
     return '<div class="banner-warning no-print">Para salvar automaticamente, abra a ferramenta no <strong>Google Chrome</strong> ou no <strong>Microsoft Edge</strong>. Neste navegador os dados não ficam salvos permanentemente — use o backup manual em Configurações para não perdê-los.</div>';
