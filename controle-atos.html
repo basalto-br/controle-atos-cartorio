@@ -219,30 +219,12 @@ select.sortsel{
 .group-header:first-child{margin-top:0;}
 .group-header .cnt{font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);}
 
-.ficha{
-  display:flex;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-  margin-bottom:12px;overflow:hidden;
-}
-.ficha-bar{width:5px;flex-shrink:0;}
-.ficha-body{flex:1;padding:14px 16px;min-width:0;}
-.ficha-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}
-.ficha-ident{display:flex;flex-direction:column;gap:2px;}
-.ficha-date{font-family:var(--font-mono);font-size:13px;font-weight:700;}
-.ficha-num{font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);}
-.ficha-cliente{font-family:var(--font-display);font-size:16.5px;margin-top:2px;cursor:pointer;text-decoration:underline dotted 1px;text-underline-offset:3px;transition:color .12s ease;}
-.ficha-cliente:hover{color:var(--stamp-red);}
-.ficha-cliente.empty{color:var(--ink-soft);font-style:italic;font-family:var(--font-body);font-size:13px;cursor:default;text-decoration:none;}
-.ficha-sub{font-size:12px;color:var(--ink-soft);margin-top:2px;}
-.ficha-actions{display:flex;gap:4px;align-items:center;}
-.ficha-mid{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;align-items:center;}
 .tag{
   font-size:11px;padding:3px 9px;border-radius:3px;background:var(--bg-alt);color:var(--ink-soft);
   border:1px solid var(--line);transition:transform .1s ease;
 }
-.canal-tag{font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.04em;font-weight:600;}
-.pessoa-tag{font-family:var(--font-mono);font-weight:700;letter-spacing:0.03em;}
-.pessoa-tag.pf{color:var(--blue);background:var(--blue-soft);border-color:var(--blue);}
-.pessoa-tag.pj{color:var(--teal);background:var(--teal-soft);border-color:var(--teal);}
+
+.docs-pending{font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 
 .stamp{
   display:inline-flex;align-items:center;font-family:var(--font-mono);font-size:10.5px;
@@ -259,29 +241,6 @@ select.sortsel{
 .stamp.teal{color:var(--teal);background:var(--teal-soft);}
 .stamp.rose{color:var(--rose);background:var(--rose-soft);}
 
-.status-select{
-  font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;
-  font-weight:700;border-radius:3px;padding:5px 8px;border:1.5px solid currentColor;
-  background:transparent;cursor:pointer;max-width:210px;
-  transition:opacity .15s ease;
-}
-.status-select:hover{opacity:0.8;}
-
-.ficha-bottom{
-  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
-  padding-top:10px;border-top:1px dashed var(--line);
-}
-.docs-pending{font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.prazo-info{display:flex;align-items:center;gap:10px;}
-.prazo-text{font-size:12.5px;font-family:var(--font-mono);}
-.prazo-text.ok{color:var(--green);}
-.prazo-text.warn{color:var(--gold);}
-.prazo-text.late{color:var(--stamp-red);font-weight:700;}
-.dots{display:flex;gap:3px;}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:background .2s ease;}
-.dot.filled{background:var(--blue);}
-.dot.filled.late{background:var(--stamp-red);}
-.obs{font-size:12.5px;color:var(--ink-soft);margin-top:8px;font-style:italic;}
 .hist-toggle{font-size:11.5px;color:var(--ink-soft);background:none;border:none;text-decoration:underline;padding:0;margin-top:8px;transition:color .12s ease;}
 .hist-toggle:hover{color:var(--ink);}
 .hist-box{margin-top:8px;padding:8px 10px;background:var(--bg-alt);border-radius:3px;font-size:12px;}
@@ -289,22 +248,6 @@ select.sortsel{
 .hist-row:last-child{border-bottom:none;}
 .hist-row .hd{font-family:var(--font-mono);color:var(--ink-soft);font-size:11px;}
 
-/* ---------- Kanban ---------- */
-.kanban-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;scroll-behavior:smooth;}
-.kanban-col{flex:0 0 250px;background:var(--bg-alt);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;max-height:75vh;transition:background .15s ease, border-color .15s ease;}
-.kanban-col.drag-over{background:var(--blue-soft);border-color:var(--blue);}
-.kanban-col-header{margin:10px;text-align:center;justify-content:center;}
-.kanban-col-body{flex:1;overflow-y:auto;padding:0 10px 10px;display:flex;flex-direction:column;gap:8px;scroll-behavior:smooth;}
-.kanban-card{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:9px 10px;cursor:grab;font-size:12.5px;transition:transform .12s ease, box-shadow .12s ease;}
-.kanban-card:hover{transform:translateY(-2px);box-shadow:0 3px 10px rgba(0,0,0,0.08);}
-.kanban-card:active{cursor:grabbing;transform:scale(0.98);}
-.k-top{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);margin-bottom:4px;}
-.k-cliente{font-family:var(--font-display);font-size:13.5px;margin-bottom:6px;}
-.k-tag{display:inline-block;font-size:10.5px;padding:2px 7px;border-radius:3px;font-family:var(--font-mono);}
-.k-tag.ok{background:var(--green-soft);color:var(--green);}
-.k-tag.warn{background:var(--gold-soft);color:var(--gold);}
-.k-tag.late{background:var(--stamp-red-soft);color:var(--stamp-red);}
-.kanban-empty{font-size:12px;color:var(--ink-soft);text-align:center;padding:14px 0;font-style:italic;}
 .kanban-hint{font-size:12px;color:var(--ink-soft);margin:0 0 12px;}
 
 /* ---------- Modal ---------- */
@@ -640,9 +583,8 @@ select.sortsel{
 .ab-mes-fill{height:9px;border-radius:5px;}
 .ab-mes-qtd{font-family:var(--font-mono);font-size:10.5px;font-weight:700;color:var(--ink);text-align:right;}
 
-.ab-strip{display:flex;align-items:center;gap:16px;background:var(--apoio);padding:14px 20px;border-radius:var(--r-card);margin-bottom:14px;flex-wrap:wrap;}
 .ab-strip-total{display:flex;align-items:baseline;gap:9px;}
-.ab-strip-num{font-family:var(--font-mono);font-weight:700;font-size:24px;line-height:1;color:var(--ink);}
+.ab-strip-num{font-family:var(--font-mono);font-weight:700;font-size:16px;line-height:1;color:var(--ink);}
 .ab-strip-acoes{display:flex;align-items:center;gap:6px;}
 .ab-strip-mais1{border:1.5px solid var(--ink);background:var(--painel);color:var(--ink);border-radius:8px;padding:9px 18px;font-family:var(--font-mono);font-size:14px;font-weight:700;cursor:pointer;}
 .ab-strip-mais1:hover{background:var(--carimbo);border-color:var(--carimbo);color:var(--painel);}
@@ -657,8 +599,15 @@ select.sortsel{
 .ab-strip-ver-semana{border:none;background:none;color:var(--tinta-media-2);font-size:11.5px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}
 .ab-strip-ver-semana:hover{color:var(--ink);}
 
-.agenda-strip-wrap{margin-bottom:14px;}
-.agenda-strip{display:flex;align-items:center;gap:10px;background:var(--apoio);padding:12px 20px;border-radius:var(--r-card);flex-wrap:wrap;}
+.faixas-wrap{margin-bottom:14px;}
+.faixas-strip{display:flex;align-items:center;gap:18px;background:var(--apoio);padding:13px 20px;border-radius:var(--r-card);flex-wrap:wrap;}
+.faixa-agenda{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.faixa-balcao{display:flex;align-items:center;gap:16px;flex-wrap:wrap;flex:1;}
+.faixa-divisor{width:1px;align-self:stretch;background:var(--borda-forte);}
+@media (max-width:760px){
+  .faixas-strip{flex-direction:column;align-items:stretch;}
+  .faixa-divisor{width:auto;height:1px;}
+}
 .agenda-chip{border:1px solid var(--borda-forte);background:var(--painel);color:var(--tinta-media-2);border-radius:var(--r-chip);padding:6px 13px;font:500 12px var(--font-body);cursor:pointer;white-space:nowrap;}
 .agenda-chip:hover{border-color:var(--ink);}
 .agenda-chip.active{background:var(--ink);color:var(--painel);border-color:var(--ink);font-weight:600;}
@@ -2987,45 +2936,6 @@ function renderFiltersBar(){
   ) : '');
 }
 
-function renderDots(info){
-  var html = '<div class="dots">';
-  for(var i=1;i<=PRAZO_DIAS_UTEIS;i++){
-    var filled = info && i<=info.elapsedCapped;
-    html += '<div class="dot'+(filled?' filled'+(info.isOverdue?' late':''):'')+'"></div>';
-  }
-  html += '</div>';
-  return html;
-}
-
-function renderFichaPrazo(p){
-  if(!p.docsCompletos || !p.dataRecebimentoCompleto){
-    var isOpen = App.docInlineOpen[p.id];
-    return '<div class="docs-pending">'+
-      '<span>Documentação incompleta desde o protocolo.</span>'+
-      (isOpen ?
-        '<input type="date" id="docdate_'+p.id+'" class="'+(justOpenedKey==='docdate:'+p.id?'anim-in':'')+'" value="'+esc(todayISO())+'" style="font-family:var(--font-mono);font-size:12px;padding:4px 6px;border:1px solid var(--line);border-radius:3px;">'+
-        '<button class="btn-ghost outlined" onclick="App.markDocsComplete(\''+p.id+'\')">Confirmar recebimento</button>'
-        :
-        '<button class="btn-ghost" onclick="App.showDocDateField(\''+p.id+'\')">Marcar documentação completa</button>'
-      )+
-    '</div><div></div>';
-  }
-  var info = computePrazo(p);
-  if(!info){
-    return '<div class="docs-pending"><span>Documentação completa em '+esc(formatBR(p.dataRecebimentoCompleto))+'.</span></div><div></div>';
-  }
-  var cls = info.isOverdue ? 'late' : (info.isDueToday ? 'warn' : 'ok');
-  var text;
-  if(info.isOverdue){
-    text = 'Atrasado há '+info.diasAtraso+' dia(s) útil(eis) — prazo era '+formatBR(info.deadline);
-  }else if(info.isDueToday){
-    text = 'Vence hoje ('+formatBR(info.deadline)+')';
-  }else{
-    text = 'Faltam '+(PRAZO_DIAS_UTEIS-info.elapsedCapped)+' dia(s) útil(eis) — prazo '+formatBR(info.deadline);
-  }
-  return '<div class="prazo-info"><span class="prazo-text '+cls+'">'+esc(text)+'</span>'+renderDots(info)+'</div>';
-}
-
 /* Junta historico de status + observacoes numa unica timeline cronologica (mais
    recente primeiro), sem misturar os dados de origem — cada item so guarda uma
    referencia ao registro original, nada e duplicado no state. Reaproveitado tanto
@@ -3600,7 +3510,7 @@ function renderListArea(){
   }
   /* Faixas rapidas (agenda + atos de balcao): so na visao Lista, pra nao abrir nada
      durante o atendimento. Kanban/Arquivados/Lixeira ficam sem elas (fora de escopo). */
-  var stripHtml = (ui.viewMode==='lista') ? (renderAgendaStrip()+renderAtosBalcaoStrip()) : '';
+  var stripHtml = (ui.viewMode==='lista') ? renderFaixasSecundarias() : '';
   if(state.protocolos.length===0){
     return stripHtml+'<div class="empty-state">'+
       '<div class="big">Nenhum protocolo registrado ainda</div>Clique em "+ Novo Protocolo" para começar o controle.'+
@@ -4582,14 +4492,10 @@ function renderAgendaStrip(){
     chip('hoje','pend. hoje',buckets.hoje.length,'var(--gold,#A26A1C)')+
     chip('semana','pend. próx. 7 dias',buckets.semana.length,null)+
     chip('semproximo','sem próximo passo',buckets.semProximo.length,null);
-  var painelHtml = aberto ? ('<div class="agenda-strip-painel no-print">'+renderAgendaPainel(aberto, buckets)+'</div>') : '';
-  return '<div class="agenda-strip-wrap no-print">'+
-    '<div class="agenda-strip">'+
-      '<span class="fm-label" style="margin-bottom:0;">agenda</span>'+
-      chipsHtml+
-    '</div>'+
-    painelHtml+
-  '</div>';
+  return {
+    chips: '<div class="faixa-agenda"><span class="fm-label" style="margin-bottom:0;">agenda</span>'+chipsHtml+'</div>',
+    painel: aberto ? ('<div class="agenda-strip-painel no-print">'+renderAgendaPainel(aberto, buckets)+'</div>') : ''
+  };
 }
 function renderAgendaPainel(tipo, buckets){
   if(tipo==='semproximo'){
@@ -4624,7 +4530,7 @@ function renderAtosBalcaoStrip(){
     return '<div class="ab-strip-barra" style="height:'+alturaPct+'%;background:'+cor+';"></div>';
   }).join('');
   return ''+
-  '<div class="ab-strip no-print">'+
+  '<div class="faixa-balcao">'+
     '<div class="ab-strip-total"><span class="fm-label" style="margin-bottom:0;">balcão hoje</span><span class="ab-strip-num">'+totalHoje+'</span></div>'+
     '<div class="ab-strip-acoes">'+
       '<button type="button" class="ab-strip-mais1" onclick="App.ajustarAtoBalcao(1)">+1</button>'+
@@ -4635,6 +4541,20 @@ function renderAtosBalcaoStrip(){
     '<div style="flex:1"></div>'+
     '<div class="ab-strip-barras">'+barrasHtml+'</div>'+
     '<button type="button" class="ab-strip-ver-semana" onclick="App.openAtosBalcao()">ver semana</button>'+
+  '</div>';
+}
+/* Junta agenda + balcao numa unica faixa --apoio (antes eram 2 caixas
+   identicas empilhadas). O painel expandido da agenda fica fora do
+   flex-row, anexado por baixo da faixa inteira. */
+function renderFaixasSecundarias(){
+  var agenda = renderAgendaStrip();
+  return '<div class="faixas-wrap no-print">'+
+    '<div class="faixas-strip">'+
+      agenda.chips+
+      '<div class="faixa-divisor"></div>'+
+      renderAtosBalcaoStrip()+
+    '</div>'+
+    agenda.painel+
   '</div>';
 }
 
