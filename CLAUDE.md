@@ -11,9 +11,11 @@ andamento e histórico. Uso diário, em dias úteis, por um escrevente de cartó
   **Nunca dividir em módulos/arquivos separados sem perguntar antes**, mesmo em
   refatorações grandes.
 - **Sem testes automatizados** — verificação é manual, no navegador.
-- **Rodar localmente**: sem Node/Python/PHP nesta máquina. Servidor de dev é
-  PowerShell puro (`.claude/serve.ps1`, config `.claude/launch.json`, nome
-  `controle-atos`, porta 8123) → `http://localhost:8123/controle-atos.html`.
+- **Rodar localmente**: servidor de dev é PowerShell puro (`.claude/serve.ps1`,
+  config `.claude/launch.json`, nome `controle-atos`, porta 8123) →
+  `http://localhost:8123/controle-atos.html` — não usa Node nem nenhum bundler.
+  (Node foi instalado nesta máquina depois, só para os MCPs de `github`/`perplexity`,
+  não para o servidor de dev.)
 - **Deploy**: push em `main` publica direto via GitHub Pages
   (`fabricio-lv/controle-atos-cartorio`). Sem CI/CD.
 - Fontes embutidas em base64 no `<style>` — app não faz nenhuma requisição de rede
