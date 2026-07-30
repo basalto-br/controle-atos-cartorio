@@ -854,6 +854,11 @@ var vinculoPanelSearch = '';
 var vinculoPanelSelected = {};
 var edicaoTotalBalcaoAberta = false;
 var confirmandoExclusaoId = null;
+var tarefasModalOpen = false;
+var tarefaDraft = null;
+var tarefaBuscaProtocolo = '';
+var tarefaConfirmandoExclusaoId = null;
+var tarefasConcluidasAbertas = false;
 var documentosAbertos = {};
 var justOpenedKey = null;
 var justCreatedId = null;
@@ -2510,6 +2515,126 @@ App.exportAtosBalcaoCSV = function(){
   a.click();
   document.body.removeChild(a);
   setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+};
+
+/* ---- Tarefas (a fazer) — independente de protocolos, ver CLAUDE.md ---- */
+App.openTarefas = function(){
+  tarefasModalOpen = true;
+  modalJustOpened = true;
+  tarefaDraft = {descricao:'', data: todayISO(), protocoloId: null};
+  tarefaBuscaProtocolo = '';
+  App.render();
+};
+App.closeTarefas = function(){
+  tarefasModalOpen = false;
+  App.render();
+};
+App.setTarefaDraftField = function(name, value){
+  if(tarefaDraft) tarefaDraft[name] = value;
+};
+App.setTarefaBuscaProtocolo = function(v){
+  tarefaBuscaProtocolo = v;
+  App.render();
+};
+App.selecionarProtocoloTarefa = function(id){
+  if(tarefaDraft) tarefaDraft.protocoloId = id;
+  tarefaBuscaProtocolo = '';
+  App.render();
+};
+App.limparProtocoloTarefa = function(){
+  if(tarefaDraft) tarefaDraft.protocoloId = null;
+  App.render();
+};
+App.addTarefa = function(){
+  if(!tarefaDraft) return;
+  var descricao = (tarefaDraft.descricao||'').trim();
+  if(!descricao) return;
+  state.tarefas.push({
+    id: uid(),
+    descricao: descricao,
+    data: tarefaDraft.data || todayISO(),
+    numeroLivro: '',
+    folha: '',
+    etapas: defaultTarefaEtapas(),
+    status: 'pendente',
+    createdAt: Date.now(),
+    concluidoEm: null,
+    protocoloRelacionadoId: tarefaDraft.protocoloId || null
+  });
+  tarefaDraft = {descricao:'', data: todayISO(), protocoloId: null};
+  tarefaBuscaProtocolo = '';
+  saveState();
+  App.render();
+};
+App.toggleEtapaTarefa = function(tarefaId, etapaKey){
+  var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
+  if(!t) return;
+  /* so as duas primeiras etapas tem toggle direto - a 3a e derivada das subetapas */
+  var etapa = t.etapas.filter(function(e){ return e.key===etapaKey && !e.subetapas; })[0];
+  if(!etapa) return;
+  etapa.feita = !etapa.feita;
+  etapa.ts = etapa.feita ? Date.now() : null;
+  recomputeTarefaStatus(t);
+  saveState();
+  App.render();
+};
+App.toggleSubetapaTarefa = function(tarefaId, subetapaKey){
+  var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
+  if(!t) return;
+  var sub = (t.etapas[2].subetapas||[]).filter(function(se){ return se.key===subetapaKey; })[0];
+  if(!sub) return;
+  sub.feita = !sub.feita;
+  sub.ts = sub.feita ? Date.now() : null;
+  recomputeTarefaStatus(t);
+  saveState();
+  App.render();
+};
+/* Reabre uma tarefa concluida por engano desmarcando so a ultima subetapa
+   ("guardado") — preserva o restante do historico (ts das outras etapas) em
+   vez de resetar tudo. So volta a fechar quando essa subetapa for remarcada. */
+App.reabrirTarefa = function(tarefaId){
+  var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
+  if(!t) return;
+  var guardado = (t.etapas[2].subetapas||[]).filter(function(se){ return se.key==='guardado'; })[0];
+  if(guardado){ guardado.feita=false; guardado.ts=null; }
+  recomputeTarefaStatus(t);
+  saveState();
+  App.render();
+};
+/* Sem App.render() de proposito - campo de texto dentro da lista, re-renderizar
+   a cada tecla perderia o foco (mesma armadilha do App.setField). */
+App.setNumeroLivroTarefa = function(tarefaId, value){
+  var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
+  if(!t) return;
+  t.numeroLivro = value;
+  saveState();
+};
+App.setFolhaTarefa = function(tarefaId, value){
+  var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
+  if(!t) return;
+  t.folha = value;
+  saveState();
+};
+App.toggleTarefasConcluidas = function(){
+  tarefasConcluidasAbertas = !tarefasConcluidasAbertas;
+  App.render();
+};
+/* Substitui window.confirm() nativo por confirmacao inline, mesmo espirito do
+   padrao da lixeira de protocolos — mas sem lixeira propria: exclusao e direta
+   depois de confirmar (tarefa nao e dado sensivel como protocolo). */
+App.pedirExcluirTarefa = function(id){
+  tarefaConfirmandoExclusaoId = id;
+  App.render();
+};
+App.cancelarExcluirTarefa = function(){
+  tarefaConfirmandoExclusaoId = null;
+  App.render();
+};
+App.deleteTarefa = function(id){
+  state.tarefas = state.tarefas.filter(function(t){ return t.id!==id; });
+  tarefaConfirmandoExclusaoId = null;
+  saveState();
+  App.render();
 };
 
 /* ---- Exportar CSV ---- */
