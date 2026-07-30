@@ -854,6 +854,11 @@ var vinculoPanelSearch = '';
 var vinculoPanelSelected = {};
 var edicaoTotalBalcaoAberta = false;
 var confirmandoExclusaoId = null;
+var tarefasModalOpen = false;
+var tarefaDraft = null;
+var tarefaBuscaProtocolo = '';
+var tarefaConfirmandoExclusaoId = null;
+var tarefasConcluidasAbertas = false;
 var documentosAbertos = {};
 var justOpenedKey = null;
 var justCreatedId = null;
@@ -880,9 +885,54 @@ function chaveDispensaVinculo(idA, idB){
 }
 var modalJustOpened = false;
 
+/* Etapas fixas de uma tarefa (nao editaveis pelo usuario, ao contrario do
+   statusList de protocolos) - retorna objetos novos a cada chamada pra nunca
+   compartilhar referencia entre tarefas diferentes. */
+function defaultTarefaEtapas(tipo, origemAto){
+  var etapa3 = (tipo==='substabelecimento' && origemAto==='outro_cartorio')
+    ? {key:'comunicar_cartorio_origem', label:'Comunicar Cartório de origem', feita:false, ts:null, subetapas:[
+        {key:'oficio_comunicacao', label:'Confecção de Ofício de Comunicação', feita:false, ts:null},
+        {key:'malote_enviado', label:'Malote digital enviado pelo Tabelião', feita:false, ts:null}
+      ]}
+    : {key:'anotar_livro', label:'Anotar no livro', feita:false, ts:null, subetapas:[
+        {key:'assinatura', label:'Levado para assinatura do tabelião', feita:false, ts:null},
+        {key:'guardado', label:'Devolvido assinado e guardado', feita:false, ts:null}
+      ]};
+  return [
+    {key:'verificar_sistema', label:'Verificar no sistema', feita:false, ts:null},
+    {key:'levar_tabeliao', label:'Levar ao tabelião para anotação no sistema', feita:false, ts:null},
+    etapa3
+  ];
+}
+/* Deriva etapas[2].feita das subetapas e recalcula status/concluidoEm da tarefa.
+   Chamada depois de qualquer toggle e no migrate(), pra status nunca ficar
+   dessincronizado do estado real das etapas. So se aplica a tarefas tipo
+   'checklist' - tarefas 'livre' tem status alternado direto (toggleTarefaLivreStatus). */
+function recomputeTarefaStatus(t){
+  if(!t.etapas) return t;
+  var etapa3 = t.etapas[2];
+  var subOk = etapa3.subetapas.every(function(se){ return se.feita; });
+  etapa3.feita = subOk;
+  var allDone = t.etapas[0].feita && t.etapas[1].feita && subOk;
+  if(allDone){
+    var lastTs = 0;
+    t.etapas.forEach(function(e){
+      if(e.ts && e.ts>lastTs) lastTs=e.ts;
+      (e.subetapas||[]).forEach(function(se){ if(se.ts && se.ts>lastTs) lastTs=se.ts; });
+    });
+    t.status = 'concluida';
+    t.concluidoEm = lastTs || Date.now();
+  }else{
+    t.status = 'pendente';
+    t.concluidoEm = null;
+  }
+  return t;
+}
+
 function defaultState(){
   return {
     protocolos: [],
+    tarefas: [],
     tiposAtos: DEFAULT_TIPOS.slice(),
     statusList: DEFAULT_STATUS_LIST.map(function(s){ return Object.assign({},s); }),
     responsaveis: [],
@@ -938,6 +988,44 @@ function migrate(raw){
   if(!s.atosBalcaoLancamentos) s.atosBalcaoLancamentos={};
   if(!s.sugestoesDispensadas) s.sugestoesDispensadas={};
   if(!s.categoriaPorTipo) s.categoriaPorTipo={};
+  if(!s.tarefas) s.tarefas=[];
+  s.tarefas = s.tarefas.map(function(t){
+    if(!t.tipo) t.tipo = t.etapas ? 'checklist' : 'livre';
+    if(t.tipo==='substabelecimento' && !t.origemAto) t.origemAto = 'proprio';
+    if(t.tipo==='checklist' || t.tipo==='substabelecimento'){
+      var template = defaultTarefaEtapas(t.tipo, t.origemAto);
+      if(!t.etapas || !t.etapas.length){
+        t.etapas = template;
+      }else{
+        var byKey = {};
+        t.etapas.forEach(function(e){ byKey[e.key]=e; });
+        t.etapas = template.map(function(tpl){
+          var existing = byKey[tpl.key];
+          if(!existing) return tpl;
+          var merged = Object.assign({}, tpl, existing);
+          if(tpl.subetapas){
+            var subByKey = {};
+            (existing.subetapas||[]).forEach(function(se){ subByKey[se.key]=se; });
+            merged.subetapas = tpl.subetapas.map(function(subTpl){
+              var subExisting = subByKey[subTpl.key];
+              return subExisting ? Object.assign({}, subTpl, subExisting) : Object.assign({}, subTpl);
+            });
+          }
+          return merged;
+        });
+      }
+      if(t.numeroLivro==null) t.numeroLivro='';
+      if(t.folha==null) t.folha='';
+    }
+    if(t.protocoloRelacionadoId===undefined) t.protocoloRelacionadoId=null;
+    if(t.createdAt==null) t.createdAt=Date.now();
+    if(t.descricao==null) t.descricao='';
+    if(t.data==null) t.data=todayISO();
+    if(t.status==null) t.status='pendente';
+    if(t.concluidoEm===undefined) t.concluidoEm=null;
+    recomputeTarefaStatus(t);
+    return t;
+  });
   s.tiposAtos.forEach(function(nome){
     if(s.categoriaPorTipo[nome]) return;
     var auto = categorizarTipoPorNome(nome);
@@ -2443,6 +2531,156 @@ App.exportAtosBalcaoCSV = function(){
   setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
 };
 
+/* ---- Tarefas (a fazer) — independente de protocolos, ver CLAUDE.md ---- */
+App.openTarefas = function(){
+  tarefasModalOpen = true;
+  modalJustOpened = true;
+  tarefaDraft = {descricao:'', data: todayISO(), protocoloId: null, tipo: 'checklist', origemAto: 'proprio'};
+  tarefaBuscaProtocolo = '';
+  App.render();
+};
+App.setTarefaDraftTipo = function(tipo){
+  if(tarefaDraft) tarefaDraft.tipo = tipo;
+  App.render();
+};
+App.setTarefaDraftOrigemAto = function(origemAto){
+  if(tarefaDraft) tarefaDraft.origemAto = origemAto;
+  App.render();
+};
+App.closeTarefas = function(){
+  tarefasModalOpen = false;
+  App.render();
+};
+App.setTarefaDraftField = function(name, value){
+  if(tarefaDraft) tarefaDraft[name] = value;
+};
+App.setTarefaBuscaProtocolo = function(v){
+  tarefaBuscaProtocolo = v;
+  App.render();
+};
+App.selecionarProtocoloTarefa = function(id){
+  if(tarefaDraft) tarefaDraft.protocoloId = id;
+  tarefaBuscaProtocolo = '';
+  App.render();
+};
+App.limparProtocoloTarefa = function(){
+  if(tarefaDraft) tarefaDraft.protocoloId = null;
+  App.render();
+};
+App.addTarefa = function(){
+  if(!tarefaDraft) return;
+  var descricao = (tarefaDraft.descricao||'').trim();
+  if(!descricao) return;
+  var tipo = tarefaDraft.tipo || 'checklist';
+  var origemAto = tarefaDraft.origemAto || 'proprio';
+  var nova = {
+    id: uid(),
+    tipo: tipo,
+    descricao: descricao,
+    data: tarefaDraft.data || todayISO(),
+    status: 'pendente',
+    createdAt: Date.now(),
+    concluidoEm: null,
+    protocoloRelacionadoId: tarefaDraft.protocoloId || null
+  };
+  if(tipo==='checklist' || tipo==='substabelecimento'){
+    nova.numeroLivro = '';
+    nova.folha = '';
+    if(tipo==='substabelecimento') nova.origemAto = origemAto;
+    nova.etapas = defaultTarefaEtapas(tipo, origemAto);
+  }
+  state.tarefas.push(nova);
+  tarefaDraft = {descricao:'', data: todayISO(), protocoloId: null, tipo: tipo, origemAto: origemAto};
+  tarefaBuscaProtocolo = '';
+  saveState();
+  App.render();
+};
+/* Tarefa 'livre' nao tem checklist - status alterna direto, sem passar por
+   recomputeTarefaStatus (essa so vale pra tipo 'checklist'). */
+App.toggleTarefaLivreStatus = function(id){
+  var t = state.tarefas.filter(function(x){ return x.id===id; })[0];
+  if(!t || t.tipo!=='livre') return;
+  if(t.status==='concluida'){
+    t.status = 'pendente';
+    t.concluidoEm = null;
+  }else{
+    t.status = 'concluida';
+    t.concluidoEm = Date.now();
+  }
+  saveState();
+  App.render();
+};
+App.toggleEtapaTarefa = function(tarefaId, etapaKey){
+  var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
+  if(!t || !t.etapas) return;
+  /* so as duas primeiras etapas tem toggle direto - a 3a e derivada das subetapas */
+  var etapa = t.etapas.filter(function(e){ return e.key===etapaKey && !e.subetapas; })[0];
+  if(!etapa) return;
+  etapa.feita = !etapa.feita;
+  etapa.ts = etapa.feita ? Date.now() : null;
+  recomputeTarefaStatus(t);
+  saveState();
+  App.render();
+};
+App.toggleSubetapaTarefa = function(tarefaId, subetapaKey){
+  var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
+  if(!t || !t.etapas) return;
+  var sub = (t.etapas[2].subetapas||[]).filter(function(se){ return se.key===subetapaKey; })[0];
+  if(!sub) return;
+  sub.feita = !sub.feita;
+  sub.ts = sub.feita ? Date.now() : null;
+  recomputeTarefaStatus(t);
+  saveState();
+  App.render();
+};
+/* Reabre uma tarefa concluida por engano desmarcando so a ultima subetapa
+   ("guardado") — preserva o restante do historico (ts das outras etapas) em
+   vez de resetar tudo. So volta a fechar quando essa subetapa for remarcada. */
+App.reabrirTarefa = function(tarefaId){
+  var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
+  if(!t || !t.etapas) return;
+  var guardado = (t.etapas[2].subetapas||[]).filter(function(se){ return se.key==='guardado'; })[0];
+  if(guardado){ guardado.feita=false; guardado.ts=null; }
+  recomputeTarefaStatus(t);
+  saveState();
+  App.render();
+};
+/* Sem App.render() de proposito - campo de texto dentro da lista, re-renderizar
+   a cada tecla perderia o foco (mesma armadilha do App.setField). */
+App.setNumeroLivroTarefa = function(tarefaId, value){
+  var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
+  if(!t) return;
+  t.numeroLivro = value;
+  saveState();
+};
+App.setFolhaTarefa = function(tarefaId, value){
+  var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
+  if(!t) return;
+  t.folha = value;
+  saveState();
+};
+App.toggleTarefasConcluidas = function(){
+  tarefasConcluidasAbertas = !tarefasConcluidasAbertas;
+  App.render();
+};
+/* Substitui window.confirm() nativo por confirmacao inline, mesmo espirito do
+   padrao da lixeira de protocolos — mas sem lixeira propria: exclusao e direta
+   depois de confirmar (tarefa nao e dado sensivel como protocolo). */
+App.pedirExcluirTarefa = function(id){
+  tarefaConfirmandoExclusaoId = id;
+  App.render();
+};
+App.cancelarExcluirTarefa = function(){
+  tarefaConfirmandoExclusaoId = null;
+  App.render();
+};
+App.deleteTarefa = function(id){
+  state.tarefas = state.tarefas.filter(function(t){ return t.id!==id; });
+  tarefaConfirmandoExclusaoId = null;
+  saveState();
+  App.render();
+};
+
 /* ---- Exportar CSV ---- */
 App.exportCSV = function(){
   var list = getFilteredSorted();
@@ -2802,6 +3040,7 @@ function renderAll(){
     (clienteHistoryModal ? renderClienteHistoryModal() : '') +
     (dailyReportOpen ? renderDailyReportModal() : '')+
     (atosBalcaoModalOpen ? renderAtosBalcaoModal() : '')+
+    (tarefasModalOpen ? renderTarefasModal() : '')+
     (vinculoPanelFor ? renderPainelVinculo() : '');
   app.innerHTML = html;
   justOpenedKey = null;
@@ -2824,6 +3063,7 @@ function renderHeader(){
     '<div class="header-actions no-print">'+
       '<button class="icon-btn" onclick="App.openSettings()" title="Configurações">&#9881;</button>'+
       '<button class="btn-ghost outlined" onclick="App.openAtosBalcao()">Atos de balcão ('+(state.atosBalcao[todayISO()]||0)+')</button>'+
+      '<button class="btn-ghost outlined" onclick="App.openTarefas()">Tarefas ('+state.tarefas.filter(function(t){ return t.status==='pendente'; }).length+')</button>'+
       '<button class="btn-ghost outlined" onclick="App.openDailyReport()">Relatório do dia</button>'+
       '<button class="btn-ghost outlined" onclick="App.exportCSV()">Exportar CSV</button>'+
       '<button class="btn btn-primary" onclick="App.openNew()">+ Novo Protocolo</button>'+
@@ -4471,6 +4711,183 @@ function renderAtosBalcaoModal(){
         '<button type="button" class="btn-ghost" onclick="App.exportAtosBalcaoCSV()">Exportar CSV</button>'+
         '<div style="flex:1;"></div>'+
         '<button class="btn btn-primary" onclick="App.closeAtosBalcao()">Concluído</button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+/* ---- Tarefas (a fazer) — painel lateral, mesmo estilo do de Atos de Balcão ---- */
+function computeBuscaProtocoloTarefa(query){
+  var q = (query||'').trim().toLowerCase();
+  if(!q) return [];
+  return state.protocolos.filter(function(x){
+    if(x.naLixeira) return false;
+    var hay = ((x.cliente||'')+' '+(x.numeroProtocolo||'')).toLowerCase();
+    return hay.indexOf(q)!==-1;
+  }).slice(0,8);
+}
+/* Checklist fixo de uma tarefa: etapas 1/2 tem checkbox direto; a 3a e so leitura
+   (derivada das 2 subetapas). Reaproveita numeroLivro/folha revelados ao marcar a
+   etapa 1, igual ao padrao de campo opcional que "revela" ja usado no formulario
+   de protocolo. */
+function renderTarefaChecklist(t){
+  var e1=t.etapas[0], e2=t.etapas[1], e3=t.etapas[2];
+  var sub1=e3.subetapas[0], sub2=e3.subetapas[1];
+  var itens=[e1.feita,e2.feita,e3.feita,sub1.feita,sub2.feita];
+  var feitas=itens.filter(Boolean).length;
+  return ''+
+  '<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">'+
+    '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;">'+
+      '<input type="checkbox"'+(e1.feita?' checked':'')+' onchange="App.toggleEtapaTarefa(\''+t.id+'\',\''+e1.key+'\')">'+
+      '<span>'+esc(e1.label)+'</span>'+
+    '</label>'+
+    (e1.feita ? (
+      '<div style="display:flex;gap:8px;margin-left:26px;">'+
+        '<input type="text" class="fm-input" style="flex:1;" placeholder="Nº do livro" value="'+esc(t.numeroLivro)+'" oninput="App.setNumeroLivroTarefa(\''+t.id+'\',this.value)">'+
+        '<input type="text" class="fm-input" style="flex:1;" placeholder="Folha" value="'+esc(t.folha)+'" oninput="App.setFolhaTarefa(\''+t.id+'\',this.value)">'+
+      '</div>'
+    ) : '')+
+    '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;">'+
+      '<input type="checkbox"'+(e2.feita?' checked':'')+' onchange="App.toggleEtapaTarefa(\''+t.id+'\',\''+e2.key+'\')">'+
+      '<span>'+esc(e2.label)+'</span>'+
+    '</label>'+
+    '<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft,#888);" title="Marcada automaticamente quando as duas subetapas abaixo estiverem feitas">'+
+      '<input type="checkbox" disabled'+(e3.feita?' checked':'')+'>'+
+      '<span>'+esc(e3.label)+'</span>'+
+    '</label>'+
+    '<div style="display:flex;flex-direction:column;gap:6px;margin-left:26px;">'+
+      '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">'+
+        '<input type="checkbox"'+(sub1.feita?' checked':'')+' onchange="App.toggleSubetapaTarefa(\''+t.id+'\',\''+sub1.key+'\')">'+
+        '<span>'+esc(sub1.label)+'</span>'+
+      '</label>'+
+      '<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">'+
+        '<input type="checkbox"'+(sub2.feita?' checked':'')+' onchange="App.toggleSubetapaTarefa(\''+t.id+'\',\''+sub2.key+'\')">'+
+        '<span>'+esc(sub2.label)+'</span>'+
+      '</label>'+
+    '</div>'+
+    '<div class="fm-hint">'+feitas+'/'+itens.length+' concluído'+(feitas!==1?'s':'')+'</div>'+
+  '</div>';
+}
+function renderConfirmExclusaoTarefaCard(t){
+  return '<div class="lx-confirm-card">'+
+    '<div style="flex:1;min-width:260px;">'+
+      '<div class="lx-confirm-titulo">Excluir esta tarefa?</div>'+
+      '<div class="lx-confirm-corpo">"'+esc(t.descricao)+'" será apagada. Não há como desfazer.</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;">'+
+      '<button type="button" class="btn-ghost outlined" onclick="App.cancelarExcluirTarefa()">Manter tarefa</button>'+
+      '<button type="button" class="btn-lx-confirmar" onclick="App.deleteTarefa(\''+t.id+'\')">Excluir tarefa</button>'+
+    '</div>'+
+  '</div>';
+}
+function renderTarefaLinha(t){
+  var atrasada = t.status==='pendente' && t.data<todayISO();
+  var protocolo = t.protocoloRelacionadoId ? state.protocolos.filter(function(p){ return p.id===t.protocoloRelacionadoId; })[0] : null;
+  var confirmando = tarefaConfirmandoExclusaoId===t.id;
+  var criadaEm = formatBR(toISO(new Date(t.createdAt)));
+  var corpoChecklist = t.etapas
+    ? renderTarefaChecklist(t)+(t.status==='concluida' ? ('<button type="button" class="hist-toggle" style="margin-top:6px;" onclick="App.reabrirTarefa(\''+t.id+'\')">Reabrir</button>') : '')
+    : ('<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;margin-top:8px;">'+
+        '<input type="checkbox"'+(t.status==='concluida'?' checked':'')+' onchange="App.toggleTarefaLivreStatus(\''+t.id+'\')">'+
+        '<span>Concluída</span>'+
+      '</label>');
+  var tipoTag = t.tipo==='livre' ? ' · tarefa livre' : (t.tipo==='substabelecimento' ? (' · '+(t.origemAto==='outro_cartorio'?'ato de outro cartório':'ato do meu acervo')) : '');
+  return '<div class="hist-row" style="display:block;'+(atrasada?'border-left:2px solid var(--carimbo);padding-left:8px;':'')+'">'+
+    '<div style="display:flex;align-items:flex-start;gap:8px;">'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">'+
+          '<strong style="font-weight:600;">'+esc(t.descricao)+'</strong>'+
+          '<span style="font-family:var(--font-mono);font-size:11px;color:'+(atrasada?'var(--carimbo)':'var(--ink-soft,#888)')+';">prevista '+esc(formatBR(t.data))+(atrasada?' · atrasada':'')+'</span>'+
+        '</div>'+
+        '<div style="font-size:10.5px;color:var(--ink-soft,#888);margin-top:1px;">criada em '+criadaEm+tipoTag+'</div>'+
+        (protocolo ? ('<div style="font-size:11.5px;color:var(--ink-soft,#888);margin-top:2px;">vinculada a <span style="cursor:pointer;text-decoration:underline;" onclick="App.openEdit(\''+protocolo.id+'\')">'+(protocolo.numeroProtocolo?('nº '+esc(protocolo.numeroProtocolo)):esc(protocolo.cliente||'protocolo'))+'</span></div>') : '')+
+      '</div>'+
+      '<button type="button" class="ib28" title="Excluir tarefa" onclick="App.pedirExcluirTarefa(\''+t.id+'\')">&times;</button>'+
+    '</div>'+
+    corpoChecklist+
+  '</div>'+
+  (confirmando ? renderConfirmExclusaoTarefaCard(t) : '');
+}
+function renderTarefasModal(){
+  var draft = tarefaDraft || {descricao:'', data: todayISO(), protocoloId: null, tipo: 'checklist', origemAto: 'proprio'};
+  var protocoloSelecionado = draft.protocoloId ? state.protocolos.filter(function(p){ return p.id===draft.protocoloId; })[0] : null;
+  var protocoloPickerHtml;
+  if(protocoloSelecionado){
+    protocoloPickerHtml = '<div style="display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--bg-alt);border-radius:var(--r-field);font-size:12px;">'+
+      '<span style="flex:1;">'+(protocoloSelecionado.numeroProtocolo?('nº '+esc(protocoloSelecionado.numeroProtocolo)+' — '):'')+esc(protocoloSelecionado.cliente||'sem nome')+'</span>'+
+      '<button type="button" class="hist-toggle" style="margin:0;" onclick="App.limparProtocoloTarefa()">remover</button>'+
+    '</div>';
+  }else{
+    var resultadosHtml = computeBuscaProtocoloTarefa(tarefaBuscaProtocolo).map(function(p){
+      return '<div style="padding:6px 9px;border:1px solid var(--line);border-radius:var(--r-field);cursor:pointer;font-size:12px;margin-top:4px;" onclick="App.selecionarProtocoloTarefa(\''+p.id+'\')">'+
+        (p.numeroProtocolo?('nº '+esc(p.numeroProtocolo)+' — '):'')+esc(p.cliente||'sem nome')+
+      '</div>';
+    }).join('');
+    protocoloPickerHtml = '<input type="text" class="fm-input" placeholder="Buscar por nome ou nº de protocolo…" value="'+esc(tarefaBuscaProtocolo)+'" oninput="App.setTarefaBuscaProtocolo(this.value)">'+resultadosHtml;
+  }
+  var tipoSegHtml = '<div class="fm-seg-pessoa" style="flex-wrap:wrap;">'+
+    '<button type="button" class="'+(draft.tipo==='checklist'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'checklist\')">Retificação / Averbação / Aditamento</button>'+
+    '<button type="button" class="'+(draft.tipo==='substabelecimento'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'substabelecimento\')">Substabelecimento / Revogação / Renúncia</button>'+
+    '<button type="button" class="'+(draft.tipo==='livre'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'livre\')">Tarefa livre</button>'+
+  '</div>';
+  var tipoHintHtml;
+  if(draft.tipo==='checklist'){
+    tipoHintHtml = '<div class="fm-hint">Puxa o checklist fixo: verificar no sistema → levar ao tabelião para anotação no sistema → anotar no livro (com assinatura e guarda).</div>';
+  }else if(draft.tipo==='substabelecimento'){
+    tipoHintHtml = '<div class="fm-hint">Mesmo checklist da retificação — a 3ª etapa muda conforme a origem do ato, escolhida abaixo.</div>';
+  }else{
+    tipoHintHtml = '<div class="fm-hint">Sem checklist — só um toggle simples de pendente/concluída.</div>';
+  }
+  var origemHtml = '';
+  if(draft.tipo==='substabelecimento'){
+    var origem = draft.origemAto || 'proprio';
+    origemHtml = '<div><span class="fm-label">Origem do ato substabelecido/revogado/renunciado</span>'+
+      '<div class="fm-seg-pessoa">'+
+        '<button type="button" class="'+(origem==='proprio'?'active':'')+'" onclick="App.setTarefaDraftOrigemAto(\'proprio\')">Do meu cartório (acervo próprio)</button>'+
+        '<button type="button" class="'+(origem==='outro_cartorio'?'active':'')+'" onclick="App.setTarefaDraftOrigemAto(\'outro_cartorio\')">De outro cartório</button>'+
+      '</div>'+
+      (origem==='outro_cartorio'
+        ? '<div class="fm-hint">3ª etapa vira "Comunicar Cartório de origem" (ofício + malote digital) em vez de "Anotar no livro".</div>'
+        : '<div class="fm-hint">Segue igual à retificação: anotar no livro, com assinatura e guarda.</div>')+
+    '</div>';
+  }
+  var formHtml = ''+
+  '<div style="display:flex;flex-direction:column;gap:10px;">'+
+    '<div><span class="fm-label">Tipo de tarefa</span>'+tipoSegHtml+tipoHintHtml+'</div>'+
+    origemHtml+
+    '<div><span class="fm-label">Descrição</span><input type="text" class="fm-input" placeholder="O que precisa ser feito? (ex.: Retificação de ata nº 123)" value="'+esc(draft.descricao)+'" oninput="App.setTarefaDraftField(\'descricao\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.addTarefa();}"></div>'+
+    '<div><span class="fm-label">Data prevista</span><input type="date" class="fm-input" style="max-width:170px;" value="'+esc(draft.data)+'" oninput="App.setTarefaDraftField(\'data\',this.value)"></div>'+
+    '<div><span class="fm-label">Vínculo com protocolo (opcional)</span>'+protocoloPickerHtml+'</div>'+
+    '<button type="button" class="btn btn-primary" style="align-self:flex-start;" onclick="App.addTarefa()">Adicionar tarefa</button>'+
+  '</div>';
+  var pendentes = state.tarefas.filter(function(t){ return t.status==='pendente'; }).sort(function(a,b){ return a.data<b.data?-1:(a.data>b.data?1:0); });
+  var concluidas = state.tarefas.filter(function(t){ return t.status==='concluida'; }).sort(function(a,b){ return (b.concluidoEm||0)-(a.concluidoEm||0); });
+  var pendentesHtml = pendentes.length ? pendentes.map(renderTarefaLinha).join('') : '<div class="hint">Nenhuma tarefa pendente.</div>';
+  var concluidasToggle = '<button class="hist-toggle" onclick="App.toggleTarefasConcluidas()">'+(tarefasConcluidasAbertas?'Ocultar concluídas recentes':'Ver concluídas recentes ('+concluidas.length+')')+'</button>';
+  var concluidasHtml = tarefasConcluidasAbertas ? ('<div class="hist-box">'+(concluidas.length?concluidas.map(renderTarefaLinha).join(''):'<div class="hint">Nenhuma tarefa concluída ainda.</div>')+'</div>') : '';
+  return '<div class="side-overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeTarefas()">'+
+    '<div class="side-panel w-520'+(modalJustOpened?' entering':'')+'">'+
+      '<div class="side-panel-head" style="display:flex;align-items:flex-start;gap:12px;">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<h2 style="margin:0;">Tarefas</h2>'+
+          '<div class="fm-hint" style="margin-top:5px;">A fazer fora do fluxo de protocolo — averbação, retificação, aditamento nos livros.</div>'+
+        '</div>'+
+        '<button type="button" class="ib28" style="width:30px;height:30px;" title="Fechar" onclick="App.closeTarefas()">&times;</button>'+
+      '</div>'+
+      '<div class="side-panel-body">'+
+        formHtml+
+        '<div style="margin-top:20px;">'+
+          '<div class="fm-sec-head"><span class="fm-sec-label">Pendentes</span><div style="flex:1;"></div><span class="fm-sec-count">'+pendentes.length+'</span></div>'+
+          '<div style="margin-top:8px;">'+pendentesHtml+'</div>'+
+        '</div>'+
+        '<div style="margin-top:20px;">'+
+          concluidasToggle+
+          concluidasHtml+
+        '</div>'+
+      '</div>'+
+      '<div class="side-panel-foot">'+
+        '<div style="flex:1;"></div>'+
+        '<button class="btn btn-primary" onclick="App.closeTarefas()">Concluído</button>'+
       '</div>'+
     '</div>'+
   '</div>';
