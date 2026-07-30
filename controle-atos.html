@@ -888,20 +888,28 @@ var modalJustOpened = false;
 /* Etapas fixas de uma tarefa (nao editaveis pelo usuario, ao contrario do
    statusList de protocolos) - retorna objetos novos a cada chamada pra nunca
    compartilhar referencia entre tarefas diferentes. */
-function defaultTarefaEtapas(){
+function defaultTarefaEtapas(tipo, origemAto){
+  var etapa3 = (tipo==='substabelecimento' && origemAto==='outro_cartorio')
+    ? {key:'comunicar_cartorio_origem', label:'Comunicar Cartório de origem', feita:false, ts:null, subetapas:[
+        {key:'oficio_comunicacao', label:'Confecção de Ofício de Comunicação', feita:false, ts:null},
+        {key:'malote_enviado', label:'Malote digital enviado pelo Tabelião', feita:false, ts:null}
+      ]}
+    : {key:'anotar_livro', label:'Anotar no livro', feita:false, ts:null, subetapas:[
+        {key:'assinatura', label:'Levado para assinatura do tabelião', feita:false, ts:null},
+        {key:'guardado', label:'Devolvido assinado e guardado', feita:false, ts:null}
+      ]};
   return [
     {key:'verificar_sistema', label:'Verificar no sistema', feita:false, ts:null},
-    {key:'levar_tabeliao', label:'Levar ao tabelião para anotação', feita:false, ts:null},
-    {key:'anotar_livro', label:'Anotar no livro', feita:false, ts:null, subetapas:[
-      {key:'assinatura', label:'Levado para assinatura do tabelião', feita:false, ts:null},
-      {key:'guardado', label:'Devolvido assinado e guardado', feita:false, ts:null}
-    ]}
+    {key:'levar_tabeliao', label:'Levar ao tabelião para anotação no sistema', feita:false, ts:null},
+    etapa3
   ];
 }
 /* Deriva etapas[2].feita das subetapas e recalcula status/concluidoEm da tarefa.
    Chamada depois de qualquer toggle e no migrate(), pra status nunca ficar
-   dessincronizado do estado real das etapas. */
+   dessincronizado do estado real das etapas. So se aplica a tarefas tipo
+   'checklist' - tarefas 'livre' tem status alternado direto (toggleTarefaLivreStatus). */
 function recomputeTarefaStatus(t){
+  if(!t.etapas) return t;
   var etapa3 = t.etapas[2];
   var subOk = etapa3.subetapas.every(function(se){ return se.feita; });
   etapa3.feita = subOk;
@@ -982,33 +990,39 @@ function migrate(raw){
   if(!s.categoriaPorTipo) s.categoriaPorTipo={};
   if(!s.tarefas) s.tarefas=[];
   s.tarefas = s.tarefas.map(function(t){
-    var template = defaultTarefaEtapas();
-    if(!t.etapas || !t.etapas.length){
-      t.etapas = template;
-    }else{
-      var byKey = {};
-      t.etapas.forEach(function(e){ byKey[e.key]=e; });
-      t.etapas = template.map(function(tpl){
-        var existing = byKey[tpl.key];
-        if(!existing) return tpl;
-        var merged = Object.assign({}, tpl, existing);
-        if(tpl.subetapas){
-          var subByKey = {};
-          (existing.subetapas||[]).forEach(function(se){ subByKey[se.key]=se; });
-          merged.subetapas = tpl.subetapas.map(function(subTpl){
-            var subExisting = subByKey[subTpl.key];
-            return subExisting ? Object.assign({}, subTpl, subExisting) : Object.assign({}, subTpl);
-          });
-        }
-        return merged;
-      });
+    if(!t.tipo) t.tipo = t.etapas ? 'checklist' : 'livre';
+    if(t.tipo==='substabelecimento' && !t.origemAto) t.origemAto = 'proprio';
+    if(t.tipo==='checklist' || t.tipo==='substabelecimento'){
+      var template = defaultTarefaEtapas(t.tipo, t.origemAto);
+      if(!t.etapas || !t.etapas.length){
+        t.etapas = template;
+      }else{
+        var byKey = {};
+        t.etapas.forEach(function(e){ byKey[e.key]=e; });
+        t.etapas = template.map(function(tpl){
+          var existing = byKey[tpl.key];
+          if(!existing) return tpl;
+          var merged = Object.assign({}, tpl, existing);
+          if(tpl.subetapas){
+            var subByKey = {};
+            (existing.subetapas||[]).forEach(function(se){ subByKey[se.key]=se; });
+            merged.subetapas = tpl.subetapas.map(function(subTpl){
+              var subExisting = subByKey[subTpl.key];
+              return subExisting ? Object.assign({}, subTpl, subExisting) : Object.assign({}, subTpl);
+            });
+          }
+          return merged;
+        });
+      }
+      if(t.numeroLivro==null) t.numeroLivro='';
+      if(t.folha==null) t.folha='';
     }
-    if(t.numeroLivro==null) t.numeroLivro='';
-    if(t.folha==null) t.folha='';
     if(t.protocoloRelacionadoId===undefined) t.protocoloRelacionadoId=null;
     if(t.createdAt==null) t.createdAt=Date.now();
     if(t.descricao==null) t.descricao='';
     if(t.data==null) t.data=todayISO();
+    if(t.status==null) t.status='pendente';
+    if(t.concluidoEm===undefined) t.concluidoEm=null;
     recomputeTarefaStatus(t);
     return t;
   });
@@ -2521,8 +2535,16 @@ App.exportAtosBalcaoCSV = function(){
 App.openTarefas = function(){
   tarefasModalOpen = true;
   modalJustOpened = true;
-  tarefaDraft = {descricao:'', data: todayISO(), protocoloId: null};
+  tarefaDraft = {descricao:'', data: todayISO(), protocoloId: null, tipo: 'checklist', origemAto: 'proprio'};
   tarefaBuscaProtocolo = '';
+  App.render();
+};
+App.setTarefaDraftTipo = function(tipo){
+  if(tarefaDraft) tarefaDraft.tipo = tipo;
+  App.render();
+};
+App.setTarefaDraftOrigemAto = function(origemAto){
+  if(tarefaDraft) tarefaDraft.origemAto = origemAto;
   App.render();
 };
 App.closeTarefas = function(){
@@ -2549,26 +2571,48 @@ App.addTarefa = function(){
   if(!tarefaDraft) return;
   var descricao = (tarefaDraft.descricao||'').trim();
   if(!descricao) return;
-  state.tarefas.push({
+  var tipo = tarefaDraft.tipo || 'checklist';
+  var origemAto = tarefaDraft.origemAto || 'proprio';
+  var nova = {
     id: uid(),
+    tipo: tipo,
     descricao: descricao,
     data: tarefaDraft.data || todayISO(),
-    numeroLivro: '',
-    folha: '',
-    etapas: defaultTarefaEtapas(),
     status: 'pendente',
     createdAt: Date.now(),
     concluidoEm: null,
     protocoloRelacionadoId: tarefaDraft.protocoloId || null
-  });
-  tarefaDraft = {descricao:'', data: todayISO(), protocoloId: null};
+  };
+  if(tipo==='checklist' || tipo==='substabelecimento'){
+    nova.numeroLivro = '';
+    nova.folha = '';
+    if(tipo==='substabelecimento') nova.origemAto = origemAto;
+    nova.etapas = defaultTarefaEtapas(tipo, origemAto);
+  }
+  state.tarefas.push(nova);
+  tarefaDraft = {descricao:'', data: todayISO(), protocoloId: null, tipo: tipo, origemAto: origemAto};
   tarefaBuscaProtocolo = '';
+  saveState();
+  App.render();
+};
+/* Tarefa 'livre' nao tem checklist - status alterna direto, sem passar por
+   recomputeTarefaStatus (essa so vale pra tipo 'checklist'). */
+App.toggleTarefaLivreStatus = function(id){
+  var t = state.tarefas.filter(function(x){ return x.id===id; })[0];
+  if(!t || t.tipo!=='livre') return;
+  if(t.status==='concluida'){
+    t.status = 'pendente';
+    t.concluidoEm = null;
+  }else{
+    t.status = 'concluida';
+    t.concluidoEm = Date.now();
+  }
   saveState();
   App.render();
 };
 App.toggleEtapaTarefa = function(tarefaId, etapaKey){
   var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
-  if(!t) return;
+  if(!t || !t.etapas) return;
   /* so as duas primeiras etapas tem toggle direto - a 3a e derivada das subetapas */
   var etapa = t.etapas.filter(function(e){ return e.key===etapaKey && !e.subetapas; })[0];
   if(!etapa) return;
@@ -2580,7 +2624,7 @@ App.toggleEtapaTarefa = function(tarefaId, etapaKey){
 };
 App.toggleSubetapaTarefa = function(tarefaId, subetapaKey){
   var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
-  if(!t) return;
+  if(!t || !t.etapas) return;
   var sub = (t.etapas[2].subetapas||[]).filter(function(se){ return se.key===subetapaKey; })[0];
   if(!sub) return;
   sub.feita = !sub.feita;
@@ -2594,7 +2638,7 @@ App.toggleSubetapaTarefa = function(tarefaId, subetapaKey){
    vez de resetar tudo. So volta a fechar quando essa subetapa for remarcada. */
 App.reabrirTarefa = function(tarefaId){
   var t = state.tarefas.filter(function(x){ return x.id===tarefaId; })[0];
-  if(!t) return;
+  if(!t || !t.etapas) return;
   var guardado = (t.etapas[2].subetapas||[]).filter(function(se){ return se.key==='guardado'; })[0];
   if(guardado){ guardado.feita=false; guardado.ts=null; }
   recomputeTarefaStatus(t);
@@ -4740,24 +4784,32 @@ function renderTarefaLinha(t){
   var atrasada = t.status==='pendente' && t.data<todayISO();
   var protocolo = t.protocoloRelacionadoId ? state.protocolos.filter(function(p){ return p.id===t.protocoloRelacionadoId; })[0] : null;
   var confirmando = tarefaConfirmandoExclusaoId===t.id;
+  var criadaEm = formatBR(toISO(new Date(t.createdAt)));
+  var corpoChecklist = t.etapas
+    ? renderTarefaChecklist(t)+(t.status==='concluida' ? ('<button type="button" class="hist-toggle" style="margin-top:6px;" onclick="App.reabrirTarefa(\''+t.id+'\')">Reabrir</button>') : '')
+    : ('<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;margin-top:8px;">'+
+        '<input type="checkbox"'+(t.status==='concluida'?' checked':'')+' onchange="App.toggleTarefaLivreStatus(\''+t.id+'\')">'+
+        '<span>Concluída</span>'+
+      '</label>');
+  var tipoTag = t.tipo==='livre' ? ' · tarefa livre' : (t.tipo==='substabelecimento' ? (' · '+(t.origemAto==='outro_cartorio'?'ato de outro cartório':'ato do meu acervo')) : '');
   return '<div class="hist-row" style="display:block;'+(atrasada?'border-left:2px solid var(--carimbo);padding-left:8px;':'')+'">'+
     '<div style="display:flex;align-items:flex-start;gap:8px;">'+
       '<div style="flex:1;min-width:0;">'+
         '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">'+
           '<strong style="font-weight:600;">'+esc(t.descricao)+'</strong>'+
-          '<span style="font-family:var(--font-mono);font-size:11px;color:'+(atrasada?'var(--carimbo)':'var(--ink-soft,#888)')+';">'+esc(formatBR(t.data))+(atrasada?' · atrasada':'')+'</span>'+
+          '<span style="font-family:var(--font-mono);font-size:11px;color:'+(atrasada?'var(--carimbo)':'var(--ink-soft,#888)')+';">prevista '+esc(formatBR(t.data))+(atrasada?' · atrasada':'')+'</span>'+
         '</div>'+
+        '<div style="font-size:10.5px;color:var(--ink-soft,#888);margin-top:1px;">criada em '+criadaEm+tipoTag+'</div>'+
         (protocolo ? ('<div style="font-size:11.5px;color:var(--ink-soft,#888);margin-top:2px;">vinculada a <span style="cursor:pointer;text-decoration:underline;" onclick="App.openEdit(\''+protocolo.id+'\')">'+(protocolo.numeroProtocolo?('nº '+esc(protocolo.numeroProtocolo)):esc(protocolo.cliente||'protocolo'))+'</span></div>') : '')+
       '</div>'+
       '<button type="button" class="ib28" title="Excluir tarefa" onclick="App.pedirExcluirTarefa(\''+t.id+'\')">&times;</button>'+
     '</div>'+
-    renderTarefaChecklist(t)+
-    (t.status==='concluida' ? ('<button type="button" class="hist-toggle" style="margin-top:6px;" onclick="App.reabrirTarefa(\''+t.id+'\')">Reabrir</button>') : '')+
+    corpoChecklist+
   '</div>'+
   (confirmando ? renderConfirmExclusaoTarefaCard(t) : '');
 }
 function renderTarefasModal(){
-  var draft = tarefaDraft || {descricao:'', data: todayISO(), protocoloId: null};
+  var draft = tarefaDraft || {descricao:'', data: todayISO(), protocoloId: null, tipo: 'checklist', origemAto: 'proprio'};
   var protocoloSelecionado = draft.protocoloId ? state.protocolos.filter(function(p){ return p.id===draft.protocoloId; })[0] : null;
   var protocoloPickerHtml;
   if(protocoloSelecionado){
@@ -4773,10 +4825,38 @@ function renderTarefasModal(){
     }).join('');
     protocoloPickerHtml = '<input type="text" class="fm-input" placeholder="Buscar por nome ou nº de protocolo…" value="'+esc(tarefaBuscaProtocolo)+'" oninput="App.setTarefaBuscaProtocolo(this.value)">'+resultadosHtml;
   }
+  var tipoSegHtml = '<div class="fm-seg-pessoa" style="flex-wrap:wrap;">'+
+    '<button type="button" class="'+(draft.tipo==='checklist'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'checklist\')">Retificação / Averbação / Aditamento</button>'+
+    '<button type="button" class="'+(draft.tipo==='substabelecimento'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'substabelecimento\')">Substabelecimento / Revogação / Renúncia</button>'+
+    '<button type="button" class="'+(draft.tipo==='livre'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'livre\')">Tarefa livre</button>'+
+  '</div>';
+  var tipoHintHtml;
+  if(draft.tipo==='checklist'){
+    tipoHintHtml = '<div class="fm-hint">Puxa o checklist fixo: verificar no sistema → levar ao tabelião para anotação no sistema → anotar no livro (com assinatura e guarda).</div>';
+  }else if(draft.tipo==='substabelecimento'){
+    tipoHintHtml = '<div class="fm-hint">Mesmo checklist da retificação — a 3ª etapa muda conforme a origem do ato, escolhida abaixo.</div>';
+  }else{
+    tipoHintHtml = '<div class="fm-hint">Sem checklist — só um toggle simples de pendente/concluída.</div>';
+  }
+  var origemHtml = '';
+  if(draft.tipo==='substabelecimento'){
+    var origem = draft.origemAto || 'proprio';
+    origemHtml = '<div><span class="fm-label">Origem do ato substabelecido/revogado/renunciado</span>'+
+      '<div class="fm-seg-pessoa">'+
+        '<button type="button" class="'+(origem==='proprio'?'active':'')+'" onclick="App.setTarefaDraftOrigemAto(\'proprio\')">Do meu cartório (acervo próprio)</button>'+
+        '<button type="button" class="'+(origem==='outro_cartorio'?'active':'')+'" onclick="App.setTarefaDraftOrigemAto(\'outro_cartorio\')">De outro cartório</button>'+
+      '</div>'+
+      (origem==='outro_cartorio'
+        ? '<div class="fm-hint">3ª etapa vira "Comunicar Cartório de origem" (ofício + malote digital) em vez de "Anotar no livro".</div>'
+        : '<div class="fm-hint">Segue igual à retificação: anotar no livro, com assinatura e guarda.</div>')+
+    '</div>';
+  }
   var formHtml = ''+
   '<div style="display:flex;flex-direction:column;gap:10px;">'+
+    '<div><span class="fm-label">Tipo de tarefa</span>'+tipoSegHtml+tipoHintHtml+'</div>'+
+    origemHtml+
     '<div><span class="fm-label">Descrição</span><input type="text" class="fm-input" placeholder="O que precisa ser feito? (ex.: Retificação de ata nº 123)" value="'+esc(draft.descricao)+'" oninput="App.setTarefaDraftField(\'descricao\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.addTarefa();}"></div>'+
-    '<div><span class="fm-label">Data</span><input type="date" class="fm-input" style="max-width:170px;" value="'+esc(draft.data)+'" oninput="App.setTarefaDraftField(\'data\',this.value)"></div>'+
+    '<div><span class="fm-label">Data prevista</span><input type="date" class="fm-input" style="max-width:170px;" value="'+esc(draft.data)+'" oninput="App.setTarefaDraftField(\'data\',this.value)"></div>'+
     '<div><span class="fm-label">Vínculo com protocolo (opcional)</span>'+protocoloPickerHtml+'</div>'+
     '<button type="button" class="btn btn-primary" style="align-self:flex-start;" onclick="App.addTarefa()">Adicionar tarefa</button>'+
   '</div>';
