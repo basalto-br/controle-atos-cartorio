@@ -880,9 +880,46 @@ function chaveDispensaVinculo(idA, idB){
 }
 var modalJustOpened = false;
 
+/* Etapas fixas de uma tarefa (nao editaveis pelo usuario, ao contrario do
+   statusList de protocolos) - retorna objetos novos a cada chamada pra nunca
+   compartilhar referencia entre tarefas diferentes. */
+function defaultTarefaEtapas(){
+  return [
+    {key:'verificar_sistema', label:'Verificar no sistema', feita:false, ts:null},
+    {key:'levar_tabeliao', label:'Levar ao tabelião para anotação', feita:false, ts:null},
+    {key:'anotar_livro', label:'Anotar no livro', feita:false, ts:null, subetapas:[
+      {key:'assinatura', label:'Levado para assinatura do tabelião', feita:false, ts:null},
+      {key:'guardado', label:'Devolvido assinado e guardado', feita:false, ts:null}
+    ]}
+  ];
+}
+/* Deriva etapas[2].feita das subetapas e recalcula status/concluidoEm da tarefa.
+   Chamada depois de qualquer toggle e no migrate(), pra status nunca ficar
+   dessincronizado do estado real das etapas. */
+function recomputeTarefaStatus(t){
+  var etapa3 = t.etapas[2];
+  var subOk = etapa3.subetapas.every(function(se){ return se.feita; });
+  etapa3.feita = subOk;
+  var allDone = t.etapas[0].feita && t.etapas[1].feita && subOk;
+  if(allDone){
+    var lastTs = 0;
+    t.etapas.forEach(function(e){
+      if(e.ts && e.ts>lastTs) lastTs=e.ts;
+      (e.subetapas||[]).forEach(function(se){ if(se.ts && se.ts>lastTs) lastTs=se.ts; });
+    });
+    t.status = 'concluida';
+    t.concluidoEm = lastTs || Date.now();
+  }else{
+    t.status = 'pendente';
+    t.concluidoEm = null;
+  }
+  return t;
+}
+
 function defaultState(){
   return {
     protocolos: [],
+    tarefas: [],
     tiposAtos: DEFAULT_TIPOS.slice(),
     statusList: DEFAULT_STATUS_LIST.map(function(s){ return Object.assign({},s); }),
     responsaveis: [],
@@ -938,6 +975,38 @@ function migrate(raw){
   if(!s.atosBalcaoLancamentos) s.atosBalcaoLancamentos={};
   if(!s.sugestoesDispensadas) s.sugestoesDispensadas={};
   if(!s.categoriaPorTipo) s.categoriaPorTipo={};
+  if(!s.tarefas) s.tarefas=[];
+  s.tarefas = s.tarefas.map(function(t){
+    var template = defaultTarefaEtapas();
+    if(!t.etapas || !t.etapas.length){
+      t.etapas = template;
+    }else{
+      var byKey = {};
+      t.etapas.forEach(function(e){ byKey[e.key]=e; });
+      t.etapas = template.map(function(tpl){
+        var existing = byKey[tpl.key];
+        if(!existing) return tpl;
+        var merged = Object.assign({}, tpl, existing);
+        if(tpl.subetapas){
+          var subByKey = {};
+          (existing.subetapas||[]).forEach(function(se){ subByKey[se.key]=se; });
+          merged.subetapas = tpl.subetapas.map(function(subTpl){
+            var subExisting = subByKey[subTpl.key];
+            return subExisting ? Object.assign({}, subTpl, subExisting) : Object.assign({}, subTpl);
+          });
+        }
+        return merged;
+      });
+    }
+    if(t.numeroLivro==null) t.numeroLivro='';
+    if(t.folha==null) t.folha='';
+    if(t.protocoloRelacionadoId===undefined) t.protocoloRelacionadoId=null;
+    if(t.createdAt==null) t.createdAt=Date.now();
+    if(t.descricao==null) t.descricao='';
+    if(t.data==null) t.data=todayISO();
+    recomputeTarefaStatus(t);
+    return t;
+  });
   s.tiposAtos.forEach(function(nome){
     if(s.categoriaPorTipo[nome]) return;
     var auto = categorizarTipoPorNome(nome);
