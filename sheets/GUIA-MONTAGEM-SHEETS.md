@@ -13,11 +13,17 @@ e **intervalos protegidos**.
 
 > **Correção de uma versão anterior deste guia.** O arquivo `.xlsx` contém 13 regras
 > de formatação condicional gravadas nele, e este guia afirmava que elas chegariam
-> prontas. **Não chegam.** Foi testado nas duas rotas — abrindo o `.xlsx` em modo de
-> compatibilidade do Office e depois de `Salvar como Planilhas Google` — e nos dois
-> casos o painel de formatação condicional aparece vazio: o Google Sheets descarta
-> a formatação condicional de arquivos `.xlsx`. As regras seguem no arquivo porque
-> funcionam se ele for aberto no Excel, mas para o Sheets valem os passos 5 e 5-A.
+> prontas. **Não chegam** — mas o motivo é mais específico do que a primeira correção
+> dizia, e a distinção importa:
+>
+> - **Formatação condicional escrita pelo `openpyxl`** (a deste `.xlsx`) **não é
+>   importada.** Testado nas duas rotas — modo de compatibilidade do Office e
+>   `Salvar como Planilhas Google` — e o painel aparece vazio nas duas.
+> - **Formatação condicional escrita pelo próprio Google Sheets e exportada para
+>   `.xlsx` volta normalmente** ao ser reaberta no Sheets. Confirmado em 04/08/2026.
+>
+> Ou seja: o problema é a origem da regra, não o formato `.xlsx` em si. Para montar
+> a partir do arquivo-semente, valem os passos 5 e 5-A.
 
 > **Aviso de verificação.** As fórmulas foram escritas e conferidas no arquivo,
 > mas **não foi possível testá-las dentro do Google Sheets** a partir do ambiente
@@ -299,6 +305,14 @@ da migração.
 Não é preciso remontar nada. `Arquivo › Fazer uma cópia` carrega fórmulas,
 formatação condicional, validação de dados, caixas de seleção, intervalos nomeados,
 visualizações de filtro e as configurações de local e fuso.
+
+> ⛔ **Nunca mova a planilha pronta baixando-a como `.xlsx` e subindo de novo.** É o
+> caminho que parece óbvio e é o que destrói o trabalho: **caixas de seleção,
+> visualizações de filtro e intervalos protegidos não existem no formato `.xlsx`** e
+> somem na volta. Aconteceu de fato em 04/08/2026 — o arquivo chegou ao Drive
+> compartilhado com a formatação condicional intacta e com a coluna "Doc. completa?"
+> exibindo `FALSE` como texto, sem nenhuma caixa de seleção, sem visualização de filtro
+> e sem proteção. **Só `Fazer uma cópia` preserva tudo.**
 
 **Ordem recomendada:**
 
