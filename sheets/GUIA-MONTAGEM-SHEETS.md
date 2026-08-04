@@ -11,6 +11,11 @@ O que **não** atravessa a importação, e portanto precisa ser feito à mão (p
 a 7): **caixas de seleção**, **formatação condicional**, **visualizações de filtro**
 e **intervalos protegidos**.
 
+> Isso vale para **importar um `.xlsx`**, que é o que esta seção descreve. Não confunda
+> com **copiar uma Planilha Google já pronta** (`Arquivo › Fazer uma cópia`): a cópia
+> preserva todos esses quatro itens. Ou seja, você monta **uma vez** a partir do `.xlsx`
+> e, daí em diante, move por cópia — nunca por download/re-upload. Ver a seção 10-A.
+
 > **Correção de uma versão anterior deste guia.** O arquivo `.xlsx` contém 13 regras
 > de formatação condicional gravadas nele, e este guia afirmava que elas chegariam
 > prontas. **Não chegam** — mas o motivo é mais específico do que a primeira correção
@@ -302,9 +307,10 @@ da migração.
 
 ## 10-A. Levar a planilha pronta para o Workspace do cartório
 
-Não é preciso remontar nada. `Arquivo › Fazer uma cópia` carrega fórmulas,
-formatação condicional, validação de dados, caixas de seleção, intervalos nomeados,
-visualizações de filtro e as configurações de local e fuso.
+Não é preciso remontar nada. `Arquivo › Fazer uma cópia` carrega fórmulas, formatação
+condicional, validação de dados, caixas de seleção, intervalos nomeados, intervalos
+protegidos, **visualizações de filtro** e as configurações de local e fuso — tudo
+confirmado numa migração real, ver a verificação no fim desta seção.
 
 > ⛔ **Nunca mova a planilha pronta baixando-a como `.xlsx` e subindo de novo.** É o
 > caminho que parece óbvio e é o que destrói o trabalho: **caixas de seleção,
@@ -329,9 +335,21 @@ visualizações de filtro e as configurações de local e fuso.
 | Item | Por quê |
 |---|---|
 | Lista de "quem pode editar" das 5 proteções | A proteção é copiada, mas as permissões são reancoradas em quem fez a cópia. Refaça apontando para as contas reais das escreventes |
-| Local e fuso | Reconferir — já veio errado uma vez nesta montagem |
-| Visualizações de filtro | Devem vir na cópia; se faltarem, recrie pelo passo 6 |
+| Caixas de seleção de linhas já limpas | Se você apagou a linha de teste antes de copiar, as caixas daquela linha somem junto. Reaplique `Inserir › Caixa de seleção` sobre `M2:M301`, `S2:S301` e `Y2:Y301` — reaplicar sobre células que já são caixas é inofensivo |
 | Feriados | Continuam pendentes de verificação, independentemente da cópia |
+
+**Verificado na cópia real (04/08/2026)**, item a item: formato Planilha Google nativa;
+propriedade da organização (sem dono individual, como é próprio de Drive compartilhado);
+**local Brasil e fuso São Paulo vieram corretos**; formatação condicional completa;
+intervalos protegidos com cadeado nas abas; e **as 7 visualizações de filtro atravessaram**.
+Nenhum compartilhamento foi herdado, porque a caixa "Compartilhar com as mesmas pessoas"
+ficou desmarcada no diálogo de cópia — **deixe-a desmarcada**, ou a cópia arrasta consigo
+quem tinha acesso na origem.
+
+> **O seletor de pasta é a prova da conta.** Ao escolher o destino, o Drive compartilhado
+> só aparece na lista se a sessão do navegador estiver na conta do Workspace. Se ele não
+> aparecer, você está logado na conta errada — pare e troque, em vez de salvar em
+> "Meu Drive".
 
 > **Proteção de intervalo não é controle de segurança.** Em Drive compartilhado, quem
 > tiver papel de **Gerente** ou **Gerente de conteúdo** consegue alterar ou remover
