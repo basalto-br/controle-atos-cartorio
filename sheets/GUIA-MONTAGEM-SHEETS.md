@@ -5,11 +5,15 @@ do Google Sheets**, sem Google Apps Script.
 
 Arquivo de partida: `Controle-Atos-Cartorio.xlsx` (nesta mesma pasta).
 
-O `.xlsx` traz **estrutura, fórmulas, listas suspensas e validação de dados**.
+O `.xlsx` traz **estrutura, fórmulas e conteúdo das listas** (a aba `Listas` já vem
+preenchida).
 
 O que **não** atravessa a importação, e portanto precisa ser feito à mão (passos 3
-a 7): **caixas de seleção**, **formatação condicional**, **visualizações de filtro**
-e **intervalos protegidos**.
+a 7): **caixas de seleção**, **validação de dados (listas suspensas)**, **formatação
+condicional**, **visualizações de filtro** e **intervalos protegidos**.
+
+Em resumo: do `.xlsx` aproveitam-se os dados e as fórmulas; **todo o comportamento
+interativo é montado no Sheets.**
 
 > Isso vale para **importar um `.xlsx`**, que é o que esta seção descreve. Não confunda
 > com **copiar uma Planilha Google já pronta** (`Arquivo › Fazer uma cópia`): a cópia
@@ -81,11 +85,16 @@ Selecione cada intervalo e use `Inserir › Caixa de seleção`:
 
 As células já vêm com `FALSO`, então viram caixas desmarcadas.
 
-## 4. Conferir as listas suspensas
+## 4. Criar as listas suspensas — **também não vêm no `.xlsx`**
 
-O `.xlsx` já traz as validações. Confira em `Protocolos!I2` se aparece a seta da
-lista. Se a importação tiver perdido alguma, recrie com
-`Dados › Validação de dados › Adicionar regra › Menu suspenso (de um intervalo)`:
+O arquivo contém as validações, mas o Sheets **não as importa** — mesma falha da
+formatação condicional (regra escrita pelo `openpyxl` é descartada). O sintoma é
+direto: ao cadastrar um protocolo, nada é oferecido em lista e tudo tem de ser
+digitado à mão.
+
+Para cada linha da tabela: **selecione o intervalo de aplicação primeiro** (caixa de
+nome, canto superior esquerdo), depois `Dados › Validação de dados › Adicionar regra`,
+escolha **"Menu suspenso (de um intervalo)"** e cole a origem.
 
 | Coluna | Intervalo de aplicação | Origem |
 |---|---|---|
@@ -97,8 +106,18 @@ lista. Se a importação tiver perdido alguma, recrie com
 | W — Atualizado por | `W2:W301` | `Listas!$I$2:$I$50` |
 | Checklist A — ID Protocolo | `A2:A1001` | `Protocolos!$A$2:$A$301` |
 
-A última linha da tabela (ID do protocolo na aba Checklist) **não vem no arquivo** —
-crie-a manualmente. Ela é o que evita digitar um ID que não existe.
+A última (ID do protocolo na aba Checklist) é o que evita lançar documento para um
+protocolo que não existe.
+
+> ⚠️ **Não edite o campo "Aplicar ao intervalo" para criar a regra seguinte.** Depois de
+> clicar em `Adicionar regra`, o campo vem preenchido com o intervalo selecionado; se você
+> trocar o texto ali para outro intervalo, o Sheets **move a regra anterior** em vez de
+> criar uma nova — e você fica com uma regra só, na coluna errada. Selecione o intervalo
+> na planilha **antes** de abrir `Adicionar regra`, e não toque nesse campo.
+
+Ao terminar, confira abrindo `Dados › Validação de dados` com a planilha inteira
+selecionada: devem constar **7 regras** — as 6 de menu suspenso da tabela acima mais a
+de caixa de seleção.
 
 ## 5. Formatação condicional — **montar à mão, uma a uma**
 
