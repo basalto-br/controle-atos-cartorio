@@ -5,19 +5,34 @@ do Google Sheets**, sem Google Apps Script.
 
 Arquivo de partida: `Controle-Atos-Cartorio.xlsx` (nesta mesma pasta).
 
-O `.xlsx` traz **estrutura, fórmulas, listas suspensas e validação de dados**.
+O `.xlsx` traz **estrutura, fórmulas e conteúdo das listas** (a aba `Listas` já vem
+preenchida).
 
 O que **não** atravessa a importação, e portanto precisa ser feito à mão (passos 3
-a 7): **caixas de seleção**, **formatação condicional**, **visualizações de filtro**
-e **intervalos protegidos**.
+a 7): **caixas de seleção**, **validação de dados (listas suspensas)**, **formatação
+condicional**, **visualizações de filtro** e **intervalos protegidos**.
+
+Em resumo: do `.xlsx` aproveitam-se os dados e as fórmulas; **todo o comportamento
+interativo é montado no Sheets.**
+
+> Isso vale para **importar um `.xlsx`**, que é o que esta seção descreve. Não confunda
+> com **copiar uma Planilha Google já pronta** (`Arquivo › Fazer uma cópia`): a cópia
+> preserva todos esses quatro itens. Ou seja, você monta **uma vez** a partir do `.xlsx`
+> e, daí em diante, move por cópia — nunca por download/re-upload. Ver a seção 10-A.
 
 > **Correção de uma versão anterior deste guia.** O arquivo `.xlsx` contém 13 regras
 > de formatação condicional gravadas nele, e este guia afirmava que elas chegariam
-> prontas. **Não chegam.** Foi testado nas duas rotas — abrindo o `.xlsx` em modo de
-> compatibilidade do Office e depois de `Salvar como Planilhas Google` — e nos dois
-> casos o painel de formatação condicional aparece vazio: o Google Sheets descarta
-> a formatação condicional de arquivos `.xlsx`. As regras seguem no arquivo porque
-> funcionam se ele for aberto no Excel, mas para o Sheets valem os passos 5 e 5-A.
+> prontas. **Não chegam** — mas o motivo é mais específico do que a primeira correção
+> dizia, e a distinção importa:
+>
+> - **Formatação condicional escrita pelo `openpyxl`** (a deste `.xlsx`) **não é
+>   importada.** Testado nas duas rotas — modo de compatibilidade do Office e
+>   `Salvar como Planilhas Google` — e o painel aparece vazio nas duas.
+> - **Formatação condicional escrita pelo próprio Google Sheets e exportada para
+>   `.xlsx` volta normalmente** ao ser reaberta no Sheets. Confirmado em 04/08/2026.
+>
+> Ou seja: o problema é a origem da regra, não o formato `.xlsx` em si. Para montar
+> a partir do arquivo-semente, valem os passos 5 e 5-A.
 
 > **Aviso de verificação.** As fórmulas foram escritas e conferidas no arquivo,
 > mas **não foi possível testá-las dentro do Google Sheets** a partir do ambiente
@@ -70,11 +85,16 @@ Selecione cada intervalo e use `Inserir › Caixa de seleção`:
 
 As células já vêm com `FALSO`, então viram caixas desmarcadas.
 
-## 4. Conferir as listas suspensas
+## 4. Criar as listas suspensas — **também não vêm no `.xlsx`**
 
-O `.xlsx` já traz as validações. Confira em `Protocolos!I2` se aparece a seta da
-lista. Se a importação tiver perdido alguma, recrie com
-`Dados › Validação de dados › Adicionar regra › Menu suspenso (de um intervalo)`:
+O arquivo contém as validações, mas o Sheets **não as importa** — mesma falha da
+formatação condicional (regra escrita pelo `openpyxl` é descartada). O sintoma é
+direto: ao cadastrar um protocolo, nada é oferecido em lista e tudo tem de ser
+digitado à mão.
+
+Para cada linha da tabela: **selecione o intervalo de aplicação primeiro** (caixa de
+nome, canto superior esquerdo), depois `Dados › Validação de dados › Adicionar regra`,
+escolha **"Menu suspenso (de um intervalo)"** e cole a origem.
 
 | Coluna | Intervalo de aplicação | Origem |
 |---|---|---|
@@ -86,8 +106,18 @@ lista. Se a importação tiver perdido alguma, recrie com
 | W — Atualizado por | `W2:W301` | `Listas!$I$2:$I$50` |
 | Checklist A — ID Protocolo | `A2:A1001` | `Protocolos!$A$2:$A$301` |
 
-A última linha da tabela (ID do protocolo na aba Checklist) **não vem no arquivo** —
-crie-a manualmente. Ela é o que evita digitar um ID que não existe.
+A última (ID do protocolo na aba Checklist) é o que evita lançar documento para um
+protocolo que não existe.
+
+> ⚠️ **Não edite o campo "Aplicar ao intervalo" para criar a regra seguinte.** Depois de
+> clicar em `Adicionar regra`, o campo vem preenchido com o intervalo selecionado; se você
+> trocar o texto ali para outro intervalo, o Sheets **move a regra anterior** em vez de
+> criar uma nova — e você fica com uma regra só, na coluna errada. Selecione o intervalo
+> na planilha **antes** de abrir `Adicionar regra`, e não toque nesse campo.
+
+Ao terminar, confira abrindo `Dados › Validação de dados` com a planilha inteira
+selecionada: devem constar **7 regras** — as 6 de menu suspenso da tabela acima mais a
+de caixa de seleção.
 
 ## 5. Formatação condicional — **montar à mão, uma a uma**
 
@@ -296,9 +326,18 @@ da migração.
 
 ## 10-A. Levar a planilha pronta para o Workspace do cartório
 
-Não é preciso remontar nada. `Arquivo › Fazer uma cópia` carrega fórmulas,
-formatação condicional, validação de dados, caixas de seleção, intervalos nomeados,
-visualizações de filtro e as configurações de local e fuso.
+Não é preciso remontar nada. `Arquivo › Fazer uma cópia` carrega fórmulas, formatação
+condicional, validação de dados, caixas de seleção, intervalos nomeados, intervalos
+protegidos, **visualizações de filtro** e as configurações de local e fuso — tudo
+confirmado numa migração real, ver a verificação no fim desta seção.
+
+> ⛔ **Nunca mova a planilha pronta baixando-a como `.xlsx` e subindo de novo.** É o
+> caminho que parece óbvio e é o que destrói o trabalho: **caixas de seleção,
+> visualizações de filtro e intervalos protegidos não existem no formato `.xlsx`** e
+> somem na volta. Aconteceu de fato em 04/08/2026 — o arquivo chegou ao Drive
+> compartilhado com a formatação condicional intacta e com a coluna "Doc. completa?"
+> exibindo `FALSE` como texto, sem nenhuma caixa de seleção, sem visualização de filtro
+> e sem proteção. **Só `Fazer uma cópia` preserva tudo.**
 
 **Ordem recomendada:**
 
@@ -315,9 +354,21 @@ visualizações de filtro e as configurações de local e fuso.
 | Item | Por quê |
 |---|---|
 | Lista de "quem pode editar" das 5 proteções | A proteção é copiada, mas as permissões são reancoradas em quem fez a cópia. Refaça apontando para as contas reais das escreventes |
-| Local e fuso | Reconferir — já veio errado uma vez nesta montagem |
-| Visualizações de filtro | Devem vir na cópia; se faltarem, recrie pelo passo 6 |
+| Caixas de seleção de linhas já limpas | Se você apagou a linha de teste antes de copiar, as caixas daquela linha somem junto. Reaplique `Inserir › Caixa de seleção` sobre `M2:M301`, `S2:S301` e `Y2:Y301` — reaplicar sobre células que já são caixas é inofensivo |
 | Feriados | Continuam pendentes de verificação, independentemente da cópia |
+
+**Verificado na cópia real (04/08/2026)**, item a item: formato Planilha Google nativa;
+propriedade da organização (sem dono individual, como é próprio de Drive compartilhado);
+**local Brasil e fuso São Paulo vieram corretos**; formatação condicional completa;
+intervalos protegidos com cadeado nas abas; e **as 7 visualizações de filtro atravessaram**.
+Nenhum compartilhamento foi herdado, porque a caixa "Compartilhar com as mesmas pessoas"
+ficou desmarcada no diálogo de cópia — **deixe-a desmarcada**, ou a cópia arrasta consigo
+quem tinha acesso na origem.
+
+> **O seletor de pasta é a prova da conta.** Ao escolher o destino, o Drive compartilhado
+> só aparece na lista se a sessão do navegador estiver na conta do Workspace. Se ele não
+> aparecer, você está logado na conta errada — pare e troque, em vez de salvar em
+> "Meu Drive".
 
 > **Proteção de intervalo não é controle de segurança.** Em Drive compartilhado, quem
 > tiver papel de **Gerente** ou **Gerente de conteúdo** consegue alterar ou remover
