@@ -34,10 +34,16 @@ interativo é montado no Sheets.**
 > Ou seja: o problema é a origem da regra, não o formato `.xlsx` em si. Para montar
 > a partir do arquivo-semente, valem os passos 5 e 5-A.
 
-> **Aviso de verificação.** As fórmulas foram escritas e conferidas no arquivo,
-> mas **não foi possível testá-las dentro do Google Sheets** a partir do ambiente
-> onde este material foi gerado. Rode o teste de aceitação do passo 9 antes de
-> colocar em produção.
+> **Estado da verificação (05/08/2026).** As fórmulas **foram testadas dentro do Google
+> Sheets**, na planilha real do Drive compartilhado — inclusive o cálculo dos 5 dias
+> úteis, os blocos dinâmicos do Painel (passo 8-A) e o teste de renomear uma fase
+> (passo 8-B). O que permanece **pendente de verificação é a lista de feriados** do
+> passo 10, e ela sozinha define se o prazo sai certo. Rode o teste de aceitação do
+> passo 9 antes de liberar para o setor.
+>
+> As correções dos passos 8 a 8-C vieram todas de defeito encontrado em uso, não de
+> revisão teórica. Cada uma está anotada com o sintoma que a denunciou — é o que
+> permite reconhecer o problema de novo se ele voltar por outro caminho.
 
 ---
 
@@ -78,12 +84,24 @@ Selecione cada intervalo e use `Inserir › Caixa de seleção`:
 
 | Aba | Intervalo | Coluna |
 |---|---|---|
-| Protocolos | `M2:M301` | Doc. completa? |
-| Protocolos | `S2:S301` | Digitalizado? |
-| Protocolos | `Y2:Y301` | Arquivado? |
+| Protocolos | `M2:M1000` | Doc. completa? |
+| Protocolos | `S2:S1000` | Digitalizado? |
+| Protocolos | `Y2:Y1000` | Arquivado? |
 | Checklist | `C2:C1001` | Entregue? |
 
 As células já vêm com `FALSO`, então viram caixas desmarcadas.
+
+> **Por que 1000 e não 301.** O `.xlsx` só traz dados e fórmulas até a linha 301, mas
+> não há razão para a *entrada de dados* parar ali. Depois do passo 8 as fórmulas
+> passam a cobrir a coluna inteira, então o teto real vira o alcance das caixas de
+> seleção e das listas suspensas. Deixe tudo em 1000 desde o começo — é bem mais
+> chato descobrir isso depois, com a planilha em uso.
+
+> **O Sheets pode dividir a regra em duas.** Se você aplicar a caixa de seleção em
+> `M2:M301` e mais tarde alargar para `M2:M1000`, o painel de validação passa a mostrar
+> **duas** regras de caixa de seleção (`M2:M301` e `M302:M1000`) em vez de uma. É
+> normalização do próprio Sheets, não erro: a cobertura fica completa e o comportamento
+> é idêntico. Não tente "consertar" apagando uma delas.
 
 ## 4. Criar as listas suspensas — **também não vêm no `.xlsx`**
 
@@ -98,13 +116,20 @@ escolha **"Menu suspenso (de um intervalo)"** e cole a origem.
 
 | Coluna | Intervalo de aplicação | Origem |
 |---|---|---|
-| E — PF/PJ | `E2:E301` | `Listas!$M$2:$M$5` |
-| I — Tipo de ato | `I2:I301` | `Listas!$A$2:$A$100` |
-| K — Canal | `K2:K301` | `Listas!$K$2:$K$20` |
-| L — Responsável | `L2:L301` | `Listas!$I$2:$I$50` |
-| R — Fase | `R2:R301` | `Listas!$D$2:$D$100` |
-| W — Atualizado por | `W2:W301` | `Listas!$I$2:$I$50` |
-| Checklist A — ID Protocolo | `A2:A1001` | `Protocolos!$A$2:$A$301` |
+| E — PF/PJ | `E2:E1000` | `Listas!$M$2:$M$5` |
+| I — Tipo de ato | `I2:I1000` | `Listas!$A$2:$A$100` |
+| K — Canal | `K2:K1000` | `Listas!$K$2:$K$20` |
+| L — Responsável | `L2:L1000` | `Listas!$I$2:$I$50` |
+| R — Fase | `R2:R1000` | `Listas!$D$2:$D$100` |
+| W — Atualizado por | `W2:W1000` | `Listas!$I$2:$I$50` |
+| Checklist A — ID Protocolo | `A2:A1001` | `Protocolos!$A$2:$A$1000` |
+
+> **Mantenha o intervalo de origem mais largo que a lista de hoje.** `Listas!$D$2:$D$100`
+> para 8 fases parece exagero, mas é isso que permite acrescentar uma fase nova sem
+> reeditar a regra. O mesmo vale para `$I$2:$I$50` nos responsáveis. E confira que o
+> Painel (passo 8-A) lê **o mesmo intervalo** — se a lista suspensa lê até a linha 100
+> e o Painel só até a 40, uma fase cadastrada na linha 41 fica selecionável no protocolo
+> e invisível no Painel.
 
 A última (ID do protocolo na aba Checklist) é o que evita lançar documento para um
 protocolo que não existe.
@@ -116,8 +141,14 @@ protocolo que não existe.
 > na planilha **antes** de abrir `Adicionar regra`, e não toque nesse campo.
 
 Ao terminar, confira abrindo `Dados › Validação de dados` com a planilha inteira
-selecionada: devem constar **7 regras** — as 6 de menu suspenso da tabela acima mais a
-de caixa de seleção.
+selecionada. **Não conte as regras — confira as colunas.** O Sheets reorganiza a lista
+por conta própria: junta `L` e `W` numa regra só (têm a mesma origem) e pode partir a de
+caixa de seleção em duas por faixa de linhas. O que importa é que toda coluna da tabela
+acima apareça coberta, do intervalo `2` até o `1000`.
+
+> **Editar "Aplicar ao intervalo" numa regra que já existe é seguro** — é justamente
+> como se alarga o intervalo depois. O que não pode é editar esse campo **para criar a
+> regra seguinte**, como diz o aviso acima. São duas operações diferentes no mesmo campo.
 
 ## 5. Formatação condicional — **montar à mão, uma a uma**
 
@@ -125,27 +156,38 @@ Selecione o intervalo, abra `Formatar › Formatação condicional › Adicionar
 regra`, escolha **"A fórmula personalizada é"** (é a última opção do menu suspenso,
 precisa rolar) e cole a fórmula. As fórmulas abaixo já estão em pt-BR com `;`.
 
-**Bloco principal — selecione `A2:Z301` antes de começar.** Crie nesta ordem, porque
+**Bloco principal — selecione `A2:Z1000` antes de começar.** Crie nesta ordem, porque
 a primeira regra que casar define o fundo da célula:
 
 | # | Fórmula | Formato |
 |---|---|---|
 | 1 | `=$Y2=VERDADEIRO` | fundo cinza claro, texto cinza (arquivado) |
-| 2 | `=E($R2="Finalizado";$S2=FALSO)` | fundo vermelho forte, texto branco |
+| 2 | `=E(SEERRO(PROCV($R2;INDIRETO("Listas!$D$2:$F$100");3;FALSO);"Nao")="Sim";$S2=FALSO)` | fundo vermelho forte, texto branco |
 | 3 | `=$Q2="Atrasado"` | fundo vermelho claro, texto vermelho escuro |
 | 4 | `=$Q2="Vence hoje"` | fundo âmbar, texto laranja escuro |
 | 5 | `=$Q2="Concluído"` | fundo verde claro, texto verde escuro |
 | 6 | `=E($M2=VERDADEIRO;$U2<>"";$U2<1)` | sem fundo, texto âmbar em negrito |
 
+> **Duas armadilhas na regra 2, e as duas custam tempo.**
+>
+> 1. **Formatação condicional não aceita referência direta a outra aba.** Escrever
+>    `Listas!$D$2:$F$100` faz o Sheets recusar com "Fórmula inválida". É obrigatório
+>    envolver em `INDIRETO("…")`. Isso vale para qualquer regra que precise consultar
+>    a `Listas`.
+> 2. **A regra não pergunta se a fase se chama "Finalizado"** — pergunta se a fase
+>    **exige digitalização**, lendo a coluna F da `Listas`. Era `=E($R2="Finalizado";$S2=FALSO)`
+>    e isso quebrava em silêncio no dia em que alguém renomeasse a fase em Configurações.
+>    Ver o passo 8-B.
+
 **Regras em intervalos próprios:**
 
 | Intervalo | Fórmula | Formato |
 |---|---|---|
-| `Protocolos!A2:A301` | `=E($A2<>"";CONT.SE($A$2:$A$301;$A2)>1)` | vermelho claro, negrito (ID duplicado) |
-| `Protocolos!B2:B301` | `=E($B2<>"";CONT.SE($B$2:$B$301;$B2)>1)` | vermelho claro, negrito (Nº DRD duplicado) |
+| `Protocolos!A2:A1000` | `=E($A2<>"";CONT.SE($A$2:$A$1000;$A2)>1)` | vermelho claro, negrito (ID duplicado) |
+| `Protocolos!B2:B1000` | `=E($B2<>"";CONT.SE($B$2:$B$1000;$B2)>1)` | vermelho claro, negrito (Nº DRD duplicado) |
 | `Checklist!A2:D1001` | `=$C2=VERDADEIRO` | texto cinza (documento já entregue) |
 
-**Cor por escrevente.** Em `Protocolos!L2:L301`, uma regra por nome
+**Cor por escrevente.** Em `Protocolos!L2:L1000`, uma regra por nome
 (`=$L2="Escrevente 1"`, `=$L2="Escrevente 2"`, `=$L2="Escrevente 3"`), cada uma com um
 fundo claro diferente. Serve para bater o olho na visão geral. Troque pelos nomes
 reais conforme a **seção 12**.
@@ -160,23 +202,12 @@ estado do protocolo vence. É o comportamento desejado.
 > filtro do passo 6.
 
 **A regra de "ID inexistente" na aba Checklist não é necessária** — a validação de
-dados do passo 4 (menu suspenso vindo de `Protocolos!$A$2:$A$301`) já sinaliza um ID
+dados do passo 4 (menu suspenso vindo de `Protocolos!$A$2:$A$1000`) já sinaliza um ID
 que não existe, com o mesmo efeito e sem uma regra extra.
-
-Depois de aplicar a melhoria do passo 8, estenda os intervalos destas regras de
-`301` para a coluna inteira (`A2:Z`, `A2:A`, etc.).
-
-> Não é possível, sem Apps Script, esmaecer automaticamente "as linhas que não são
-> minhas": nenhuma fórmula nativa sabe quem está com a planilha aberta. A cor por
-> escrevente (coluna L) é o substituto mais próximo; a separação de verdade é a
-> visualização de filtro do passo 6.
-
-Depois de aplicar a melhoria do passo 8, estenda os intervalos destas regras de
-`301` para a coluna inteira (`A2:Z`, `A2:A`, etc.).
 
 ## 6. Visualizações de Filtro — a peça central do uso simultâneo
 
-**Selecione `A1:Z301` antes de criar cada visualização.** A visualização nasce com o
+**Selecione `A1:Z1000` antes de criar cada visualização.** A visualização nasce com o
 intervalo que estiver selecionado; se você criar com uma única coluna selecionada,
 ela filtra só aquela coluna e não esconde as linhas da tabela.
 
@@ -224,14 +255,19 @@ Se usar, use só na aba `Painel`, ciente de que mexer nelas muda o que os outros
 |---|---|
 | Aba `Listas` inteira (guia **Página**) | restringir a quem administra a planilha |
 | Aba `Painel` inteira (guia **Página**) | restringir (é só leitura) |
-| `Protocolos!J2:J301` | restringir — Categoria (calculada) |
-| `Protocolos!O2:Q301` | restringir — Prazo, Dias úteis restantes, Situação |
-| `Protocolos!U2:U301` | restringir — % Checklist |
+| `Protocolos!J1:J1000` | restringir — Categoria (calculada) |
+| `Protocolos!O1:Q1000` | restringir — Prazo, Dias úteis restantes, Situação |
+| `Protocolos!U1:U1000` | restringir — % Checklist |
 | Linha 1 de todas as abas | restringir |
 | Resto de `Protocolos` e `Checklist` | `Mostrar um aviso ao editar` (avisa sem bloquear) |
 
-`O2:Q301` cobre as três colunas calculadas contíguas de uma vez — não precisa de uma
+`O1:Q1000` cobre as três colunas calculadas contíguas de uma vez — não precisa de uma
 proteção por coluna.
+
+> **A proteção começa na linha 1, não na 2.** Depois do passo 8 a fórmula-mestre de
+> cada coluna calculada mora na **linha 1** (é ela que gera o próprio cabeçalho). Se a
+> proteção começar na linha 2, o cabeçalho fica desprotegido e uma edição acidental ali
+> apaga a coluna inteira.
 
 > **O menu Dados muda de tamanho.** Na aba onde existem visualizações de filtro
 > salvas, aparecem dois itens a mais ("Mudar visualização", "Opções de visualização")
@@ -246,36 +282,175 @@ porque é o formato que a importação carrega sem risco. Isso tem dois defeitos
 a linha 302 em diante não calcula, e um escrevente pode apagar a fórmula sem notar.
 
 Já dentro do Sheets, vale substituir por uma fórmula única por coluna. Para cada
-coluna abaixo: **apague o intervalo inteiro** (ex. `J2:J301`) e cole a fórmula
-**apenas na primeira célula** (`J2`):
+coluna abaixo: **apague o intervalo inteiro, incluindo o cabeçalho** (ex. `J1:J301`)
+e cole a fórmula **apenas na linha 1** (`J1`).
 
-**J2 — Categoria**
-```
-=ARRAYFORMULA(SE($I$2:$I="";"";SEERRO(PROCV($I$2:$I;Listas!$A$2:$B$100;2;FALSO);"—")))
-```
+> **Por que na linha 1 e não na 2.** Se a fórmula-mestre mora na linha 2, ela é a
+> primeira coisa que morre quando alguém apaga a linha de teste — foi exatamente o que
+> aconteceu aqui, e a coluna Categoria ficou em branco sem ninguém entender por quê.
+> Colocando na linha 1 e fazendo a própria fórmula gerar o cabeçalho
+> (`SE(LIN($A$1:$A)=1;"Categoria";…)`), a linha 1 nunca é apagada no uso normal e
+> **qualquer linha de dados vira descartável**. As proteções do passo 7 já começam na
+> linha 1 por causa disso.
 
-**O2 — Prazo**
+**J1 — Categoria**
 ```
-=ARRAYFORMULA(SE($N$2:$N="";"";DIATRABALHO($N$2:$N;5;Listas!$O$2:$O$200)))
-```
-
-**P2 — Dias úteis restantes**
-```
-=ARRAYFORMULA(SE($O$2:$O="";"";SE($O$2:$O>=HOJE();DIATRABALHOTOTAL(HOJE();$O$2:$O;Listas!$O$2:$O$200)-1;DIATRABALHOTOTAL(HOJE();$O$2:$O;Listas!$O$2:$O$200)+1)))
+=ARRAYFORMULA(SE(LIN($A$1:$A)=1;"Categoria";SE($I$1:$I="";"";SEERRO(PROCV($I$1:$I;Listas!$A$2:$B$100;2;FALSO);"—"))))
 ```
 
-**Q2 — Situação**
+**O1 — Prazo**
 ```
-=ARRAYFORMULA(SE($O$2:$O="";"";SE($R$2:$R="Finalizado";"Concluído";SE($R$2:$R="Usuário desistiu";"Encerrado";SE($P$2:$P<0;"Atrasado";SE($P$2:$P=0;"Vence hoje";"No prazo"))))))
-```
-
-**U2 — % Checklist**
-```
-=ARRAYFORMULA(SE($A$2:$A="";"";SEERRO(CONT.SES(Checklist!$A$2:$A$3000;$A$2:$A;Checklist!$C$2:$C$3000;VERDADEIRO)/CONT.SE(Checklist!$A$2:$A$3000;$A$2:$A);"")))
+=ARRAYFORMULA(SE(LIN($A$1:$A)=1;"Prazo";SEERRO(SE($N$1:$N="";"";DIATRABALHO($N$1:$N;5;Listas!$O$2:$O$200));"")))
 ```
 
-Depois, ajuste também os intervalos do passo 7 e das regras do passo 5 para
-`A2:Z` (coluna inteira) em vez de parar na linha 301.
+**P1 — Dias úteis restantes**
+```
+=ARRAYFORMULA(SE(LIN($A$1:$A)=1;"Dias úteis restantes";SEERRO(SE($O$1:$O="";"";SE($O$1:$O>=HOJE();DIATRABALHOTOTAL(HOJE();$O$1:$O;Listas!$O$2:$O$200)-1;DIATRABALHOTOTAL(HOJE();$O$1:$O;Listas!$O$2:$O$200)+1));"")))
+```
+
+**Q1 — Situação** (ver o passo 8-B: não cita nome de fase)
+```
+=ARRAYFORMULA(SE(LIN($A$1:$A)=1;"Situação";SEERRO(SE($O$1:$O="";"";SE(SEERRO(PROCV($R$1:$R;Listas!$D$2:$E$100;2;FALSO);"Nao")="Sim";SE(SEERRO(PROCV($R$1:$R;Listas!$D$2:$F$100;3;FALSO);"Nao")="Sim";"Concluído";"Encerrado");SE($P$1:$P<0;"Atrasado";SE($P$1:$P=0;"Vence hoje";"No prazo"))));"")))
+```
+
+**U1 — % Checklist**
+```
+=ARRAYFORMULA(SE(LIN($A$1:$A)=1;"% Checklist";SEERRO(SE($A$1:$A="";"";CONT.SES(Checklist!$A$2:$A$3000;$A$1:$A;Checklist!$C$2:$C$3000;VERDADEIRO)/CONT.SE(Checklist!$A$2:$A$3000;$A$1:$A));"")))
+```
+
+Depois de colar, confira que a linha 1 continua exibindo o texto do cabeçalho — se
+aparecer `0` ou vazio, a parte `LIN(...)=1` não pegou.
+
+## 8-A. Painel — blocos que acompanham a `Listas` sozinhos
+
+Os blocos "Por fase" e "Por escrevente" nasceram com os rótulos **digitados à mão**.
+O efeito prático: cadastrar uma fase nova em Configurações não fazia nada aparecer no
+Painel, e ninguém lembrava de ir lá copiar fórmula e inserir linha.
+
+A correção é dar a cada bloco um número fixo de **vagas**, preenchidas por fórmula a
+partir da `Listas`.
+
+**Antes de mexer nas fórmulas, reserve espaço.** Selecione as 4 linhas onde começa
+"Por escrevente" e faça `Inserir › 4 linhas acima`. Sem essa folga os dois blocos
+colidem quando a lista de fases crescer. Layout final:
+
+| Linhas | Conteúdo |
+|---|---|
+| 13 | título "Por fase (não arquivados)" + avisos em `D13` e `D14` |
+| 14–25 | 12 vagas de fase |
+| 26–27 | respiro |
+| 28 | título "Por escrevente" + aviso em `F28` |
+| 29 | cabeçalho (Em andamento / Atrasados / Vencem hoje) |
+| 30–49 | 20 vagas de escrevente |
+
+**`B14` — rótulos das fases** (cole em `B14` e arraste até `B25`)
+```
+=SEERRO(ÍNDICE(FILTER(Listas!$D$2:$D$100;Listas!$D$2:$D$100<>"");LIN()-13);"")
+```
+
+**`C14` — contagem** (cole em `C14` e arraste até `C25`)
+```
+=SE($B14="";"";SOMARPRODUTO((Protocolos!$R$2:$R$1000=$B14)*(Protocolos!$Y$2:$Y$1000=FALSO)))
+```
+
+**`B30` — nomes dos escreventes** (cole em `B30` e arraste até `B49`)
+```
+=SEERRO(ÍNDICE(FILTER(Listas!$I$2:$I$50;Listas!$I$2:$I$50<>"");LIN()-29);"")
+```
+
+**`C30` / `D30` / `E30` — as três contagens** (cole e arraste cada uma até a linha 49)
+```
+=SE($B30="";"";SOMARPRODUTO((Protocolos!$A$2:$A$1000<>"")*(Protocolos!$L$2:$L$1000=$B30)*(Protocolos!$Y$2:$Y$1000=FALSO)*(SEERRO(PROCV(Protocolos!$R$2:$R$1000;Listas!$D$2:$E$100;2;FALSO);"Nao")<>"Sim")))
+```
+```
+=SE($B30="";"";SOMARPRODUTO((Protocolos!$L$2:$L$1000=$B30)*(Protocolos!$Q$2:$Q$1000="Atrasado")))
+```
+```
+=SE($B30="";"";SOMARPRODUTO((Protocolos!$L$2:$L$1000=$B30)*(Protocolos!$Q$2:$Q$1000="Vence hoje")))
+```
+
+**Dois avisos que só aparecem quando há problema.** Ficam em branco no dia a dia:
+
+`D13` — estourou a capacidade de vagas
+```
+=SE(CONT.VALORES(Listas!$D$2:$D$100)>12;"(!) Mais de 12 fases cadastradas - o Painel mostra so as 12 primeiras. Insira linhas antes do bloco 'Por escrevente' e arraste B/C para baixo.";"")
+```
+
+`D14` — protocolo com fase que não existe mais na lista (típico de renomeação)
+```
+=SE(CONT.SES(Protocolos!$R$2:$R$1000;"<>";Protocolos!$Y$2:$Y$1000;FALSO)-SOMA($C$14:$C$25)=0;"";"(!) "&(CONT.SES(Protocolos!$R$2:$R$1000;"<>";Protocolos!$Y$2:$Y$1000;FALSO)-SOMA($C$14:$C$25))&" protocolo(s) com fase fora da lista - nao aparecem acima.")
+```
+
+`F28` — estourou a capacidade de escreventes
+```
+=SE(CONT.VALORES(Listas!$I$2:$I$50)>20;"(!) Mais de 20 escreventes cadastrados - o Painel mostra so os 20 primeiros. Arraste B30:E49 para baixo.";"")
+```
+
+> **Vagas fixas, não fórmula que se expande.** É tentador usar `FILTER` sozinho e deixar
+> o resultado "derramar" pelas linhas abaixo. **Não faça isso aqui.** Quando o resultado
+> não couber no espaço livre, o Sheets não corta o excesso — ele **recusa a expansão
+> inteira** e a célula vira `#REF!` ("a matriz não foi expandida porque substituiria os
+> dados em B28"). O bloco todo some de uma vez, e `SEERRO` **não** captura esse erro,
+> porque é erro de expansão e não de valor. Com vagas fixas o pior caso é uma fase a
+> mais não aparecer — e o aviso de `D13` diz exatamente isso.
+
+## 8-B. Nunca cite o nome de uma fase dentro de uma fórmula
+
+Este é o princípio mais importante da manutenção da planilha, e custou uma rodada
+inteira de correção para aparecer.
+
+Várias fórmulas nasceram perguntando `$R2="Finalizado"` ou `$R2="Usuário desistiu"`.
+Como o usuário **pode renomear qualquer fase** em Configurações, essas fórmulas quebram
+em silêncio — sem erro, sem célula vermelha, só número errado. Testado renomeando
+"Finalizado" para "Encerrado": a contagem de "Em andamento" passou a incluir o ato
+concluído, e o alerta "Finalizado sem digitalização" foi para zero.
+
+A `Listas` já tem as duas colunas que respondem isso de verdade:
+
+| Coluna | Pergunta que responde |
+|---|---|
+| `E` — É final? | a fase encerra o protocolo? |
+| `F` — Exige digitalização? | a fase exige rascunho digitalizado? |
+
+**Consulte a coluna, nunca o nome.** Os quatro lugares corrigidos:
+
+| Onde | O que passou a perguntar |
+|---|---|
+| `Protocolos!Q` — Situação (passo 8) | é final? e exige digitalização? |
+| `Painel!C9` — Finalizado sem digitalização | exige digitalização? |
+| `Painel!C30:C49` — Em andamento (passo 8-A) | é final? |
+| Formatação condicional, regra 2 (passo 5) | exige digitalização? |
+
+**`Painel!C9` — Finalizado sem digitalização**
+```
+=SOMARPRODUTO((SEERRO(PROCV(Protocolos!$R$2:$R$1000;Listas!$D$2:$F$100;3;FALSO);"Nao")="Sim")*(Protocolos!$S$2:$S$1000=FALSO))
+```
+
+> **Os dois rótulos da Situação continuam existindo.** "Concluído" e "Encerrado" foram
+> preservados sem citar nome nenhum: final **e** exige digitalização → "Concluído";
+> final **e** não exige → "Encerrado". Bate exatamente com o comportamento antigo,
+> porque é assim que as duas fases finais estão configuradas na `Listas`.
+
+## 8-C. Armadilhas de fórmula neste ambiente
+
+Quatro coisas que custaram tempo e não estão em lugar nenhum óbvio:
+
+**1. `FILTRO` não existe. A função é `FILTER`.** O Sheets em português traduz
+`ÍNDICE`, `SOMARPRODUTO`, `CONT.SES`, `PROCV`, `SEERRO` — mas **não** traduz `FILTER`.
+Escrever `FILTRO` devolve `#NAME? — Função desconhecida`.
+
+**2. `SEERRO` esconde o erro do item 1.** Uma fórmula com `FILTRO` dentro de um
+`SEERRO` não mostra erro nenhum: devolve vazio, e a contagem ao lado passa a contar
+linhas em branco. Parece que funciona. **Para diagnosticar, tire o `SEERRO` e rode a
+fórmula crua numa célula livre** — só assim o `#NAME?` aparece.
+
+**3. `CONT.SES` trata `*` e `?` como curinga; `SOMARPRODUTO` compara exato.** Por isso
+as contagens do Painel usam `SOMARPRODUTO`. Se alguém renomear uma fase para algo com
+"?" no fim, uma versão em `CONT.SES` passaria a contar demais, em silêncio.
+
+**4. Formatação condicional não enxerga outra aba.** Qualquer regra que precise ler a
+`Listas` tem de envolver a referência em `INDIRETO("Listas!$D$2:$F$100")`, senão o
+Sheets recusa com "Fórmula inválida".
 
 ## 9. Teste de aceitação — antes de liberar para o setor
 
@@ -294,10 +469,27 @@ Crie um protocolo de teste e confira, um a um:
    `% Checklist` = 50%.
 7. **ID duplicado.** Repita o ID em outra linha → as duas células ficam vermelhas.
 8. **Painel.** Confira se os contadores refletem o protocolo de teste.
-9. **Simultâneo.** Abra com duas contas ao mesmo tempo, cada uma na sua
-   visualização de filtro, e edite linhas diferentes — nenhuma deve interferir na outra.
+9. **Fase nova aparece sozinha.** Acrescente uma fase em `Listas!D` → ela deve surgir
+   no bloco "Por fase" do Painel, com contagem, **sem** você mexer no Painel. Apague
+   depois — a linha deve sumir limpa, sem erro e sem sobra.
+10. **Escrevente novo aparece sozinho.** Mesma coisa em `Listas!I` para o bloco
+    "Por escrevente".
+11. **Renomear uma fase não quebra nada** — este é o teste que mais pega defeito.
+    Renomeie "Finalizado" em `Listas!D` para outra coisa, e ponha um protocolo nessa
+    fase. Devem continuar certos, todos os quatro: `Situação` = "Concluído", a linha
+    em vermelho forte, o alerta "Finalizado sem digitalização" contando, e o protocolo
+    **fora** de "Em andamento" no bloco por escrevente. Desfaça a renomeação depois.
+12. **Linha muito abaixo.** Lance um protocolo na linha 500 → listas suspensas e caixas
+    de seleção devem estar lá, e o Painel deve contá-lo. É o que prova que o teto de
+    1000 linhas valeu para tudo, e não só para as fórmulas.
+13. **Simultâneo.** Abra com duas contas ao mesmo tempo, cada uma na sua
+    visualização de filtro, e edite linhas diferentes — nenhuma deve interferir na outra.
 
-Depois apague a linha de teste (e as linhas de checklist dela).
+Depois apague as linhas de teste (e as linhas de checklist delas).
+
+> **Apagar a linha de teste ficou seguro.** Depois do passo 8 a fórmula-mestre mora na
+> linha 1, então limpar qualquer linha de dados não derruba mais nenhuma coluna
+> calculada. Antes disso derrubava — e sem aviso.
 
 > O item 3 tem uma borda conhecida: se você abrir a planilha num **sábado ou
 > domingo**, a contagem de dias úteis pode marcar como "vence hoje" o prazo que na
@@ -354,7 +546,7 @@ confirmado numa migração real, ver a verificação no fim desta seção.
 | Item | Por quê |
 |---|---|
 | Lista de "quem pode editar" das 5 proteções | A proteção é copiada, mas as permissões são reancoradas em quem fez a cópia. Refaça apontando para as contas reais das escreventes |
-| Caixas de seleção de linhas já limpas | Se você apagou a linha de teste antes de copiar, as caixas daquela linha somem junto. Reaplique `Inserir › Caixa de seleção` sobre `M2:M301`, `S2:S301` e `Y2:Y301` — reaplicar sobre células que já são caixas é inofensivo |
+| Caixas de seleção de linhas já limpas | Se você apagou a linha de teste antes de copiar, as caixas daquela linha somem junto. Reaplique `Inserir › Caixa de seleção` sobre `M2:M1000`, `S2:S1000` e `Y2:Y1000` — reaplicar sobre células que já são caixas é inofensivo |
 | Feriados | Continuam pendentes de verificação, independentemente da cópia |
 
 **Verificado na cópia real (04/08/2026)**, item a item: formato Planilha Google nativa;
@@ -407,19 +599,20 @@ as células já preenchidas ficam marcadas como inválidas.
    `Editar › Localizar e substituir` (`Ctrl+H`) marcando **"Pesquisar em todas as
    páginas"**, um nome por vez. As listas suspensas se atualizam sozinhas, porque
    apontam para a `Listas`.
-3. **Formatação condicional** — em `Protocolos!L2:L301`, edite as 3 regras de cor por
+3. **Formatação condicional** — em `Protocolos!L2:L1000`, edite as 3 regras de cor por
    escrevente (passo 5) trocando o nome dentro de cada fórmula.
 4. **Visualizações de filtro** — em cada uma das 3 `Minhas — …` (passo 6), renomeie a
    visualização e ajuste a condição de texto. Renomear a visualização **não** muda o
    critério; são duas edições separadas.
-5. **`Painel`, coluna B, linhas 26 a 28** — troque os nomes. As fórmulas ao lado
-   referenciam `$B$26`, `$B$27` e `$B$28`, então basta trocar o texto da célula.
-   A aba está protegida; desproteja, edite e proteja de novo.
 
-**Para acrescentar uma quarta escrevente**, além dos passos acima: adicione o nome em
-`Listas!I5`, crie a visualização de filtro `Minhas — <nome>`, e copie a linha 28 do
-`Painel` para a 29 ajustando as referências. As validações de dados não precisam de
-ajuste — já leem `Listas!$I$2:$I$50`.
+**O `Painel` não entra mais nesta lista.** Depois do passo 8-A ele lê os nomes direto
+da `Listas` — trocar em `Listas!I` já muda o Painel sozinho.
+
+**Para acrescentar uma quarta escrevente**, só duas coisas: adicione o nome em
+`Listas!I5` e crie a visualização de filtro `Minhas — <nome>`. Painel e validações de
+dados se viram sozinhos. Se quiser a cor por escrevente também para ela, acrescente uma
+quarta regra de formatação condicional (passo 5) — essa continua sendo manual, porque
+formatação condicional não sabe gerar uma regra por item de lista.
 
 **Se preferir regenerar do zero**, edite `RESPONSAVEIS` em `gerar_planilha.py` e rode
 o script; mas aí você perde tudo que foi montado à mão (passos 3 a 7). Só compensa
