@@ -37,9 +37,14 @@ interativo é montado no Sheets.**
 > **Estado da verificação (05/08/2026).** As fórmulas **foram testadas dentro do Google
 > Sheets**, na planilha real do Drive compartilhado — inclusive o cálculo dos 5 dias
 > úteis, os blocos dinâmicos do Painel (passo 8-A) e o teste de renomear uma fase
-> (passo 8-B). O que permanece **pendente de verificação é a lista de feriados** do
-> passo 10, e ela sozinha define se o prazo sai certo. Rode o teste de aceitação do
-> passo 9 antes de liberar para o setor.
+> (passo 8-B). A **lista de feriados** do passo 10 foi conferida em fonte oficial e
+> completada para **2026 e 2027**, nas três camadas — nacional, estadual (ES) e
+> municipal — e duas datas estavam faltando. Rode o teste de aceitação do passo 9 antes
+> de liberar para o setor.
+>
+> O que continua exigindo atenção não é uma pendência, é uma **rotina**: a lista de
+> feriados precisa ganhar o ano seguinte antes de cada dezembro, e o ato anual da CGJES
+> sobre o Carnaval precisa ser conferido. Ver o fim do passo 10.
 >
 > As correções dos passos 8 a 8-C vieram todas de defeito encontrado em uso, não de
 > revisão teórica. Cada uma está anotada com o sintoma que a denunciou — é o que
@@ -496,25 +501,69 @@ Depois apague as linhas de teste (e as linhas de checklist delas).
 > verdade é da segunda-feira. Como o setor trabalha em dia útil, isso foi aceito
 > em vez de complicar a fórmula.
 
-## 10. Feriados — **pendente de verificação**
+## 10. Feriados — a lista de que todo o prazo depende
 
-A aba `Listas`, coluna O, traz os feriados nacionais de 2026. Os quatro marcados
-com `(CONFERIR)` são móveis e foram calculados, não consultados em fonte oficial:
+A aba `Listas` traz as datas na coluna **O** e a descrição com o fundamento legal na
+coluna **P**. As fórmulas de prazo leem `Listas!$O$2:$O$200`, então há folga de sobra
+para acrescentar anos.
 
-| Data | Feriado |
-|---|---|
-| 16/02/2026 | Carnaval — segunda |
-| 17/02/2026 | Carnaval — terça |
-| 03/04/2026 | Sexta-feira Santa |
-| 04/06/2026 | Corpus Christi |
+**Todo o cálculo dos 5 dias úteis depende dessa lista** — uma data faltando encurta o
+prazo em silêncio, sem erro e sem aviso. É o item que mais merece cuidado.
 
-**Confira em fonte oficial antes do uso real** e acrescente os feriados estaduais
-(ES) e municipais, além de pontos facultativos que a serventia não abre (quarta-feira
-de cinzas, por exemplo). Basta acrescentar linhas na coluna O — as fórmulas de prazo
-já leem até a linha 200.
+### Três camadas, e a terceira é a que costuma faltar
 
-**Todo o cálculo dos 5 dias úteis depende dessa lista.** É o item de maior risco
-da migração.
+| Camada | Fonte | Exemplo |
+|---|---|---|
+| Nacional | Lei 662/1949 (red. Lei 10.607/2002), Lei 6.802/1980, Lei 14.759/2023 | Tiradentes, Natal, Consciência Negra |
+| Estadual (ES) | Lei Estadual 11.010/2019 | Nossa Senhora da Penha — segunda-feira, 8º dia após a Páscoa |
+| **Municipal** | Lei de feriados **do município da serventia** | Sexta-feira da Paixão, Corpus Christi, o padroeiro do município |
+
+A camada municipal é a mais fácil de esquecer e a que mais varia. A **Lei federal
+9.093/1995** permite até **quatro** feriados religiosos municipais, já incluída aí a
+Sexta-feira da Paixão — e é comum que o município use os quatro. **Essa parte da lista
+não dá para copiar de ninguém:** procure a lei de feriados do próprio município, e
+refaça tudo se a serventia mudar de cidade.
+
+> **Duas datas estavam faltando, e só a conferência real as revelou (05/08/2026):**
+>
+> - **Nossa Senhora da Penha** — feriado estadual de todo o ES, não estava na lista.
+> - **O feriado do padroeiro do município** — também não estava. E ele cai **colado
+>   num feriado nacional**, formando um bloco de dois dias seguidos. Um protocolo cujo
+>   prazo atravessava esse bloco vencia **dois dias antes** do que devia.
+>
+> A lição não é a data em si: é que **feriado municipal esquecido não dá erro nenhum**.
+> A planilha continua calculando, com toda a cara de certa, e entrega um prazo curto.
+
+### Ponto facultativo não é feriado para cartório
+
+O **Código de Normas CGJES — Foro Extrajudicial, art. 13, §2º** diz que feriado forense
+e ponto facultativo **não interferem** no funcionamento de notas e registros, salvo ato
+que expressamente alcance o extrajudicial. O **Ato Normativo TJES nº 319/2025, art. 5º**
+reforça: seus efeitos não se aplicam às serventias extrajudiciais.
+
+Consequência prática: **Carnaval não é feriado**. Em 2026 a serventia fechou porque
+houve ato específico — **Ofício Circular CGJES nº 3050010/2026**, que autorizou não
+funcionar em 16 e 17/02 e abrir a partir das 12h na Quarta-feira de Cinzas. Por isso a
+Quarta-feira de Cinzas **não** entra na lista (há expediente), e o Carnaval entra
+marcado como dependente de ato anual.
+
+Já **Corpus Christi e Sexta-feira da Paixão costumam ser feriado municipal de lei** —
+e aí entram sem depender de ato nenhum da Corregedoria. Confira na lei do município: é
+a diferença entre fechar por direito e fechar por autorização que precisa ser renovada
+todo ano.
+
+### Manutenção anual — não é opcional
+
+1. **Antes de dezembro, acrescente o ano seguinte.** Um protocolo lançado no fim de
+   dezembro tem prazo que cruza o ano; sem as datas do ano novo, 01/01 é contado como
+   dia útil. A lista hoje cobre **2026 e 2027**.
+2. **Recalcule as móveis pela Páscoa.** Sexta-feira da Paixão = Páscoa − 2 dias;
+   Carnaval = 48 e 47 dias antes; Corpus Christi = 60 dias depois; N. Sra. da Penha =
+   segunda-feira, 8º dia depois. Páscoa: **05/04/2026**, **28/03/2027**.
+3. **Confira o ato da CGJES sobre Carnaval** de cada ano — é ele que autoriza fechar.
+
+Depois de mexer na lista, refaça o item 2 do teste de aceitação (passo 9) com uma data
+que atravesse o feriado novo. É o único jeito de ver que ela pegou.
 
 ## 10-A. Levar a planilha pronta para o Workspace do cartório
 
