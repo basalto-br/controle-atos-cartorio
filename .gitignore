@@ -1,0 +1,20 @@
+# Credenciais — nunca versionar.
+# Hoje o projeto nao usa nenhuma chave (nao ha servidor nem API paga), mas sem
+# estas linhas o primeiro arquivo de credencial que aparecer entra no repositorio
+# publico no primeiro "git add ." — e chave que foi para o Git esta queimada,
+# mesmo que apagada depois.
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Configuracao local de ferramenta (caminhos e permissoes desta maquina)
+.claude/settings.local.json
+
+# Notas de trabalho locais, usadas para retomar contexto entre sessoes
+handoff.md
+
+# Sistema
+.DS_Store
+Thumbs.db

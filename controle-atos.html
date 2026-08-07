@@ -1084,6 +1084,24 @@ function migrate(raw){
       if(p.responsavel && !seen[p.responsavel]){ seen[p.responsavel]=true; s.responsaveis.push(p.responsavel); }
     });
   }
+  /* Higiene de identificadores — ultima linha de defesa antes de o state ser usado.
+     Os ids sao interpolados direto em atributos onclick na renderizacao (77 pontos),
+     entao caractere fora de [A-Za-z0-9_-] ali vira execucao de codigo. Como migrate()
+     e o funil unico de todo state que entra (backup, pasta conectada, window.storage),
+     limpar aqui cobre os tres caminhos de uma vez.
+     A limpeza e deterministica: a mesma entrada gera sempre a mesma saida, entao o
+     vinculo entre protocolo e grupo continua batendo depois da limpeza. */
+  function limparId(v){
+    var t = String(v == null ? '' : v).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
+    return t || uid();
+  }
+  s.protocolos.forEach(function(p){
+    if(!p) return;
+    p.id = limparId(p.id);
+    if(p.grupoVinculoId) p.grupoVinculoId = limparId(p.grupoVinculoId);
+    (p.pendencias || []).forEach(function(pd){ if(pd) pd.id = limparId(pd.id); });
+  });
+  s.tarefas.forEach(function(t){ if(t) t.id = limparId(t.id); });
   return s;
 }
 
@@ -2754,6 +2772,22 @@ App.importBackupFile = function(inputEl){
     catch(err){ window.alert('Não foi possível ler este arquivo. Verifique se é um backup válido gerado por esta ferramenta.'); inputEl.value=''; return; }
     if(!imported || !Array.isArray(imported.protocolos)){
       window.alert('Este arquivo não parece ser um backup válido desta ferramenta.');
+      inputEl.value='';
+      return;
+    }
+    /* Identificadores sempre vem de uid(): so letras e numeros. Qualquer coisa fora
+       desse formato indica arquivo adulterado — e o id e interpolado direto em
+       atributos onclick na renderizacao, entao aceitar lixo aqui vira execucao de
+       codigo com acesso a todos os protocolos. Recusa antes do confirm, de proposito. */
+    var ID_OK = /^[A-Za-z0-9_-]{1,40}$/;
+    function idSeguro(v){ return typeof v === 'string' && ID_OK.test(v); }
+    var suspeito = imported.protocolos.some(function(p){
+      if(!p || !idSeguro(p.id)) return true;
+      return (p.pendencias || []).some(function(pd){ return !pd || !idSeguro(pd.id); });
+    });
+    if(suspeito){
+      window.alert('Este arquivo tem identificadores fora do padrão da ferramenta. '+
+                   'Por segurança, a importação foi cancelada.');
       inputEl.value='';
       return;
     }
