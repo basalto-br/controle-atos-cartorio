@@ -4,6 +4,41 @@ Ferramenta de controle de protocolos de atos notariais (procurações públicas 
 escrituras) para um tabelião/escrevente. Cada protocolo tem prazo, status de
 andamento e histórico. Uso diário, em dias úteis, por um escrevente de cartório.
 
+## Rumo do produto (contexto comercial)
+
+A ferramenta vai virar produto vendido a cartórios, como app web multiusuário. Esta
+seção existe para dar contexto às decisões — **o resto do arquivo descreve o que a
+ferramenta é hoje, e continua valendo.**
+
+### O que já é verdade hoje
+
+- Uso individual, dados locais, um usuário por instalação.
+- Hospedagem migrando de GitHub Pages para Cloudflare Pages, com domínio próprio.
+- Ambiente detectado por hostname em tempo de execução (`HOST_PRODUCAO` / `IS_PROD`):
+  qualquer host que não seja o de produção é ambiente de teste, com chave de
+  armazenamento e arquivo de dados separados.
+
+### Para onde vai — **não implementar nada disso sem o usuário pedir explicitamente**
+
+- Nuvem com Supabase, região São Paulo; Postgres com RLS isolando por serventia.
+- A conta principal pertence à **serventia** (identificada pelo CNS), nunca ao CPF do
+  tabelião — delegação muda de titular por morte, aposentadoria ou concurso.
+- Papéis: Titular, Administrador, Escrevente. A lixeira que já existe é o modelo de
+  permissão: escrevente manda para a lixeira, só Administrador e Titular esvaziam.
+- Setores são conjuntos nomeados de tipos de ato, opcionais, com padrão "Geral"
+  invisível na interface enquanto houver só um.
+- Regra de visibilidade: vê tudo do cartório, edita só o do próprio setor.
+
+### Restrições que valem desde já
+
+- Continuar em arquivo único. Não dividir em módulos.
+- `migrate()` roda em todo carregamento e é a única função capaz de destruir protocolo
+  real — toda alteração nela é testada contra cópia de arquivo antigo de verdade.
+- Nenhum dado de protocolo real vai para o repositório, em nenhuma branch.
+- A chave `service_role` do Supabase **nunca** entra no repositório, nem se ele for
+  privado. A `anon` pode, porque é pública por desenho e quem protege é o RLS.
+- Não iniciar a migração para nuvem por conta própria: ela tem plano e mês próprios.
+
 ## Stack e comandos
 
 - **Arquivo único `controle-atos.html`** — HTML + CSS + JS puro, sem framework, sem
