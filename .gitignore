@@ -9,6 +9,27 @@
 *.pem
 *.key
 
+# Dados reais de protocolo — NUNCA versionar, em nenhuma branch.
+# O repositorio e publico e os dados sao cobertos por sigilo profissional/LGPD.
+# Os nomes abaixo sao os que o proprio app gera; se FS_DATA_FILE, FS_BACKUP_PREFIX,
+# FS_BACKUP_DIR ou EXPORT_PREFIX mudarem no controle-atos.html, atualizar aqui junto.
+
+# Arquivo de dados ao vivo (FS_DATA_FILE) e os backups automaticos 2x/dia
+# (FS_BACKUP_PREFIX + data), nos dois ambientes: producao e -TESTE.
+controle-atos-dados*.json
+
+# Subpasta de backups automaticos (FS_BACKUP_DIR), em qualquer nivel.
+backups/
+backups-TESTE/
+
+# Backup manual do state inteiro, baixado por Configuracoes (com e sem EXPORT_PREFIX).
+backup-protocolos-*.json
+TESTE-backup-protocolos-*.json
+
+# Exportacoes: protocolos e atos de balcao. Nenhum .csv deste projeto deve ser
+# versionado, entao a rede e ampla de proposito.
+*.csv
+
 # Configuracao local de ferramenta (caminhos e permissoes desta maquina)
 .claude/settings.local.json
 
