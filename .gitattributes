@@ -1,0 +1,28 @@
+# Finais de linha — padronizacao obrigatoria.
+#
+# O repositorio guarda SEMPRE em LF; no Windows o checkout vem em CRLF e o Git
+# converte sozinho nos dois sentidos. Sem este arquivo, qualquer editor ou script
+# que reescreva um arquivo em CRLF faz o Git enxergar TODAS as linhas como
+# alteradas — um ajuste de 30 linhas vira um diff de 10.000, o PR fica ilegivel
+# e o git blame se perde linha a linha.
+#
+# Se aparecer de novo um diff gigante sem mudanca real, rode:
+#   git add --renormalize .
+
+* text=auto
+
+# PowerShell no Windows: manter CRLF tambem no repositorio.
+*.ps1 text eol=crlf
+
+# Binarios — nunca converter nada.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.xlsx binary
+*.docx binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
