@@ -212,7 +212,7 @@ que não existe, com o mesmo efeito e sem uma regra extra.
 
 ## 6. Visualizações de Filtro — a peça central do uso simultâneo
 
-**Selecione `A1:Z1000` antes de criar cada visualização.** A visualização nasce com o
+**Selecione `A1:AA1000` antes de criar cada visualização.** A visualização nasce com o
 intervalo que estiver selecionado; se você criar com uma única coluna selecionada,
 ela filtra só aquela coluna e não esconde as linhas da tabela.
 
@@ -220,19 +220,41 @@ Depois: `Dados › Criar visualização com filtro`, clique no ícone de filtro 
 cabeçalho da coluna, escolha **"Filtrar por condição"**, defina o critério, `OK`, e
 `Salvar visualização` no topo, dando o nome.
 
-| Nome | Coluna | Condição |
-|---|---|---|
-| `Minhas — Escrevente 1` | L Responsável | O texto é exatamente `Escrevente 1` |
-| `Minhas — Escrevente 2` | L Responsável | O texto é exatamente `Escrevente 2` |
-| `Minhas — Escrevente 3` | L Responsável | O texto é exatamente `Escrevente 3` |
-| `Vencem hoje` | Q Situação | O texto é exatamente `Vence hoje` |
-| `Atrasados` | Q Situação | O texto é exatamente `Atrasado` |
-| `Aguardando assinatura` | R Fase | O texto é exatamente `Aguardando assinatura` |
-| `Arquivados` | Y Arquivado? | A fórmula personalizada é `=$Y2=VERDADEIRO` |
+As seis primeiras recebem **duas** condições: a própria e mais a da coluna `AA`, que
+tira de vista o que já foi arquivado e o que já pode ser. A `Arquivados` é a exceção —
+nela a coluna `Y` é o filtro, e nada é escondido.
+
+| Nome | Coluna | Condição | + `AA` Pode arquivar? |
+|---|---|---|---|
+| `Minhas — Escrevente 1` | L Responsável | O texto é exatamente `Escrevente 1` | `=E($AA2=FALSO;$Y2=FALSO)` |
+| `Minhas — Escrevente 2` | L Responsável | O texto é exatamente `Escrevente 2` | idem |
+| `Minhas — Escrevente 3` | L Responsável | O texto é exatamente `Escrevente 3` | idem |
+| `Vencem hoje` | Q Situação | O texto é exatamente `Vence hoje` | idem |
+| `Atrasados` | Q Situação | O texto é exatamente `Atrasado` | idem |
+| `Aguardando assinatura` | R Fase | O texto é exatamente `Aguardando assinatura` | idem |
+| `Arquivados` | Y Arquivado? | A fórmula personalizada é `=$Y2=VERDADEIRO` | **não aplicar** |
+
+A condição da `AA` inclui `$Y2` de propósito: a caixa `Arquivado?` continua servindo
+de arquivamento manual para os casos que a regra automática não cobre.
 
 `Arquivados` usa fórmula, e não filtro por valores, porque enquanto nenhum protocolo
 tiver sido arquivado a lista de valores da coluna só oferece `FALSE` — não há
 `VERDADEIRO` para marcar.
+
+> **Confira o intervalo das visualizações que já existem.** Numa planilha em uso real,
+> as sete tinham nascido com `A1:Z301` e ficaram para trás quando o resto foi ampliado
+> para 1000 — a capacidade tinha sido acertada em fórmulas, listas suspensas, caixas de
+> seleção, formatação condicional e proteções, mas **não** nas visualizações. O sintoma
+> não aparece hoje: da linha 302 em diante as linhas caem *fora* do alcance do filtro e
+> passam a ser exibidas sempre, para todo mundo, independentemente do responsável. Quebra
+> sozinho perto do protocolo 300. Para corrigir sem recriar, abra a visualização e edite
+> o campo **Intervalo** na barra do topo — o nome e as condições são preservados.
+
+> **Linha vazia não aparece dentro de uma visualização**, porque não casa com nenhuma
+> condição — e o campo de nome se recusa a navegar até ela, pulando para a linha visível
+> mais próxima. Para lançar um protocolo novo sem sair da visualização: botão direito na
+> última linha → **`Inserir 1 linha abaixo`**. A linha nasce visível e aceita digitação.
+> Vale combinar isso com a equipe, senão cada um inventa um jeito.
 
 Ao salvar, o Sheets avisa que "visualizações que se sobrepõem a um intervalo
 protegido não serão salvas". Na prática as sete foram salvas normalmente mesmo com
@@ -263,11 +285,21 @@ Se usar, use só na aba `Painel`, ciente de que mexer nelas muda o que os outros
 | `Protocolos!J1:J1000` | restringir — Categoria (calculada) |
 | `Protocolos!O1:Q1000` | restringir — Prazo, Dias úteis restantes, Situação |
 | `Protocolos!U1:U1000` | restringir — % Checklist |
+| `Protocolos!AA1:AA1000` | restringir — Pode arquivar? (calculada, passo 8-C) |
 | Linha 1 de todas as abas | restringir |
 | Resto de `Protocolos` e `Checklist` | `Mostrar um aviso ao editar` (avisa sem bloquear) |
 
 `O1:Q1000` cobre as três colunas calculadas contíguas de uma vez — não precisa de uma
 proteção por coluna.
+
+> **A `AA` é fácil de esquecer.** Ela nasce depois das outras, fora do bloco contíguo,
+> e por isso fica de fora se você só repetir a lista antiga. Coluna calculada sem
+> proteção é `ARRAYFORMULA` esperando ser sobrescrita por quem clicou na célula errada.
+
+> **A caixa de permissões vem com todo mundo marcado.** Ao criar uma proteção nova, o
+> Sheets pré-marca **todos** os editores do arquivo — o oposto do que "restringir"
+> sugere. Desmarque à mão quem não deve editar, e confira contra uma proteção que já
+> existia para manter as quatro colunas calculadas com a mesma lista.
 
 > **A proteção começa na linha 1, não na 2.** Depois do passo 8 a fórmula-mestre de
 > cada coluna calculada mora na **linha 1** (é ela que gera o próprio cabeçalho). Se a
@@ -321,6 +353,11 @@ e cole a fórmula **apenas na linha 1** (`J1`).
 **U1 — % Checklist**
 ```
 =ARRAYFORMULA(SE(LIN($A$1:$A)=1;"% Checklist";SEERRO(SE($A$1:$A="";"";CONT.SES(Checklist!$A$2:$A$3000;$A$1:$A;Checklist!$C$2:$C$3000;VERDADEIRO)/CONT.SE(Checklist!$A$2:$A$3000;$A$1:$A));"")))
+```
+
+**AA1 — Pode arquivar?** (coluna nova — ver o passo 8-D antes de colar)
+```
+=ARRAYFORMULA(SE(LIN($A$1:$A)=1;"Pode arquivar?";SE($A$1:$A="";"";(SEERRO(PROCV($R$1:$R;Listas!$D$2:$E$100;2;FALSO);"Nao")="Sim")*(((SEERRO(PROCV($R$1:$R;Listas!$D$2:$F$100;3;FALSO);"Nao")<>"Sim")+($S$1:$S=VERDADEIRO))>0)=1)))
 ```
 
 Depois de colar, confira que a linha 1 continua exibindo o texto do cabeçalho — se
@@ -457,6 +494,52 @@ as contagens do Painel usam `SOMARPRODUTO`. Se alguém renomear uma fase para al
 `Listas` tem de envolver a referência em `INDIRETO("Listas!$D$2:$F$100")`, senão o
 Sheets recusa com "Fórmula inválida".
 
+**5. Dentro de `ARRAYFORMULA`, `E()` e `OU()` não funcionam elemento a elemento.** Elas
+colapsam o intervalo inteiro num único valor e a coluna sai toda igual. Use `*` no
+lugar do "e" e `+` no lugar do "ou", fechando com `>0` e `=1` para voltar a
+`VERDADEIRO`/`FALSO`. É o caso da fórmula do passo 8-D.
+
+## 8-D. Coluna `AA` — "Pode arquivar?"
+
+Marca automaticamente o protocolo que já pode sair do dia a dia, com a **mesma regra
+do aplicativo web**: é final **E** (não exige digitalização **OU** já digitalizado).
+Na prática: "Usuário desistiu" fica `VERDADEIRO` na hora; "Finalizado" só depois de
+marcado `Digitalizado?`. A fórmula está no passo 8, junto com as outras calculadas.
+
+**Crie a coluna antes de colar a fórmula.** A aba `Protocolos` termina em `Z`
+(`Criado em`), então `AA` não existe: botão direito no cabeçalho da `Z` →
+`Inserir 1 coluna à direita`. Acrescentar na ponta não desloca nada, e todas as
+fórmulas, proteções e faixas de formatação condicional deste guia continuam válidas.
+Inserir no *meio* quebraria todas elas.
+
+> **Não troque isso por um filtro na coluna `Situação`.** A `Situação` vira `Concluído`
+> no instante em que a fase muda para "Finalizado", **sem olhar a digitalização** —
+> filtrar por ela esconderia justamente o protocolo finalizado e não digitalizado, que
+> é o que a regra 2 do passo 5 pinta de vermelho e o `Painel!C9` conta.
+
+**Como testar antes de confiar** (a ordem importa):
+
+1. Numa célula livre, rode o `PROCV` **cru, sem `SEERRO`**, apontando para uma linha
+   real: `=PROCV($R$5;Listas!$D$2:$E$100;2;FALSO)`. Com `SEERRO` em volta, um erro de
+   nome de função vira célula vazia e parece que funcionou (item 2 do passo 8-C).
+2. Rode a versão em array sobre as linhas que existem e confira uma a uma.
+3. **Teste o ramo "Finalizado" mesmo sem nenhum protocolo nessa fase**, passando o
+   nome direto no lugar da referência: com `Digitalizado?` falso deve dar "não
+   arquiva"; com verdadeiro, "arquiva". Sem esse teste sintético, a metade mais
+   importante da regra vai para produção sem nunca ter rodado.
+
+Depois da coluna criada, ela precisa entrar em **três** outros lugares, e esquecer
+qualquer um deles deixa a planilha meio consertada:
+
+1. a proteção do passo 7 (`Protocolos!AA1:AA1000`);
+2. as condições das visualizações do passo 6;
+3. a aba `Início`, na linha "Colunas cinzas são calculadas" — ela lista as calculadas
+   uma a uma e nasce do `.xlsx` semente, sem a `AA`.
+
+> **A coluna `AA` não vem no `.xlsx` semente** (`sheets/gerar_planilha.py` gera até a
+> `Z`). Enquanto o gerador não for atualizado, criar a coluna é passo manual em toda
+> montagem nova — e é por isso que ele está descrito aqui em vez de "já vem pronto".
+
 ## 9. Teste de aceitação — antes de liberar para o setor
 
 Crie um protocolo de teste e confira, um a um:
@@ -486,8 +569,21 @@ Crie um protocolo de teste e confira, um a um:
     **fora** de "Em andamento" no bloco por escrevente. Desfaça a renomeação depois.
 12. **Linha muito abaixo.** Lance um protocolo na linha 500 → listas suspensas e caixas
     de seleção devem estar lá, e o Painel deve contá-lo. É o que prova que o teto de
-    1000 linhas valeu para tudo, e não só para as fórmulas.
-13. **Simultâneo.** Abra com duas contas ao mesmo tempo, cada uma na sua
+    1000 linhas valeu para tudo, e não só para as fórmulas. **Abra também a
+    visualização de filtro de outro escrevente**: a linha 500 **não** pode aparecer
+    lá. Se aparecer, o intervalo daquela visualização parou antes da linha 500 — é o
+    defeito descrito no passo 6, e ele só se manifesta assim.
+13. **Arquivamento automático** (passo 8-D), nos dois ramos:
+    - Fase "Usuário desistiu" → `Pode arquivar?` = `VERDADEIRO` na hora, o protocolo
+      some das visualizações de trabalho e aparece em `Arquivados`.
+    - Fase "Finalizado" com `Digitalizado?` desmarcado → `Pode arquivar?` = `FALSO` e o
+      protocolo **continua visível**. Tem de continuar: é trabalho pendente, e é o
+      mesmo caso que a regra 2 do passo 5 pinta de vermelho forte.
+    - Marque `Digitalizado?` → vira `VERDADEIRO` e some.
+14. **A coluna `AA` está protegida.** Tente digitar em `AA5` com uma conta que não
+    seja de quem administra → deve ser bloqueado. Sem isso, uma tecla errada apaga a
+    `ARRAYFORMULA` e o arquivamento automático para de existir em silêncio.
+15. **Simultâneo.** Abra com duas contas ao mesmo tempo, cada uma na sua
     visualização de filtro, e edite linhas diferentes — nenhuma deve interferir na outra.
 
 Depois apague as linhas de teste (e as linhas de checklist delas).
@@ -681,6 +777,7 @@ preço da restrição:
 | Linhas de checklist não são geradas sozinhas | Blocos-modelo na aba `Listas` (colunas R e S) para copiar e colar |
 | Não há trava de linha por usuário | Visualizações de filtro + coluna `Responsável`. Duas pessoas só conflitam se editarem **a mesma célula** no mesmo instante |
 | Sem lixeira de verdade | Coluna `Arquivado?` + visualização `Arquivados` |
+| Arquivar não move a linha para outra aba | Coluna calculada `Pode arquivar?` (passo 8-D) + condição nas visualizações. A linha fica onde está e some do dia a dia — mover de verdade exigiria recortar e colar à mão, órfãos no `Checklist` e sumiço dos totais do `Painel` |
 
 ## 14. Fora do escopo desta primeira versão
 
