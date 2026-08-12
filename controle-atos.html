@@ -251,6 +251,23 @@ select.sortsel{
 
 .docs-pending{font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 
+/* Certidao de onus na ficha. Herda o visual discreto do .docs-pending; a cor so
+   muda quando ha o que avisar, para nao competir com o prazo do ato. */
+.cp-onus{
+  margin-top:8px;border-top:1px dashed var(--line);padding-top:8px;
+  font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.cp-onus .onus-rot{
+  font-family:var(--font-mono);font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--apagado);
+}
+.cp-onus.alerta{color:var(--gold);}
+.cp-onus.vencida{color:var(--carimbo);font-weight:500;}
+.cp-onus .onus-data{
+  font-family:var(--font-mono);font-size:11px;padding:3px 5px;
+  border:1px solid var(--borda-forte);border-radius:6px;
+}
+
 .stamp{
   display:inline-flex;align-items:center;font-family:var(--font-mono);font-size:10.5px;
   text-transform:uppercase;letter-spacing:0.05em;font-weight:700;
@@ -415,6 +432,8 @@ select.sortsel{
 .status-row input[type=text]{flex:1;min-width:140px;padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;}
 .status-row select{padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12px;}
 .status-row .final-lbl{font-size:11px;color:var(--ink-soft);display:flex;align-items:center;gap:4px;white-space:nowrap;}
+/* Mesma pegada do .final-lbl, mas usavel fora da .status-row (linha de tipo de ato). */
+.opt-lbl{font-size:11px;color:var(--ink-soft);display:flex;align-items:center;gap:4px;white-space:nowrap;}
 .swatch{width:15px;height:15px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,0.15);flex-shrink:0;}
 .new-status-form{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
 
@@ -2345,6 +2364,25 @@ App.updateDocDate = function(id){
   App.render();
 };
 
+/* Edicao da data da certidao de onus direto na ficha. Mesmo padrao do docEditOpen:
+   flag por id, campo revelado no render seguinte, leitura pelo DOM na hora de salvar. */
+App.onusEditOpen = {};
+App.editarDataOnus = function(id){ App.onusEditOpen[id]=true; justOpenedKey='onus:'+id; App.render(); };
+App.cancelarOnusEdit = function(id){ App.onusEditOpen[id]=false; App.render(); };
+App.salvarDataOnus = function(id){
+  var input = document.getElementById('onusdate_'+id);
+  /* Campo vazio limpa a data de propósito: e como o usuario desfaz um preenchimento
+     errado sem precisar inventar uma data. Volta a cair no aviso de "sem data". */
+  var dataISO = input ? input.value : '';
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id) p.dataOnus = dataISO;
+    return p;
+  });
+  saveState();
+  App.onusEditOpen[id] = false;
+  App.render();
+};
+
 App.marcarRascunhoDigitalizado = function(id){
   state.protocolos = state.protocolos.map(function(p){
     if(p.id===id){
@@ -3037,6 +3075,13 @@ App.addTipoSettings = function(){
     state.tiposAtos.push(v);
     var catManual = catEl ? catEl.value : '';
     state.categoriaPorTipo[v] = catManual || categorizarTipoPorNome(v) || null;
+    /* Se o nome bate exatamente com um tipo da lista padrao de onus, ja nasce
+       marcado — cobre o caso de remover e recadastrar o tipo. Nome parecido nao
+       conta: exigencia de onus e regra do cartorio, nao palpite por nome. */
+    if(mapaOnusPadrao()[v]){
+      if(!state.exigeOnusPorTipo) state.exigeOnusPorTipo = {};
+      state.exigeOnusPorTipo[v] = true;
+    }
     saveState();
   }
   if(el) el.value='';
@@ -3045,11 +3090,22 @@ App.addTipoSettings = function(){
 App.removeTipoSettings = function(t){
   state.tiposAtos = state.tiposAtos.filter(function(x){ return x!==t; });
   delete state.categoriaPorTipo[t];
+  if(state.exigeOnusPorTipo) delete state.exigeOnusPorTipo[t];
   saveState();
   App.render();
 };
 App.setCategoriaDoTipo = function(tipo, categoria){
   state.categoriaPorTipo[tipo] = categoria || null;
+  saveState();
+  App.render();
+};
+/* Guarda a exigencia de onus por TIPO de ato. Desmarcar apaga a chave em vez de
+   gravar false: o mapa fica so com o que exige, e protocoloExigeOnus() ja le
+   ausencia como "nao exige". */
+App.toggleExigeOnusDoTipo = function(tipo, val){
+  if(!state.exigeOnusPorTipo) state.exigeOnusPorTipo = {};
+  if(val) state.exigeOnusPorTipo[tipo] = true;
+  else delete state.exigeOnusPorTipo[tipo];
   saveState();
   App.render();
 };
@@ -3136,7 +3192,7 @@ App.addStatusType = function(){
   var cor = corEl ? corEl.value : 'gray';
   var isFinal = finalEl ? finalEl.checked : false;
   var key = slugify(label)+'_'+Math.random().toString(36).slice(2,6);
-  state.statusList.push({key:key, label:label, cor:cor, isFinal:isFinal, requerDigitalizacao:false});
+  state.statusList.push({key:key, label:label, cor:cor, isFinal:isFinal, requerDigitalizacao:false, dependeDoUsuario:false});
   saveState();
   labelEl.value='';
   App.render();
@@ -3177,6 +3233,11 @@ App.updateStatusFinal = function(key, val){
 };
 App.updateStatusRequerDigitalizacao = function(key, val){
   state.statusList = state.statusList.map(function(s){ if(s.key===key) s.requerDigitalizacao=val; return s; });
+  saveState();
+  App.render();
+};
+App.updateStatusDependeDoUsuario = function(key, val){
+  state.statusList = state.statusList.map(function(s){ if(s.key===key) s.dependeDoUsuario=val; return s; });
   saveState();
   App.render();
 };
@@ -3468,6 +3529,51 @@ function renderGateDigitalizacao(p){
   '</div>';
 }
 
+/* Certidao de onus na ficha. So aparece quando o tipo do ato exige (computeOnus
+   devolve null caso contrario), e a data e editavel aqui mesmo: quem ve o aviso e
+   quem tem a certidao nova na mao, obrigar a abrir o formulario inteiro so pra
+   trocar uma data seria atrito a toa. */
+function renderOnusFicha(p){
+  var o = computeOnus(p);
+  if(!o) return '';
+  var isEditing = App.onusEditOpen[p.id];
+  if(isEditing){
+    return '<div class="cp-onus">'+
+      '<span class="onus-rot">Certidão de ônus</span>'+
+      '<span>emitida em</span>'+
+      '<input type="date" class="onus-data" id="onusdate_'+p.id+'" value="'+esc(p.dataOnus||'')+'">'+
+      '<button class="grp-link" onclick="App.salvarDataOnus(\''+p.id+'\')">salvar</button>'+
+      '<button class="grp-link" onclick="App.cancelarOnusEdit(\''+p.id+'\')">cancelar</button>'+
+    '</div>';
+  }
+  var editar = '<button class="grp-link" onclick="App.editarDataOnus(\''+p.id+'\')">'+(o.faltaData?'informar data':'editar')+'</button>';
+  if(o.faltaData){
+    return '<div class="cp-onus alerta">'+
+      '<span class="onus-rot">Certidão de ônus</span>'+
+      '<span>sem data de emissão — o prazo de '+ONUS_VALIDADE_DIAS+' dias não está sendo contado.</span>'+
+      editar+
+    '</div>';
+  }
+  var emitida = 'emitida em '+esc(formatBR(p.dataOnus));
+  var cls, texto;
+  if(o.vencida){
+    cls = ' vencida';
+    /* diasRestantes negativo: quantos dias ja se passaram do vencimento. */
+    texto = emitida+' &middot; <strong>vencida em '+esc(formatBR(o.vencimento))+'</strong> ('+(-o.diasRestantes)+'d atrás) — precisa de certidão nova.';
+  }else if(o.avisar){
+    cls = ' alerta';
+    texto = emitida+' &middot; <strong>vence em '+o.diasRestantes+'d</strong> ('+esc(formatBR(o.vencimento))+').';
+  }else{
+    cls = '';
+    texto = emitida+' &middot; vence '+esc(formatBR(o.vencimento))+' ('+o.diasRestantes+'d).';
+  }
+  return '<div class="cp-onus'+cls+'">'+
+    '<span class="onus-rot">Certidão de ônus</span>'+
+    '<span>'+texto+'</span>'+
+    editar+
+  '</div>';
+}
+
 function renderVinculados(p){
   var vinculados = getVinculados(p);
   if(!vinculados.length) return '';
@@ -3727,6 +3833,7 @@ function renderFicha(p, dentroDeGrupo){
         '</span>'+
       '</div>'+
       renderGateDigitalizacao(p)+
+      renderOnusFicha(p)+
       (dentroDeGrupo ? '' : renderVinculados(p))+
       renderTimelineFicha(p)+
       renderDocumentosChecklist(p)+
@@ -4515,8 +4622,10 @@ function renderSettingsModal(){
     var cat = getCategoriaDoTipo(t) || '';
     var opts = '<option value=""'+(cat===''?' selected':'')+'>sem categoria</option>'+
       CATEGORIAS_ATO.map(function(c){ return '<option value="'+c.key+'"'+(cat===c.key?' selected':'')+'>'+esc(c.label)+'</option>'; }).join('');
+    var exigeOnus = !!(state.exigeOnusPorTipo||{})[t];
     return '<div class="list-row">'+
       '<span style="flex:1;">'+esc(t)+'</span>'+
+      '<label class="opt-lbl" title="Protocolos deste tipo pedem a data de emissão da certidão de ônus e avisam '+ONUS_AVISO_DIAS+' dias antes de ela vencer"><input type="checkbox" '+(exigeOnus?'checked':'')+' onchange="App.toggleExigeOnusDoTipo(\''+jsAttr(t)+'\', this.checked)"> Exige certidão de ônus</label>'+
       '<select style="padding:4px 6px;border:1px solid var(--line);border-radius:3px;font-size:11.5px;" onchange="App.setCategoriaDoTipo(\''+jsAttr(t)+'\', this.value)">'+opts+'</select>'+
       '<button class="remove-x" onclick="App.removeTipoSettings(\''+jsAttr(t)+'\')" title="Remover">&times;</button>'+
     '</div>';
@@ -4543,11 +4652,15 @@ function renderSettingsModal(){
     var inUse = state.protocolos.some(function(p){ return p.status===s.key; });
     var colorOptions = PALETTE.map(function(c){ return '<option value="'+c.key+'"'+(c.key===s.cor?' selected':'')+'>'+esc(c.name)+'</option>'; }).join('');
     var digitalizacaoCheckbox = s.isFinal ? ('<label class="final-lbl"><input type="checkbox" '+(s.requerDigitalizacao?'checked':'')+' onchange="App.updateStatusRequerDigitalizacao(\''+jsAttr(s.key)+'\', this.checked)"> Exige digitalização antes de arquivar</label>') : '';
+    /* So faz sentido em fase nao final: fase final nao tem prazo em contagem, entao
+       nao ha atraso que possa ser injustamente atribuido ao cartorio. */
+    var dependeCheckbox = s.isFinal ? '' : ('<label class="final-lbl" title="Nesta fase a espera é do usuário: o protocolo não conta como atrasado, aparece como “com o usuário”"><input type="checkbox" '+(s.dependeDoUsuario?'checked':'')+' onchange="App.updateStatusDependeDoUsuario(\''+jsAttr(s.key)+'\', this.checked)"> Depende do usuário</label>');
     return '<div class="status-row">'+
       '<span class="swatch" style="background:var(--'+s.cor+');"></span>'+
       '<input type="text" value="'+esc(s.label)+'" onchange="App.updateStatusLabel(\''+jsAttr(s.key)+'\', this.value)">'+
       '<select onchange="App.updateStatusColor(\''+jsAttr(s.key)+'\', this.value)">'+colorOptions+'</select>'+
       '<label class="final-lbl"><input type="checkbox" '+(s.isFinal?'checked':'')+' onchange="App.updateStatusFinal(\''+jsAttr(s.key)+'\', this.checked)"> Fase final</label>'+
+      dependeCheckbox+
       digitalizacaoCheckbox+
       '<button class="mini-btn" '+(idx===0?'disabled':'')+' onclick="App.moveStatus(\''+jsAttr(s.key)+'\', -1)" title="Mover para cima">&#9650;</button>'+
       '<button class="mini-btn" '+(idx===state.statusList.length-1?'disabled':'')+' onclick="App.moveStatus(\''+jsAttr(s.key)+'\', 1)" title="Mover para baixo">&#9660;</button>'+
