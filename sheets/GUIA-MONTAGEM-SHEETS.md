@@ -162,23 +162,49 @@ regra`, escolha **"A fórmula personalizada é"** (é a última opção do menu 
 precisa rolar) e cole a fórmula. As fórmulas abaixo já estão em pt-BR com `;`.
 
 **Bloco principal — selecione `A2:AA1000` antes de começar.** Crie nesta ordem, porque
-a primeira regra que casar define o fundo da célula:
+a primeira regra que casar define o fundo da célula. **Repare que as regras 2 e 6 têm
+intervalo próprio, mais estreito** — o motivo está logo abaixo da tabela:
 
-| # | Fórmula | Formato |
-|---|---|---|
-| 1 | `=$Y2=VERDADEIRO` | fundo cinza claro, texto cinza (arquivado) |
-| 2 | `=E(SEERRO(PROCV($R2;INDIRETO("Listas!$D$2:$F$100");3;FALSO);"Nao")="Sim";$S2=FALSO)` | fundo vermelho forte, texto branco |
-| 3 | `=$Q2="Atrasado"` | fundo vermelho claro, texto vermelho escuro |
-| 4 | `=$Q2="Vence hoje"` | fundo âmbar, texto laranja escuro |
-| 5 | `=$Q2="Com o usuário"` | fundo azul claro (ver passo 8-E) |
-| 6 | `=$Q2="Concluído"` | fundo verde claro, texto verde escuro |
-| 7 | `=E($M2=VERDADEIRO;$U2<>"";$U2<1)` | sem fundo, texto âmbar em negrito |
+| # | Aplicar a | Fórmula | Formato |
+|---|---|---|---|
+| 1 | `A2:AA1000` | `=$Y2=VERDADEIRO` | fundo cinza claro, texto cinza (arquivado) |
+| 2 | **`S2:S1000`** | `=E(SEERRO(PROCV($R2;INDIRETO("Listas!$D$2:$F$100");3;FALSO);"Nao")="Sim";$S2=FALSO)` | fundo vermelho forte, texto branco |
+| 3 | `A2:AA1000` | `=$Q2="Atrasado"` | fundo vermelho claro, texto vermelho escuro |
+| 4 | `A2:AA1000` | `=$Q2="Vence hoje"` | fundo âmbar, texto laranja escuro |
+| 5 | `A2:AA1000` | `=$Q2="Com o usuário"` | fundo azul claro (ver passo 8-E) |
+| 6 | **`AA2:AA1000`** | `=$AA2="Sim"` | fundo verde claro, texto verde escuro |
+| 7 | `A2:AA1000` | `=E($M2=VERDADEIRO;$U2<>"";$U2<1)` | sem fundo, texto âmbar em negrito |
+
+> **Por que as regras 2 e 6 não pintam a linha inteira.** As duas já pintaram, e em uso
+> real o resultado foi ruim o bastante para desfazer. A 2 vinha com fundo vermelho forte
+> e texto branco em `A2:AA1000`: no instante em que alguém punha a fase em "Finalizado",
+> os 27 campos **certos** da linha ficavam ilegíveis para comunicar o **único** que
+> faltava. A 6 pintava a linha de verde logo em seguida, quando o ato já não pedia mais
+> atenção nenhuma.
+>
+> A correção é a mesma dos dois lados: **a cor mora no campo de que ela fala.** Falta
+> digitalizar → vermelho só em `Digitalizado?`. Pode arquivar → verde só em
+> `Pode arquivar?`. É a mesma divisão que já valia para o ônus (`AB:AC`, passo 8-F):
+> cor de linha fala do **estado do ato** (atrasado, vence hoje, com o usuário,
+> arquivado); cor de célula fala de **um campo**.
+>
+> A regra 6 também deixou de perguntar `=$Q2="Concluído"` e passou a perguntar
+> `=$AA2="Sim"`. Não é troca cosmética: a `Situação` vira "Concluído" assim que a fase
+> muda, **sem olhar a digitalização** — a regra antiga pintaria de verde uma célula
+> `Pode arquivar?` vazia. Agora a condição é exatamente o que a célula escreve, e as
+> duas não têm como divergir.
 
 > **O bloco principal termina na coluna `AA`, e isso é de propósito.** As colunas `AB`
 > e `AC` (certidão de ônus, passo 8-F) têm alertas próprios, e regra de linha vence
 > regra de coluna — se o bloco principal cobrisse até `AC`, o fundo da linha pintaria
 > por cima do aviso de ônus e ele nunca apareceria. Cor da linha fala do **ato**; cor
 > de `AB:AC` fala da **certidão**.
+
+> **A precedência também explica o que você *não* vai ver.** A regra 1 (arquivado) vem
+> antes de todas, então numa linha já arquivada a `AA` aparece **cinza**, e não verde,
+> mesmo escrevendo "Sim". É o desejado: ato arquivado tem de recuar, não chamar. O verde
+> só aparece na janela entre "pode arquivar" e "foi arquivado" — que é justamente quando
+> ele serve para alguma coisa.
 
 > **Ao inserir uma coluna nova, o Sheets estende sozinho o alcance destas regras.**
 > Aconteceu ao criar `AA`, `AB` e `AC`: as sete regras pularam de `A2:Z1000` para
@@ -253,7 +279,7 @@ nela a coluna `Y` é o filtro, e nada é escondido.
 
 | Nome | Coluna | Condição | + `AA` Pode arquivar? |
 |---|---|---|---|
-| `Minhas — Escrevente 1` | L Responsável | O texto é exatamente `Escrevente 1` | `=E($AA2=FALSO;$Y2=FALSO)` |
+| `Minhas — Escrevente 1` | L Responsável | O texto é exatamente `Escrevente 1` | `=E($AA2<>"Sim";$Y2=FALSO)` |
 | `Minhas — Escrevente 2` | L Responsável | O texto é exatamente `Escrevente 2` | idem |
 | `Minhas — Escrevente 3` | L Responsável | O texto é exatamente `Escrevente 3` | idem |
 | `Vencem hoje` | Q Situação | O texto é exatamente `Vence hoje` | idem |
@@ -263,6 +289,12 @@ nela a coluna `Y` é o filtro, e nada é escondido.
 
 A condição da `AA` inclui `$Y2` de propósito: a caixa `Arquivado?` continua servindo
 de arquivamento manual para os casos que a regra automática não cobre.
+
+> **`<>"Sim"` e não `=FALSO`.** A `AA` devolve texto (`"Sim"` ou vazio), não booleano —
+> ver o aviso no passo 8. Enquanto ela foi booleana a condição era `=E($AA2=FALSO;$Y2=FALSO)`,
+> e ao trocar o tipo da coluna sem trocar as seis condições **todas as visualizações
+> passaram a exibir zero linha**, sem mensagem de erro nenhuma. Se algum dia mudar de novo
+> o que a `AA` escreve, estas seis condições mudam junto, na mesma sessão.
 
 `Arquivados` usa fórmula, e não filtro por valores, porque enquanto nenhum protocolo
 tiver sido arquivado a lista de valores da coluna só oferece `FALSE` — não há
@@ -392,8 +424,18 @@ e cole a fórmula **apenas na linha 1** (`J1`).
 
 **AA1 — Pode arquivar?** (coluna nova — ver o passo 8-D antes de colar)
 ```
-=ARRAYFORMULA(SE(LIN($A$1:$A)=1;"Pode arquivar?";SE($A$1:$A="";"";(SEERRO(PROCV($R$1:$R;Listas!$D$2:$E$100;2;FALSO);"Nao")="Sim")*(((SEERRO(PROCV($R$1:$R;Listas!$D$2:$F$100;3;FALSO);"Nao")<>"Sim")+($S$1:$S=VERDADEIRO))>0)=1)))
+=ARRAYFORMULA(SE(LIN($A$1:$A)=1;"Pode arquivar?";SE($A$1:$A="";"";SE((SEERRO(PROCV($R$1:$R;Listas!$D$2:$E$100;2;FALSO);"Nao")="Sim")*(((SEERRO(PROCV($R$1:$R;Listas!$D$2:$F$100;3;FALSO);"Nao")<>"Sim")+($S$1:$S=VERDADEIRO))>0)=1;"Sim";""))))
 ```
+
+> **O `SE(...;"Sim";"")` de fora não é enfeite.** Sem ele a coluna devolve o booleano
+> cru e a planilha mostra `VERDADEIRO`/`FALSO` — em uso real apareceu como `TRUE`/`FALSE`,
+> que ninguém lê como "pode arquivar". Escrever `"Sim"` e deixar o resto **em branco**
+> também faz o `Sim` saltar aos olhos numa coluna quase toda vazia.
+>
+> **Trocar o tipo desta coluna obriga a mexer nas visualizações do passo 6.** Elas
+> comparavam `$AA2=FALSO`, o que deixa de casar no instante em que a `AA` vira texto —
+> e o sintoma é traiçoeiro: as visualizações não dão erro, só passam a exibir **zero
+> linha**. Se mudar a `AA`, mude as seis condições na mesma sessão.
 
 Depois de colar, confira que a linha 1 continua exibindo o texto do cabeçalho — se
 aparecer `0` ou vazio, a parte `LIN(...)=1` não pegou.
@@ -550,8 +592,9 @@ coluna `AA` — se cobrisse `AB:AC`, o fundo da linha apagaria o alerta de ônus
 
 Marca automaticamente o protocolo que já pode sair do dia a dia, com a **mesma regra
 do aplicativo web**: é final **E** (não exige digitalização **OU** já digitalizado).
-Na prática: "Usuário desistiu" fica `VERDADEIRO` na hora; "Finalizado" só depois de
-marcado `Digitalizado?`. A fórmula está no passo 8, junto com as outras calculadas.
+Na prática: "Usuário desistiu" escreve `Sim` na hora; "Finalizado" só depois de
+marcado `Digitalizado?`. Quando não pode arquivar, a célula fica **vazia** — não
+escreve "Não". A fórmula está no passo 8, junto com as outras calculadas.
 
 **Crie a coluna antes de colar a fórmula.** A aba `Protocolos` termina em `Z`
 (`Criado em`), então `AA` não existe: botão direito no cabeçalho da `Z` →
@@ -673,7 +716,9 @@ Crie um protocolo de teste e confira, um a um:
    `Dias úteis restantes` = 0 e `Situação` = "Vence hoje".
 4. **Atrasado.** Prazo no passado → `Situação` = "Atrasado", linha em vermelho claro.
 5. **Fase final.** Mude a fase para "Finalizado" → `Situação` vira "Concluído" e a
-   linha fica vermelho forte enquanto `Digitalizado?` estiver desmarcado.
+   célula `Digitalizado?` fica vermelha enquanto estiver desmarcada. **O resto da linha
+   tem de continuar legível** — se ela inteira ficar vermelha, a regra 2 do passo 5 está
+   com o intervalo antigo (`A2:AA1000` em vez de `S2:S1000`).
 6. **Checklist.** Lance 4 documentos na aba `Checklist` com o ID do teste, marque 2 →
    `% Checklist` = 50%.
 7. **ID duplicado.** Repita o ID em outra linha → as duas células ficam vermelhas.
@@ -685,9 +730,10 @@ Crie um protocolo de teste e confira, um a um:
     "Por escrevente".
 11. **Renomear uma fase não quebra nada** — este é o teste que mais pega defeito.
     Renomeie "Finalizado" em `Listas!D` para outra coisa, e ponha um protocolo nessa
-    fase. Devem continuar certos, todos os quatro: `Situação` = "Concluído", a linha
-    em vermelho forte, o alerta "Finalizado sem digitalização" contando, e o protocolo
-    **fora** de "Em andamento" no bloco por escrevente. Desfaça a renomeação depois.
+    fase. Devem continuar certos, todos os quatro: `Situação` = "Concluído", a célula
+    `Digitalizado?` em vermelho, o alerta "Finalizado sem digitalização" contando, e o
+    protocolo **fora** de "Em andamento" no bloco por escrevente. Desfaça a renomeação
+    depois.
 12. **Linha muito abaixo.** Lance um protocolo na linha 500 → listas suspensas e caixas
     de seleção devem estar lá, e o Painel deve contá-lo. É o que prova que o teto de
     1000 linhas valeu para tudo, e não só para as fórmulas. **Abra também a
@@ -695,12 +741,18 @@ Crie um protocolo de teste e confira, um a um:
     lá. Se aparecer, o intervalo daquela visualização parou antes da linha 500 — é o
     defeito descrito no passo 6, e ele só se manifesta assim.
 13. **Arquivamento automático** (passo 8-D), nos dois ramos:
-    - Fase "Usuário desistiu" → `Pode arquivar?` = `VERDADEIRO` na hora, o protocolo
+    - Fase "Usuário desistiu" → `Pode arquivar?` escreve `Sim` na hora, o protocolo
       some das visualizações de trabalho e aparece em `Arquivados`.
-    - Fase "Finalizado" com `Digitalizado?` desmarcado → `Pode arquivar?` = `FALSO` e o
-      protocolo **continua visível**. Tem de continuar: é trabalho pendente, e é o
-      mesmo caso que a regra 2 do passo 5 pinta de vermelho forte.
-    - Marque `Digitalizado?` → vira `VERDADEIRO` e some.
+    - Fase "Finalizado" com `Digitalizado?` desmarcado → `Pode arquivar?` fica **vazia**
+      e o protocolo **continua visível**. Tem de continuar: é trabalho pendente, e é o
+      mesmo caso que a regra 2 do passo 5 pinta de vermelho na célula `Digitalizado?`.
+    - Marque `Digitalizado?` → escreve `Sim`, a célula fica **verde**, e o protocolo some
+      das visualizações de trabalho.
+    - **Confira que aparece `Sim` e não `VERDADEIRO`/`TRUE`.** Se aparecer o booleano,
+      falta o `SE(...;"Sim";"")` de fora da fórmula (passo 8) — e nesse caso as seis
+      visualizações do passo 6 também estão com a condição errada.
+    - **Depois de marcar `Arquivado?`, a `AA` fica cinza e não verde.** É o esperado: a
+      regra 1 vem antes e faz o ato arquivado recuar.
 14. **A coluna `AA` está protegida.** Tente digitar em `AA5` com uma conta que não
     seja de quem administra → deve ser bloqueado. Sem isso, uma tecla errada apaga a
     `ARRAYFORMULA` e o arquivamento automático para de existir em silêncio.
