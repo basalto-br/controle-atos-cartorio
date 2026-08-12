@@ -161,7 +161,7 @@ Selecione o intervalo, abra `Formatar › Formatação condicional › Adicionar
 regra`, escolha **"A fórmula personalizada é"** (é a última opção do menu suspenso,
 precisa rolar) e cole a fórmula. As fórmulas abaixo já estão em pt-BR com `;`.
 
-**Bloco principal — selecione `A2:Z1000` antes de começar.** Crie nesta ordem, porque
+**Bloco principal — selecione `A2:AA1000` antes de começar.** Crie nesta ordem, porque
 a primeira regra que casar define o fundo da célula:
 
 | # | Fórmula | Formato |
@@ -170,8 +170,35 @@ a primeira regra que casar define o fundo da célula:
 | 2 | `=E(SEERRO(PROCV($R2;INDIRETO("Listas!$D$2:$F$100");3;FALSO);"Nao")="Sim";$S2=FALSO)` | fundo vermelho forte, texto branco |
 | 3 | `=$Q2="Atrasado"` | fundo vermelho claro, texto vermelho escuro |
 | 4 | `=$Q2="Vence hoje"` | fundo âmbar, texto laranja escuro |
-| 5 | `=$Q2="Concluído"` | fundo verde claro, texto verde escuro |
-| 6 | `=E($M2=VERDADEIRO;$U2<>"";$U2<1)` | sem fundo, texto âmbar em negrito |
+| 5 | `=$Q2="Com o usuário"` | fundo azul claro (ver passo 8-E) |
+| 6 | `=$Q2="Concluído"` | fundo verde claro, texto verde escuro |
+| 7 | `=E($M2=VERDADEIRO;$U2<>"";$U2<1)` | sem fundo, texto âmbar em negrito |
+
+> **O bloco principal termina na coluna `AA`, e isso é de propósito.** As colunas `AB`
+> e `AC` (certidão de ônus, passo 8-F) têm alertas próprios, e regra de linha vence
+> regra de coluna — se o bloco principal cobrisse até `AC`, o fundo da linha pintaria
+> por cima do aviso de ônus e ele nunca apareceria. Cor da linha fala do **ato**; cor
+> de `AB:AC` fala da **certidão**.
+
+> **Ao inserir uma coluna nova, o Sheets estende sozinho o alcance destas regras.**
+> Aconteceu ao criar `AA`, `AB` e `AC`: as sete regras pularam de `A2:Z1000` para
+> `A2:AC1000` sem ninguém pedir. Depois de inserir qualquer coluna, **reabra a lista e
+> confira o intervalo de cada regra** — o conserto é editar o campo "Aplicar ao
+> intervalo", uma por uma.
+
+**Bloco da certidão de ônus — selecione `AB2:AC1000`.** A ordem importa: a regra de
+vencida tem de vir **antes** da de vencendo, senão `-2` casa primeiro com `<=5` e a
+ônus vencida aparece como se ainda desse tempo.
+
+| # | Fórmula | Formato |
+|---|---|---|
+| 1 | `=E($AC2<>"";$AC2<0)` | fundo vermelho (ônus vencida) |
+| 2 | `=E($AC2<>"";$AC2<=5)` | fundo âmbar (vence em 5 dias ou menos) |
+| 3 | `=E(SEERRO(PROCV($I2;INDIRETO("Listas!$A$2:$C$100");3;FALSO);"Nao")="Sim";$AB2="")` | fundo amarelo claro (falta a data) |
+
+A regra 3 é a que **cobra** o preenchimento: dispara quando o tipo de ato exige
+certidão de ônus (coluna `C` da `Listas`) e a data ainda está vazia. Repare no
+`INDIRETO` — é a mesma exigência da regra 2 do bloco principal.
 
 > **Duas armadilhas na regra 2, e as duas custam tempo.**
 >
@@ -212,7 +239,7 @@ que não existe, com o mesmo efeito e sem uma regra extra.
 
 ## 6. Visualizações de Filtro — a peça central do uso simultâneo
 
-**Selecione `A1:AA1000` antes de criar cada visualização.** A visualização nasce com o
+**Selecione `A1:AC1000` antes de criar cada visualização.** A visualização nasce com o
 intervalo que estiver selecionado; se você criar com uma única coluna selecionada,
 ela filtra só aquela coluna e não esconde as linhas da tabela.
 
@@ -285,16 +312,19 @@ Se usar, use só na aba `Painel`, ciente de que mexer nelas muda o que os outros
 | `Protocolos!J1:J1000` | restringir — Categoria (calculada) |
 | `Protocolos!O1:Q1000` | restringir — Prazo, Dias úteis restantes, Situação |
 | `Protocolos!U1:U1000` | restringir — % Checklist |
-| `Protocolos!AA1:AA1000` | restringir — Pode arquivar? (calculada, passo 8-C) |
+| `Protocolos!AA1:AA1000` | restringir — Pode arquivar? (calculada, passo 8-D) |
+| `Protocolos!AC1:AC1000` | restringir — Ônus vence em (calculada, passo 8-F) |
 | Linha 1 de todas as abas | restringir |
 | Resto de `Protocolos` e `Checklist` | `Mostrar um aviso ao editar` (avisa sem bloquear) |
 
 `O1:Q1000` cobre as três colunas calculadas contíguas de uma vez — não precisa de uma
 proteção por coluna.
 
-> **A `AA` é fácil de esquecer.** Ela nasce depois das outras, fora do bloco contíguo,
-> e por isso fica de fora se você só repetir a lista antiga. Coluna calculada sem
-> proteção é `ARRAYFORMULA` esperando ser sobrescrita por quem clicou na célula errada.
+> **`AA` e `AC` são fáceis de esquecer.** Nascem depois das outras, fora do bloco
+> contíguo, e por isso ficam de fora se você só repetir a lista antiga. Coluna calculada
+> sem proteção é `ARRAYFORMULA` esperando ser sobrescrita por quem clicou na célula
+> errada. Repare que **`AB` fica de fora de propósito** — a data da ônus é digitada à
+> mão, não calculada.
 
 > **A caixa de permissões vem com todo mundo marcado.** Ao criar uma proteção nova, o
 > Sheets pré-marca **todos** os editores do arquivo — o oposto do que "restringir"
@@ -345,14 +375,19 @@ e cole a fórmula **apenas na linha 1** (`J1`).
 =ARRAYFORMULA(SE(LIN($A$1:$A)=1;"Dias úteis restantes";SEERRO(SE($O$1:$O="";"";SE($O$1:$O>=HOJE();DIATRABALHOTOTAL(HOJE();$O$1:$O;Listas!$O$2:$O$200)-1;DIATRABALHOTOTAL(HOJE();$O$1:$O;Listas!$O$2:$O$200)+1));"")))
 ```
 
-**Q1 — Situação** (ver o passo 8-B: não cita nome de fase)
+**Q1 — Situação** (ver o passo 8-B: não cita nome de fase; e o passo 8-E)
 ```
-=ARRAYFORMULA(SE(LIN($A$1:$A)=1;"Situação";SEERRO(SE($O$1:$O="";"";SE(SEERRO(PROCV($R$1:$R;Listas!$D$2:$E$100;2;FALSO);"Nao")="Sim";SE(SEERRO(PROCV($R$1:$R;Listas!$D$2:$F$100;3;FALSO);"Nao")="Sim";"Concluído";"Encerrado");SE($P$1:$P<0;"Atrasado";SE($P$1:$P=0;"Vence hoje";"No prazo"))));"")))
+=ARRAYFORMULA(SE(LIN($A$1:$A)=1;"Situação";SEERRO(SE($O$1:$O="";"";SE(SEERRO(PROCV($R$1:$R;Listas!$D$2:$E$100;2;FALSO);"Nao")="Sim";SE(SEERRO(PROCV($R$1:$R;Listas!$D$2:$F$100;3;FALSO);"Nao")="Sim";"Concluído";"Encerrado");SE(SEERRO(PROCV($R$1:$R;Listas!$D$2:$H$100;5;FALSO);"Nao")="Sim";"Com o usuário";SE($P$1:$P<0;"Atrasado";SE($P$1:$P=0;"Vence hoje";"No prazo")))));"")))
 ```
 
 **U1 — % Checklist**
 ```
 =ARRAYFORMULA(SE(LIN($A$1:$A)=1;"% Checklist";SEERRO(SE($A$1:$A="";"";CONT.SES(Checklist!$A$2:$A$3000;$A$1:$A;Checklist!$C$2:$C$3000;VERDADEIRO)/CONT.SE(Checklist!$A$2:$A$3000;$A$1:$A));"")))
+```
+
+**AC1 — Ônus vence em** (coluna nova — ver o passo 8-F antes de colar)
+```
+=ARRAYFORMULA(SE(LIN($A$1:$A)=1;"Ônus vence em";SE($A$1:$A="";"";SE($AB$1:$AB="";"";$AB$1:$AB+30-HOJE()))))
 ```
 
 **AA1 — Pode arquivar?** (coluna nova — ver o passo 8-D antes de colar)
@@ -499,6 +534,18 @@ colapsam o intervalo inteiro num único valor e a coluna sai toda igual. Use `*`
 lugar do "e" e `+` no lugar do "ou", fechando com `>0` e `=1` para voltar a
 `VERDADEIRO`/`FALSO`. É o caso da fórmula do passo 8-D.
 
+**6. O painel de formatação condicional só lista as regras que cobrem a célula
+selecionada.** Esta é a que mais custa tempo, porque não parece uma armadilha — parece
+que a regra sumiu. Com `A2` selecionada, uma regra em `AB2:AC1000` **não aparece na
+lista**. O efeito prático: você cria a regra, clica em Concluído, olha a lista, não vê,
+conclui que não salvou, e cria de novo. Três vezes. **Antes de decidir que uma regra não
+foi salva, selecione uma célula que esteja dentro do intervalo dela.**
+
+**7. O Sheets aplica só a primeira regra que casa.** Duas regras verdadeiras na mesma
+célula não se somam: a de cima vence inteira, inclusive nas propriedades que a de baixo
+mudaria. Por isso a ordem do passo 5 importa, e por isso o bloco principal para na
+coluna `AA` — se cobrisse `AB:AC`, o fundo da linha apagaria o alerta de ônus.
+
 ## 8-D. Coluna `AA` — "Pode arquivar?"
 
 Marca automaticamente o protocolo que já pode sair do dia a dia, com a **mesma regra
@@ -539,6 +586,80 @@ qualquer um deles deixa a planilha meio consertada:
 > **A coluna `AA` não vem no `.xlsx` semente** (`sheets/gerar_planilha.py` gera até a
 > `Z`). Enquanto o gerador não for atualizado, criar a coluna é passo manual em toda
 > montagem nova — e é por isso que ele está descrito aqui em vez de "já vem pronto".
+
+## 8-E. "Com o usuário" — quando a espera não é sua
+
+Havia um defeito de indicador: protocolo em "Aguardando assinatura" contava como
+**Atrasado**, em vermelho, embora a espera fosse do cliente. Numa planilha em uso, os
+**dois únicos "Atrasados" eram exatamente esse caso** — o alerta estava 100% em falso
+positivo.
+
+A `Situação` passa a devolver **"Com o usuário"** quando a fase depende do cliente.
+Fundo azul, não vermelho: continua visível, deixa de acusar.
+
+**Acrescente `Listas!H` — "Depende do usuário?"**, com `Sim`/`Não` por fase, ao lado de
+"É final?" e "Exige digitalização?". Marque `Sim` em "Aguardando assinatura".
+"Pendência de documentos" é a outra candidata óbvia — é digitar `Sim` numa célula, sem
+tocar em fórmula. É a mesma disciplina do passo 8-B: a fórmula pergunta por uma
+**propriedade**, nunca pelo nome da fase.
+
+> **Use a coluna separadora `H`, não insira coluna nova no meio da `Listas`.** Inserir
+> deslocaria `Responsável` de `I` para `J`, e a formatação condicional referencia a
+> `Listas` por `INDIRETO("…")`, que é **texto** e não se atualiza sozinho. O
+> deslocamento quebraria as regras em silêncio. `C` e `H` são estreitas por serem
+> separadores visuais — alargue-as para o cabeçalho caber.
+
+> **O relógio continua correndo.** `Dias úteis restantes` segue mostrando `-3`, `-5`.
+> Só o rótulo e a cor deixam de tratar como culpa sua — assim você não perde de vista o
+> cliente que está há semanas com o ato na mão. Se o prazo parasse, você ficaria cego
+> para isso.
+
+**Consequência no Painel:** "Atrasados" cai, porque esses protocolos saíram da conta.
+Acrescente um contador "Com o usuário" ao lado, senão você troca um indicador
+mentiroso por um buraco. Ver o passo 8-G.
+
+## 8-F. Certidão de ônus — data e alerta de validade
+
+Duas colunas ao fim da aba: **`AB` Data da ônus** (digitada) e **`AC` Ônus vence em**
+(calculada, `AB + 30 − HOJE()`). Trinta **dias corridos**, contados da emissão — não
+usa a lista de feriados, é diferente do prazo de 5 dias úteis do ato.
+
+**Acrescente `Listas!C` — "Exige certidão de ônus?"**, com `Sim`/`Não` por tipo de ato.
+Marque `Sim` em "Procuração para venda de imóvel". É essa coluna que faz a planilha
+**cobrar** a data quando ela falta (regra 3 do bloco de ônus, passo 5) — sem citar nome
+de tipo de ato dentro de fórmula nenhuma.
+
+**Formate as duas colunas à mão:**
+
+- `AB2:AB1000` → `Formatar › Número › Data`.
+- `AC1:AC1000` → `Formatar › Número › Formato de número personalizado` → `0`.
+
+> **A `AC` herda formato de data e mostra `08/01/1900` no lugar de `9`.** Ela nasce de
+> uma conta entre datas, e o Sheets conclui que o resultado também é data. O sintoma
+> aparece só quando a primeira data real é digitada — antes disso a coluna está vazia e
+> parece certa. Force o formato numérico inteiro.
+
+> **A `AC` fica vazia enquanto a linha não tiver ID.** A fórmula tem guarda em `$A$1:$A`,
+> igual às outras calculadas. Ao testar numa linha solta lá embaixo, preencha o ID
+> também, senão parece que a fórmula não funciona.
+
+## 8-G. Painel — contadores de "Com o usuário" e de ônus
+
+Duas linhas novas no bloco **Alertas**, em `B11:C12` (o espaço em branco antes de "Por
+fase"). Não insira linhas: o bloco "Por fase" tem vagas fixas e uma fórmula de aviso
+que soma `$C$14:$C$25`.
+
+```
+B11: Com o usuário
+C11: =CONT.SES(Protocolos!$Q$2:$Q$1000;"Com o usuário";Protocolos!$Y$2:$Y$1000;FALSO)
+
+B12: Ônus vencendo ou vencida
+C12: =CONT.SES(Protocolos!$AC$2:$AC$1000;"<=5";Protocolos!$Y$2:$Y$1000;FALSO)
+```
+
+O `<=5` pega também os negativos, ou seja, a ônus já vencida entra na conta — os dois
+casos pedem a mesma ação. Ambos excluem arquivados, como o resto do Painel. Copie a
+formatação de `B10:C10` com o pincel para as duas linhas ficarem iguais às demais.
 
 ## 9. Teste de aceitação — antes de liberar para o setor
 
@@ -583,7 +704,17 @@ Crie um protocolo de teste e confira, um a um:
 14. **A coluna `AA` está protegida.** Tente digitar em `AA5` com uma conta que não
     seja de quem administra → deve ser bloqueado. Sem isso, uma tecla errada apaga a
     `ARRAYFORMULA` e o arquivamento automático para de existir em silêncio.
-15. **Simultâneo.** Abra com duas contas ao mesmo tempo, cada uma na sua
+15. **"Com o usuário"** (passo 8-E). Ponha um protocolo em "Aguardando assinatura" com
+    o prazo já vencido → `Situação` = "Com o usuário", linha **azul e não vermelha**,
+    `Dias úteis restantes` continua negativo, e o contador "Atrasados" do Painel **não**
+    o inclui.
+16. **Certidão de ônus** (passo 8-F), nos três estados, num ato que exija ônus:
+    - `Data da ônus` vazia → `AB`/`AC` em amarelo claro, cobrando o preenchimento.
+    - Data de 20 dias atrás → `Ônus vence em` = 10, sem alerta.
+    - Data de 26 dias atrás → = 4, âmbar. De 32 dias atrás → negativo, vermelho.
+    - Confira que o alerta pinta **só `AB:AC`** e não a linha inteira — se pintar a
+      linha, o bloco principal do passo 5 está passando da coluna `AA`.
+17. **Simultâneo.** Abra com duas contas ao mesmo tempo, cada uma na sua
     visualização de filtro, e edite linhas diferentes — nenhuma deve interferir na outra.
 
 Depois apague as linhas de teste (e as linhas de checklist delas).
