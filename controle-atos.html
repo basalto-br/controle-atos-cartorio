@@ -475,6 +475,7 @@ select.sortsel{
 .cp-prazo{padding:12px 13px;display:flex;flex-direction:column;gap:7px;border-left:1px solid var(--borda-ficha);background:#F2F6F1;}
 .cp-prazo.hoje{background:#FAF2E1;}
 .cp-prazo.atraso{background:#F8E9E5;}
+.cp-prazo.com-usuario{background:var(--blue-soft);}
 .cp-prazo.sem{background:var(--apoio);}
 .prazo-rot{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--apagado);}
 .trilha{display:flex;gap:4px;}
@@ -483,6 +484,7 @@ select.sortsel{
 .prazo-txt.ok{color:var(--green);}
 .prazo-txt.warn{color:var(--gold);}
 .prazo-txt.late{color:var(--carimbo);}
+.prazo-txt.com-usuario{color:var(--blue);}
 .prazo-vence{font-family:var(--font-mono);font-size:10px;color:var(--apagado);}
 .btn-avancar{margin-top:2px;width:100%;background:var(--ink);color:var(--painel);border:none;border-radius:var(--r-field);padding:7px 8px;font-family:var(--font-body);font-size:11px;font-weight:600;cursor:pointer;transition:background .12s;}
 .btn-avancar:hover{background:var(--carimbo);}
@@ -759,14 +761,14 @@ var PALETTE = [
 ];
 
 var DEFAULT_STATUS_LIST = [
-  {key:'aguardando_documentos', label:'Aguardando documentos p/ análise', cor:'gray', isFinal:false, requerDigitalizacao:false},
-  {key:'pendencia_documentos', label:'Pendência de documentos', cor:'gold', isFinal:false, requerDigitalizacao:false},
-  {key:'em_confeccao', label:'Em confecção', cor:'rose', isFinal:false, requerDigitalizacao:false},
-  {key:'em_analise', label:'Em análise pelo Tabelião', cor:'blue', isFinal:false, requerDigitalizacao:false},
-  {key:'em_conferencia_usuario', label:'Em conferência pelo usuário', cor:'teal', isFinal:false, requerDigitalizacao:false},
-  {key:'aguardando_assinatura', label:'Aguardando assinatura', cor:'plum', isFinal:false, requerDigitalizacao:false},
-  {key:'finalizado', label:'Finalizado', cor:'green', isFinal:true, requerDigitalizacao:true},
-  {key:'desistiu', label:'Usuário desistiu', cor:'dark', isFinal:true, requerDigitalizacao:false}
+  {key:'aguardando_documentos', label:'Aguardando documentos p/ análise', cor:'gray', isFinal:false, requerDigitalizacao:false, dependeDoUsuario:false},
+  {key:'pendencia_documentos', label:'Pendência de documentos', cor:'gold', isFinal:false, requerDigitalizacao:false, dependeDoUsuario:true},
+  {key:'em_confeccao', label:'Em confecção', cor:'rose', isFinal:false, requerDigitalizacao:false, dependeDoUsuario:false},
+  {key:'em_analise', label:'Em análise pelo Tabelião', cor:'blue', isFinal:false, requerDigitalizacao:false, dependeDoUsuario:false},
+  {key:'em_conferencia_usuario', label:'Em conferência pelo usuário', cor:'teal', isFinal:false, requerDigitalizacao:false, dependeDoUsuario:false},
+  {key:'aguardando_assinatura', label:'Aguardando assinatura', cor:'plum', isFinal:false, requerDigitalizacao:false, dependeDoUsuario:true},
+  {key:'finalizado', label:'Finalizado', cor:'green', isFinal:true, requerDigitalizacao:true, dependeDoUsuario:false},
+  {key:'desistiu', label:'Usuário desistiu', cor:'dark', isFinal:true, requerDigitalizacao:false, dependeDoUsuario:false}
 ];
 
 var CANAIS = [
@@ -901,6 +903,7 @@ var backupRunning = false;
 var ui = {
   search:'', statusFilter:'all', canalFilter:'all', pessoaFilter:'all',
   onlyOverdue:false, onlyDueToday:false, onlyPendingDocs:false,
+  onlyComUsuario:false, onlyOnus:false,
   sortBy:'prazo', viewMode:'lista', agruparPessoa:false, filtrosAbertos:false,
   agendaFiltroAberto:null
 };
@@ -1008,9 +1011,26 @@ function defaultState(){
     atosBalcaoLancamentos: {},
     sugestoesDispensadas: {},
     categoriaPorTipo: {},
-    checklistPorTipo: {}
+    checklistPorTipo: {},
+    exigeOnusPorTipo: mapaOnusPadrao()
   };
 }
+
+/* Tipos de ato que, por padrao, dependem de certidao de onus do imovel. Vira mapa em
+   dois lugares: no estado novo (defaultState) e uma unica vez em migrate(), para
+   instalacao que ja existe. Depois disso e so editavel em Configuracoes — nao pode ser
+   reaplicado a cada carregamento, senao desmarcar um tipo voltaria sozinho. */
+var TIPOS_COM_ONUS_PADRAO = ['Procuração para venda de imóvel'];
+function mapaOnusPadrao(){
+  var m = {};
+  TIPOS_COM_ONUS_PADRAO.forEach(function(nome){ m[nome]=true; });
+  return m;
+}
+
+/* Validade da certidao de onus, em dias CORRIDOS (nao uteis) contados da emissao, e a
+   antecedencia com que o aviso comeca. Diferente do PRAZO_DIAS_UTEIS do ato. */
+var ONUS_VALIDADE_DIAS = 30;
+var ONUS_AVISO_DIAS = 5;
 
 /* Insere uma fase nova logo apos outra ja existente (por key, que nunca muda mesmo
    se o usuario renomear o label) - usado em migrate() pra acrescentar fases padrao
@@ -1034,12 +1054,21 @@ function migrate(raw){
   if(!s.statusList || !s.statusList.length){
     s.statusList = DEFAULT_STATUS_LIST.map(function(x){ return Object.assign({},x); });
   }
+  var padraoDeFasePorChave = {};
+  DEFAULT_STATUS_LIST.forEach(function(d){ padraoDeFasePorChave[d.key]=d; });
   s.statusList = s.statusList.map(function(st){
     if(st.requerDigitalizacao==null) st.requerDigitalizacao=false;
+    /* dependeDoUsuario: a bola esta com o usuario, entao o prazo nao conta como atraso
+       nosso. Numa instalacao que ja existe, herda do padrao pela KEY — nunca pelo label,
+       que o usuario pode ter renomeado. Fase criada pelo usuario nasce false. */
+    if(st.dependeDoUsuario==null){
+      var padrao = padraoDeFasePorChave[st.key];
+      st.dependeDoUsuario = padrao ? !!padrao.dependeDoUsuario : false;
+    }
     return st;
   });
-  inserirFaseAposChave(s.statusList, 'pendencia_documentos', {key:'em_confeccao', label:'Em confecção', cor:'rose', isFinal:false, requerDigitalizacao:false});
-  inserirFaseAposChave(s.statusList, 'em_analise', {key:'em_conferencia_usuario', label:'Em conferência pelo usuário', cor:'teal', isFinal:false, requerDigitalizacao:false});
+  inserirFaseAposChave(s.statusList, 'pendencia_documentos', {key:'em_confeccao', label:'Em confecção', cor:'rose', isFinal:false, requerDigitalizacao:false, dependeDoUsuario:false});
+  inserirFaseAposChave(s.statusList, 'em_analise', {key:'em_conferencia_usuario', label:'Em conferência pelo usuário', cor:'teal', isFinal:false, requerDigitalizacao:false, dependeDoUsuario:false});
   s.statusList.forEach(function(st){
     if(st.key==='desistiu' && st.label==='Cliente desistiu') st.label='Usuário desistiu';
   });
@@ -1052,6 +1081,10 @@ function migrate(raw){
   if(!s.atosBalcaoLancamentos) s.atosBalcaoLancamentos={};
   if(!s.sugestoesDispensadas) s.sugestoesDispensadas={};
   if(!s.categoriaPorTipo) s.categoriaPorTipo={};
+  /* Semeia SO quando a chave nao existe — instalacao anterior a este campo. Depois que
+     ela existe, migrate nao mexe mais, senao desmarcar um tipo em Configuracoes voltaria
+     sozinho no proximo refresh. Estado novo ja nasce semeado em defaultState(). */
+  if(!s.exigeOnusPorTipo) s.exigeOnusPorTipo = mapaOnusPadrao();
   if(!s.tarefas) s.tarefas=[];
   s.tarefas = s.tarefas.map(function(t){
     if(!t.tipo) t.tipo = t.etapas ? 'checklist' : 'livre';
@@ -1106,6 +1139,7 @@ function migrate(raw){
       if(p.clienteEmail==null) p.clienteEmail = (legacyContato && legacyContato.indexOf('@')!==-1) ? legacyContato : '';
     }
     if(p.clienteDocumento==null) p.clienteDocumento='';
+    if(p.dataOnus==null) p.dataOnus='';
     if(p.valorAto==null) p.valorAto=null;
     if(!p.documentosMarcados) p.documentosMarcados={};
     if(!p.documentosExtras) p.documentosExtras=[];
@@ -1510,15 +1544,46 @@ function computeAgendaBuckets(){
 
 function computePrazo(p){
   if(!p.dataRecebimentoCompleto) return null;
-  if(getStatusOf(p).isFinal) return null;
+  var st = getStatusOf(p);
+  if(st.isFinal) return null;
   var deadline = addBusinessDays(p.dataRecebimentoCompleto, PRAZO_DIAS_UTEIS);
   var today = todayISO();
   var elapsed = businessDaysBetween(p.dataRecebimentoCompleto, today);
   var elapsedCapped = Math.min(elapsed, PRAZO_DIAS_UTEIS);
-  var isOverdue = today>deadline;
-  var isDueToday = today===deadline;
-  var diasAtraso = isOverdue ? businessDaysBetween(deadline, today) : 0;
-  return {deadline:deadline, elapsedCapped:elapsedCapped, isOverdue:isOverdue, isDueToday:isDueToday, diasAtraso:diasAtraso};
+  var vencido = today>deadline;
+  var venceHoje = today===deadline;
+  var comUsuario = !!st.dependeDoUsuario;
+  /* Fase que depende do usuario nao gera atraso NOSSO. Zeramos aqui os dois
+     sinalizadores que pintam de vermelho/ambar e alimentam os contadores — e por
+     serem um ponto unico, os ~15 lugares que consomem isOverdue param de acusar de
+     uma vez. Mas diasAtraso continua preenchido de proposito: o relogio nao para,
+     so deixa de culpar. Sem isso sumiria a informacao de ha quantos dias o usuario
+     esta com o ato na mao. */
+  var diasAtraso = vencido ? businessDaysBetween(deadline, today) : 0;
+  return {deadline:deadline, elapsedCapped:elapsedCapped,
+          isOverdue: vencido && !comUsuario,
+          isDueToday: venceHoje && !comUsuario,
+          comUsuario: comUsuario,
+          diasAtraso: diasAtraso};
+}
+
+/* Certidao de onus do imovel. A exigencia vem do TIPO do ato (mapa editavel em
+   Configuracoes), nunca do nome do tipo escrito dentro da funcao — mesma disciplina
+   de categoriaPorTipo. Um protocolo com varios tipos exige onus se QUALQUER um exigir. */
+function protocoloExigeOnus(p){
+  var mapa = state.exigeOnusPorTipo || {};
+  return (p.tipos||[]).some(function(t){ return !!mapa[t]; });
+}
+/* Devolve null quando o ato nao exige onus, para o resto do codigo so testar "if(o)".
+   Validade em dias CORRIDOS: certidao vence por calendario, nao por dia util. */
+function computeOnus(p){
+  if(!protocoloExigeOnus(p)) return null;
+  if(!p.dataOnus) return {faltaData:true, vencida:false, avisar:false, diasRestantes:null};
+  var vencimento = toISO(addDays(parseISODate(p.dataOnus), ONUS_VALIDADE_DIAS));
+  var dias = Math.round((parseISODate(vencimento) - parseISODate(todayISO()))/86400000);
+  return {faltaData:false, vencimento:vencimento, diasRestantes:dias,
+          vencida: dias<0,
+          avisar: dias>=0 && dias<=ONUS_AVISO_DIAS};
 }
 
 /* ===================== Helpers ===================== */
@@ -1639,19 +1704,27 @@ App.setSearch = function(v){ ui.search=v; App.render(); };
 App.setStatusFilter = function(v){ ui.statusFilter=v; App.render(); };
 App.setCanalFilter = function(v){ ui.canalFilter=v; App.render(); };
 App.setPessoaFilter = function(v){ ui.pessoaFilter=v; App.render(); };
-App.toggleOverdue = function(){ var v=!ui.onlyOverdue; ui.onlyDueToday=false; ui.onlyPendingDocs=false; ui.onlyOverdue=v; App.render(); };
+/* Um lugar so pra zerar os filtros rapidos — sempre que entrar um flag novo na regua,
+   e aqui que ele precisa ser acrescentado, senao dois filtros ficam ligados ao mesmo
+   tempo e a lista some sem explicacao. */
+function limparFiltrosRapidos(){
+  ui.onlyOverdue=false; ui.onlyDueToday=false; ui.onlyPendingDocs=false;
+  ui.onlyComUsuario=false; ui.onlyOnus=false;
+}
+App.toggleOverdue = function(){ var v=!ui.onlyOverdue; limparFiltrosRapidos(); ui.onlyOverdue=v; App.render(); };
 App.toggleQuick = function(kind){
   ui.viewMode='lista';
-  var flags={docs:'onlyPendingDocs', today:'onlyDueToday', overdue:'onlyOverdue'};
+  var flags={docs:'onlyPendingDocs', today:'onlyDueToday', overdue:'onlyOverdue',
+             comusuario:'onlyComUsuario', onus:'onlyOnus'};
   var flag=flags[kind];
   var was=ui[flag];
-  ui.onlyOverdue=false; ui.onlyDueToday=false; ui.onlyPendingDocs=false;
+  limparFiltrosRapidos();
   ui[flag]=!was;
   App.render();
 };
 App.filtroAtivos = function(){
   ui.viewMode='lista'; ui.statusFilter='all';
-  ui.onlyOverdue=false; ui.onlyDueToday=false; ui.onlyPendingDocs=false;
+  limparFiltrosRapidos();
   App.render();
 };
 App.togglePessoaStat = function(v){ ui.pessoaFilter = (ui.pessoaFilter===v ? 'all' : v); App.render(); };
@@ -1817,6 +1890,14 @@ function matchesFilters(p){
     var infoDue = computePrazo(p);
     if(!infoDue || !infoDue.isDueToday) return false;
   }
+  if(ui.onlyComUsuario){
+    var infoCu = computePrazo(p);
+    if(!infoCu || !infoCu.comUsuario) return false;
+  }
+  if(ui.onlyOnus){
+    var onus = computeOnus(p);
+    if(!onus || !(onus.vencida || onus.avisar || onus.faltaData)) return false;
+  }
   if(ui.onlyPendingDocs && p.docsCompletos) return false;
   if(ui.search){
     var q = ui.search.toLowerCase();
@@ -1881,6 +1962,7 @@ App.openEdit = function(id){
     outorgados:p.outorgados, responsavel:p.responsavel, tipoPessoa:p.tipoPessoa, canais:canaisSet,
     dataProtocolo:p.dataProtocolo, docsCompletos:p.docsCompletos,
     dataRecebimentoCompleto:p.dataRecebimentoCompleto,
+    dataOnus:p.dataOnus||'',
     tipos:tiposSet, status:p.status, novaObservacao:'',
     vinculados:vinculadosSet, vinculoSearch:'', tipoSearch:'', vinculoManualAberto:false,
     categoriaAtivaTipo: primeiraCategoriaExistente || 'procuracao'
@@ -1902,7 +1984,7 @@ App.closeModal = function(){
 
 function captureModalTextFields(){
   if(!draftModal) return;
-  var ids = ['numeroProtocolo','cliente','clienteTelefone','clienteEmail','outorgados','dataProtocolo','dataRecebimentoCompleto','novaObservacao'];
+  var ids = ['numeroProtocolo','cliente','clienteTelefone','clienteEmail','outorgados','dataProtocolo','dataRecebimentoCompleto','novaObservacao','dataOnus'];
   ids.forEach(function(id){
     var el = document.getElementById('f_'+id);
     if(el) draftModal[id]=el.value;
@@ -2057,6 +2139,10 @@ App.saveProtocolo = function(){
     dataProtocolo: dataProtocolo,
     docsCompletos: !!d.docsCompletos,
     dataRecebimentoCompleto: d.docsCompletos ? (d.dataRecebimentoCompleto || dataProtocolo) : (d.dataRecebimentoCompleto || null),
+    /* O campo so aparece no formulario quando algum tipo do ato exige onus. Como o
+       draft de edicao ja carrega o valor original, ele sobrevive mesmo quando o campo
+       nao esta na tela — que e a armadilha do payload substituir o protocolo inteiro. */
+    dataOnus: (d.dataOnus!=null ? d.dataOnus : (original ? original.dataOnus : '')) || '',
     status: statusFinal,
     tipos: tiposArr,
     observacoesHistorico: observacoesHistorico,
@@ -2496,6 +2582,7 @@ function buildFichaPrintHTML(p){
   var prazoTxt;
   if(!p.docsCompletos || !p.dataRecebimentoCompleto) prazoTxt = 'Documentação incompleta';
   else if(!info) prazoTxt = 'Documentação completa em '+formatBR(p.dataRecebimentoCompleto);
+  else if(info.comUsuario) prazoTxt = 'Com o usuário'+(info.diasAtraso>0 ? ' há '+info.diasAtraso+' dia(s) útil(eis) além do prazo' : '')+' — prazo '+formatBR(info.deadline);
   else if(info.isOverdue) prazoTxt = 'Atrasado há '+info.diasAtraso+' dia(s) útil(eis) — prazo era '+formatBR(info.deadline);
   else if(info.isDueToday) prazoTxt = 'Vence hoje ('+formatBR(info.deadline)+')';
   else prazoTxt = 'Faltam '+(PRAZO_DIAS_UTEIS-info.elapsedCapped)+' dia(s) útil(eis) — prazo '+formatBR(info.deadline);
@@ -3174,14 +3261,18 @@ function renderHeader(){
 function renderStats(){
   var all = state.protocolos.filter(function(p){ return !p.naLixeira; });
   var ativos = all.filter(function(p){ return !isArquivado(p); });
-  var overdue=0, dueToday=0;
+  var overdue=0, dueToday=0, comUsuario=0, onusAlerta=0;
   ativos.forEach(function(p){
     var info = computePrazo(p);
-    if(info){ if(info.isOverdue) overdue++; else if(info.isDueToday) dueToday++; }
+    /* comUsuario e excludente dos outros dois: computePrazo ja zera isOverdue e
+       isDueToday nesse caso, entao cada protocolo cai em um balde so. */
+    if(info){ if(info.isOverdue) overdue++; else if(info.isDueToday) dueToday++; else if(info.comUsuario) comUsuario++; }
+    var onus = computeOnus(p);
+    if(onus && (onus.vencida || onus.avisar || onus.faltaData)) onusAlerta++;
   });
   var arquivados = all.filter(isArquivado).length;
   var isLista = ui.viewMode==='lista';
-  var noQuick = !ui.onlyOverdue && !ui.onlyDueToday && !ui.onlyPendingDocs;
+  var noQuick = !ui.onlyOverdue && !ui.onlyDueToday && !ui.onlyPendingDocs && !ui.onlyComUsuario && !ui.onlyOnus;
   function item(num, lbl, o){
     o = o || {};
     var cls = 'regua-item'+(o.warn?' warn':'')+(o.late?' late':'')+(o.on?' on':'');
@@ -3191,6 +3282,8 @@ function renderStats(){
     item(ativos.length,'ativos',{onclick:"App.filtroAtivos()", on:isLista&&noQuick&&ui.statusFilter==='all', title:'Ver todos os ativos'})+
     item(dueToday,'vencem hoje',{warn:dueToday>0, onclick:"App.toggleQuick('today')", on:isLista&&ui.onlyDueToday, title:'Filtrar os que vencem hoje'})+
     item(overdue,'atrasados',{late:overdue>0, onclick:"App.toggleQuick('overdue')", on:isLista&&ui.onlyOverdue, title:'Filtrar os atrasados'})+
+    item(comUsuario,'com o usuário',{onclick:"App.toggleQuick('comusuario')", on:isLista&&ui.onlyComUsuario, title:'Aguardando o usuário — o prazo corre, mas a espera não é sua'})+
+    item(onusAlerta,'ônus',{warn:onusAlerta>0, onclick:"App.toggleQuick('onus')", on:isLista&&ui.onlyOnus, title:'Certidão de ônus vencida, a vencer ou sem data preenchida'})+
     item(arquivados,'arquivados',{onclick:"App.setViewMode('arquivados')", on:ui.viewMode==='arquivados', title:'Ver arquivados'})+
   '</div>';
 }
@@ -3566,10 +3659,12 @@ function renderColunaPrazo(p){
       recebidoHtml+
     '</div>';
   }
-  var cor = info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)');
-  var cls = info.isOverdue ? 'atraso' : (info.isDueToday ? 'hoje' : '');
-  var txtCls = info.isOverdue ? 'late' : (info.isDueToday ? 'warn' : 'ok');
-  var txt = info.isOverdue ? (info.diasAtraso+'d em atraso') : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d restantes');
+  var cor = info.comUsuario ? 'var(--blue)' : (info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)'));
+  var cls = info.comUsuario ? 'com-usuario' : (info.isOverdue ? 'atraso' : (info.isDueToday ? 'hoje' : ''));
+  var txtCls = info.comUsuario ? 'com-usuario' : (info.isOverdue ? 'late' : (info.isDueToday ? 'warn' : 'ok'));
+  /* Com o usuario: mostra ha quantos dias uteis passou do prazo, sem chamar de atraso. */
+  var txt = info.comUsuario ? ('com o usuário'+(info.diasAtraso>0 ? ' · '+info.diasAtraso+'d' : ''))
+          : (info.isOverdue ? (info.diasAtraso+'d em atraso') : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d restantes'));
   var idx=-1; state.statusList.forEach(function(s,i){ if(s.key===p.status) idx=i; });
   var avancar = (idx>=0 && idx<state.statusList.length-1) ? '<button class="btn-avancar" onclick="App.avancarFase(\''+p.id+'\')">Avançar fase →</button>' : '';
   return '<div class="cp-prazo '+cls+'">'+
@@ -3705,8 +3800,9 @@ function renderDiariosLadoALado(){
     var info = computePrazo(p);
     var prazoHtml = '';
     if(info){
-      var cor = info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)');
-      var txt = info.isOverdue ? (info.diasAtraso+'d atraso') : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d restantes');
+      var cor = info.comUsuario ? 'var(--blue)' : (info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)'));
+      var txt = info.comUsuario ? ('com o usuário'+(info.diasAtraso>0 ? ' · '+info.diasAtraso+'d' : ''))
+              : (info.isOverdue ? (info.diasAtraso+'d atraso') : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d restantes'));
       prazoHtml = '<span class="diario-prazo" style="color:'+cor+';">'+esc(txt)+'</span>';
     }
     var obsRows = (p.observacoesHistorico||[]).slice().reverse().map(function(o){
@@ -3884,9 +3980,10 @@ function renderKanbanCard(p){
   if(!p.docsCompletos || !p.dataRecebimentoCompleto){
     prazoHtml = '<div class="kb-prazo"><span class="kb-prazo-txt warn">docs pendentes</span></div>';
   }else if(info){
-    var cor = info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)');
-    var txtCls = info.isOverdue ? 'late' : (info.isDueToday ? 'warn' : 'ok');
-    var txt = info.isOverdue ? (info.diasAtraso+'d atraso') : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d rest.');
+    var cor = info.comUsuario ? 'var(--blue)' : (info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)'));
+    var txtCls = info.comUsuario ? 'com-usuario' : (info.isOverdue ? 'late' : (info.isDueToday ? 'warn' : 'ok'));
+    var txt = info.comUsuario ? ('c/ usuário'+(info.diasAtraso>0 ? ' · '+info.diasAtraso+'d' : ''))
+            : (info.isOverdue ? (info.diasAtraso+'d atraso') : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d rest.'));
     var marks = '';
     for(var i=1;i<=PRAZO_DIAS_UTEIS;i++){ marks += '<div class="marca-mini"'+(i<=info.elapsedCapped?' style="background:'+cor+';"':'')+'></div>'; }
     prazoHtml = '<div class="kb-prazo"><div class="trilha-mini">'+marks+'</div><span class="kb-prazo-txt '+txtCls+'">'+esc(txt)+'</span></div>';
@@ -4046,8 +4143,9 @@ function renderPrazoLeituraHtml(original){
     '<div><div class="fm-prazo-sub">recebida em</div><div style="margin-top:4px;font-family:var(--font-mono);font-size:12.5px;color:var(--ink);">'+esc(formatBR(original.dataRecebimentoCompleto))+'</div></div>'+
     '</div><div class="fm-hint">Esta fase não conta mais prazo.</div>';
   }
-  var cor = info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)');
-  var vencTxt = info.isOverdue ? ('atrasado há '+info.diasAtraso+'d') : (info.isDueToday ? ('hoje, '+formatBR(info.deadline).slice(0,5)) : formatBR(info.deadline));
+  var cor = info.comUsuario ? 'var(--blue)' : (info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)'));
+  var vencTxt = info.comUsuario ? ('com o usuário'+(info.diasAtraso>0 ? ' há '+info.diasAtraso+'d' : ''))
+              : (info.isOverdue ? ('atrasado há '+info.diasAtraso+'d') : (info.isDueToday ? ('hoje, '+formatBR(info.deadline).slice(0,5)) : formatBR(info.deadline)));
   return ''+
   '<div class="fm-prazo-box">'+
     '<div class="fm-prazo-toggle-wrap">'+
@@ -4254,6 +4352,14 @@ function renderModal(){
   var tiposSelecionados = Object.keys(d.tipos||{});
   var tipoChipsHtml = buildTipoChipsHtml(d);
   var tipoDropdownHtml = buildTipoDropdownHtml(d);
+  /* Campo da certidao de onus so aparece quando algum tipo escolhido exige — quem
+     manda e o mapa de Configuracoes, nunca o nome do tipo escrito aqui. */
+  var exigeOnusNoDraft = tiposSelecionados.some(function(t){ return !!(state.exigeOnusPorTipo||{})[t]; });
+  var onusFieldHtml = exigeOnusNoDraft
+    ? '<div class="fm-field"><span class="fm-label">Data da certidão de ônus (validade '+ONUS_VALIDADE_DIAS+' dias corridos)</span>'+
+        '<input type="date" id="f_dataOnus" class="fm-input" value="'+esc(d.dataOnus||'')+'" oninput="App.setField(\'dataOnus\', this.value)">'+
+      '</div>'
+    : '';
   var sec2Html = ''+
   '<div class="fm-sec">'+
     '<div class="fm-sec-head"><span class="fm-sec-label">2 &middot; Ato</span><span class="fm-sec-rule"></span>'+(tiposSelecionados.length?'<span class="fm-sec-count">'+tiposSelecionados.length+' selecionado'+(tiposSelecionados.length>1?'s':'')+'</span>':'')+'</div>'+
@@ -4264,6 +4370,7 @@ function renderModal(){
     '</div>'+
     (tipoChipsHtml ? '<div><span class="fm-label">mais usados recentemente</span><div style="display:flex;gap:6px;flex-wrap:wrap;">'+tipoChipsHtml+'</div></div>' : '')+
     buildTipoSelecionadosOutraCategoriaHtml(d)+
+    onusFieldHtml+
     '<div class="add-tipo-row"><input type="text" id="novoTipoModalInput" class="fm-input" placeholder="Adicionar novo tipo de ato…"><button type="button" class="btn-ghost outlined" onclick="App.addTipoFromModal()">Adicionar</button></div>'+
   '</div>';
 
