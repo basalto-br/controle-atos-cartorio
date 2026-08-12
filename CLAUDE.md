@@ -13,7 +13,8 @@ ferramenta é hoje, e continua valendo.**
 ### O que já é verdade hoje
 
 - Uso individual, dados locais, um usuário por instalação.
-- Hospedagem migrando de GitHub Pages para Cloudflare Pages, com domínio próprio.
+- Hospedagem no GitHub Pages, sem domínio próprio. A mudança para Cloudflare Pages está
+  planejada e **ainda não foi feita** — ver "Publicação", no Fluxo de trabalho.
 - Ambiente detectado por hostname em tempo de execução (`HOST_PRODUCAO` / `IS_PROD`):
   qualquer host que não seja o de produção é ambiente de teste, com chave de
   armazenamento e arquivo de dados separados.
@@ -194,3 +195,31 @@ commit em português, em passos pequenos e descritivos (`Co-Authored-By: Claude`
 push → abrir PR com `gh pr create` resumindo a mudança → usuário revisa e pede
 "mescla e continua" → merge → apagar a branch local e remota. **Nunca commitar direto
 na `main`.** Sem CI — testar manualmente antes de cada commit.
+
+### Publicação (a `main` é produção)
+
+- **Todo merge vai ao ar na hora.** O GitHub Pages publica a `main` em
+  `https://fabricio-lv.github.io/controle-atos-cartorio/` (ver "Deploy", em Stack e
+  comandos). Não existe etapa de aprovação depois do merge — **o merge *é* o deploy**.
+  Mesclar um PR e "ver depois se ficou bom" não é uma opção.
+- **Não há URL de preview por branch.** O que se testa antes do PR é o servidor local
+  (porta 8123) — é a única verificação que existe antes da produção, e por isso não é
+  opcional.
+- **Rollback = `git revert` do merge + push.** Reverter o commit de merge na `main` e
+  empurrar; o Pages republica sozinho. **Nunca `git reset` nem force-push na `main`** —
+  o histórico da produção tem que continuar auditável.
+- **O app detecta o ambiente por hostname**: `HOST_PRODUCAO` e `IS_PROD`, no bloco de
+  script do cabeçalho. Qualquer host diferente do de produção entra em modo de teste —
+  faixa vermelha, `[TESTE]` no título, e chave de armazenamento e arquivo de dados
+  separados. Testar fora da produção nunca toca no dado real.
+- **`HOST_PRODUCAO` ainda está com o valor de exemplo `app.EXEMPLO.com.br`**, então hoje
+  **tudo** é tratado como teste, inclusive o site publicado, que exibe a faixa vermelha.
+  Isso é intencional e não perde dado (o app não tem dado real), mas precisa ser trocado
+  no dia em que houver domínio próprio.
+
+**A migração para Cloudflare Pages ainda não aconteceu** — em agosto de 2026 não havia
+projeto no ar, domínio próprio nem `CNAME` no repositório, e o GitHub Pages continuava
+sendo quem publica. Quando ela acontecer, mudam quatro coisas: `HOST_PRODUCAO`, a URL do
+`README.md`, a linha de "Deploy" acima, e a decisão de desligar ou não o GitHub Pages
+(hoje ele publica de `main`/raiz, sem domínio próprio). Enquanto isso não for feito, não
+escrever em lugar nenhum que a Cloudflare é a produção.
