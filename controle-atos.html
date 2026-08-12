@@ -2185,7 +2185,21 @@ App.saveProtocolo = function(){
   }
 
   if(d.mode==='edit'){
-    state.protocolos = state.protocolos.map(function(p){ return p.id===payload.id ? payload : p; });
+    /* MERGE sobre o original, nunca substituicao. O payload so contem os campos que
+       este formulario edita; trocar o objeto inteiro apagava em silencio tudo o que
+       vive fora dele — documentosMarcados, documentosExtras, pendencias (a agenda
+       inteira do protocolo), clienteDocumento, valorAto, naLixeira e dataExclusao.
+       Nada quebrava: migrate() recriava os campos vazios no carregamento seguinte, e
+       o dado sumia sem aviso.
+
+       O merge tambem e o que impede o erro de voltar: campo novo acrescentado ao
+       protocolo amanha ja nasce preservado, sem precisar ser lembrado aqui. As tres
+       herancas explicitas que sobraram no payload (rascunhoDigitalizado,
+       dataDigitalizacao, createdAt) sao redundantes agora, mas ficam por serem
+       inofensivas e documentarem a intencao. */
+    state.protocolos = state.protocolos.map(function(p){
+      return p.id===payload.id ? Object.assign({}, p, payload) : p;
+    });
   }else{
     state.protocolos.push(payload);
     justCreatedId = payload.id;
