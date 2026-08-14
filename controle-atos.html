@@ -4294,14 +4294,19 @@ function telWhatsAppHref(tel){
   return 'https://wa.me/'+digits;
 }
 /* ---- Helpers de campo reutilizados pelo modo rapido (3a) e pelo formulario completo (3b/edicao) ---- */
+/* aria-pressed nos segmentados e chips: ate aqui a selecao vivia so na classe
+   active, que e visual. Sem ele o leitor de tela le "Física, botão" tanto
+   marcado quanto desmarcado, e nao ha como saber o que esta escolhido.
+   Ficam como button com aria-pressed, e nao como radio: radio pediria
+   navegacao por setas, que mudaria o teclado de quem ja usa a ferramenta. */
 function buildPessoaSegButtons(d){
   return ''+
-    '<button type="button" class="'+(d.tipoPessoa==='pf'?'active pf':'')+'" onclick="App.setPessoa(\'pf\')">Física</button>'+
-    '<button type="button" class="'+(d.tipoPessoa==='pj'?'active pj':'')+'" onclick="App.setPessoa(\'pj\')">Jurídica</button>';
+    '<button type="button" aria-pressed="'+(d.tipoPessoa==='pf'?'true':'false')+'" class="'+(d.tipoPessoa==='pf'?'active pf':'')+'" onclick="App.setPessoa(\'pf\')">Física</button>'+
+    '<button type="button" aria-pressed="'+(d.tipoPessoa==='pj'?'true':'false')+'" class="'+(d.tipoPessoa==='pj'?'active pj':'')+'" onclick="App.setPessoa(\'pj\')">Jurídica</button>';
 }
 function buildCanalChipsHtml(d){
   return CANAIS.map(function(c){
-    return '<button type="button" class="fm-chip canal'+(d.canais[c.key]?' active':'')+'" onclick="App.toggleCanal(\''+c.key+'\')">'+esc(c.label)+'</button>';
+    return '<button type="button" aria-pressed="'+(d.canais[c.key]?'true':'false')+'" class="fm-chip canal'+(d.canais[c.key]?' active':'')+'" onclick="App.toggleCanal(\''+c.key+'\')">'+esc(c.label)+'</button>';
   }).join('');
 }
 /* Segmentado Procuracoes/Escrituras que so filtra a navegacao (chips/busca/"mais
@@ -4310,8 +4315,8 @@ function buildCanalChipsHtml(d){
 function buildCategoriaAtoSegButtons(d){
   var cat = d.categoriaAtivaTipo || 'procuracao';
   return ''+
-    '<button type="button" class="'+(cat==='procuracao'?'active':'')+'" onclick="App.setCategoriaAtivaTipo(\'procuracao\')">Procurações</button>'+
-    '<button type="button" class="'+(cat==='escritura'?'active':'')+'" onclick="App.setCategoriaAtivaTipo(\'escritura\')">Escrituras</button>';
+    '<button type="button" aria-pressed="'+(cat==='procuracao'?'true':'false')+'" class="'+(cat==='procuracao'?'active':'')+'" onclick="App.setCategoriaAtivaTipo(\'procuracao\')">Procurações</button>'+
+    '<button type="button" aria-pressed="'+(cat==='escritura'?'true':'false')+'" class="'+(cat==='escritura'?'active':'')+'" onclick="App.setCategoriaAtivaTipo(\'escritura\')">Escrituras</button>';
 }
 function buildTipoChipsHtml(d){
   var catOposta = categoriaOposta(d.categoriaAtivaTipo || 'procuracao');
@@ -4321,7 +4326,7 @@ function buildTipoChipsHtml(d){
   var chipsAll = chipsBase.concat(chipsExtras);
   return chipsAll.map(function(t){
     var checked = !!d.tipos[t];
-    return '<button type="button" class="fm-chip'+(checked?' active':'')+'" onclick="App.toggleTipo(\''+jsAttr(t)+'\')">'+(checked?'&#10003; ':'')+esc(t)+'</button>';
+    return '<button type="button" aria-pressed="'+(checked?'true':'false')+'" class="fm-chip'+(checked?' active':'')+'" onclick="App.toggleTipo(\''+jsAttr(t)+'\')">'+(checked?'&#10003; ':'')+esc(t)+'</button>';
   }).join('');
 }
 /* Tipos ja selecionados que ficam na categoria OPOSTA a aba ativa no momento — sem
@@ -4359,19 +4364,19 @@ function renderModalQuickBody(d){
       '<input type="text" id="f_cliente" class="fm-input fm-input-nome" aria-label="Nome do usuário ou outorgante" autocomplete="name" value="'+esc(d.cliente||'')+'" placeholder="Nome do usuário / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
       '<div id="vinculoSugestaoContainer" style="margin-top:8px;">'+computeVinculoSugestaoHtml(d)+'</div>'+
     '</div>'+
-    '<div><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa">'+buildPessoaSegButtons(d)+'</div></div>'+
+    '<div><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa" role="group" aria-label="Pessoa">'+buildPessoaSegButtons(d)+'</div></div>'+
     '<div>'+
       '<span class="fm-label">Tipo de ato</span>'+
-      '<div class="fm-seg-pessoa" style="margin-bottom:8px;">'+buildCategoriaAtoSegButtons(d)+'</div>'+
+      '<div class="fm-seg-pessoa" role="group" aria-label="Categoria do ato" style="margin-bottom:8px;">'+buildCategoriaAtoSegButtons(d)+'</div>'+
       '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;"><span style="font-size:10.5px;color:var(--apagado-2);">mais usados recentemente</span></div>'+
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+buildTipoChipsHtml(d)+'</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;" role="group" aria-label="Tipos de ato mais usados recentemente">'+buildTipoChipsHtml(d)+'</div>'+
       buildTipoSelecionadosOutraCategoriaHtml(d)+
       '<div class="fm-tiposearch-wrap" style="margin-top:8px;">'+
         '<input type="text" id="tipoSearchInput" aria-label="Buscar tipo de ato" class="fm-input dashed" placeholder="Buscar entre os '+state.tiposAtos.length+' tipos…" value="'+esc(d.tipoSearch||'')+'" oninput="App.setTipoSearch(this.value)">'+
         buildTipoDropdownHtml(d)+
       '</div>'+
     '</div>'+
-    '<div><span class="fm-label">Canal de atendimento</span><div style="display:flex;gap:6px;flex-wrap:wrap;">'+buildCanalChipsHtml(d)+'</div></div>'+
+    '<div><span class="fm-label">Canal de atendimento</span><div style="display:flex;gap:6px;flex-wrap:wrap;" role="group" aria-label="Canal de atendimento">'+buildCanalChipsHtml(d)+'</div></div>'+
     '<button type="button" class="fm-disclosure-big" onclick="App.toggleCamposOpcionais()">'+
       '<span class="fm-disclosure-big-lbl">Contato, outorgados, responsável e prazo</span>'+
       '<span class="fm-disclosure-big-sub">6 campos opcionais &#8964;</span>'+
@@ -4591,7 +4596,7 @@ function renderModal(){
     '<input type="text" id="f_cliente" class="fm-input fm-input-nome" aria-label="Nome do usuário ou outorgante" autocomplete="name" value="'+esc(d.cliente||'')+'" placeholder="Nome do usuário / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
     '<div id="vinculoSugestaoContainer">'+dupWarningHtml+'</div>'+
     '<div class="fm-row">'+
-      '<div class="fm-field fixo"><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa">'+pessoaSegHtml+'</div></div>'+
+      '<div class="fm-field fixo"><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa" role="group" aria-label="Pessoa">'+pessoaSegHtml+'</div></div>'+
       '<div class="fm-field"><label class="fm-label" for="f_clienteTelefone">Telefone (opcional)</label><div class="fm-input-row"><input type="text" id="f_clienteTelefone" class="fm-input fm-input-mono" inputmode="tel" autocomplete="tel" value="'+esc(d.clienteTelefone||'')+'" placeholder="(00) 00000-0000" oninput="App.setPhone(\'clienteTelefone\', this)">'+telAuxHtml+'</div></div>'+
       '<div class="fm-field"><label class="fm-label" for="f_clienteEmail">E-mail (opcional)</label><div class="fm-input-row"><input type="text" id="f_clienteEmail" class="fm-input" autocomplete="email" value="'+esc(d.clienteEmail||'')+'" placeholder="nome@exemplo.com" oninput="App.setField(\'clienteEmail\', this.value)">'+emailAuxHtml+'</div></div>'+
     '</div>'+
@@ -4614,12 +4619,12 @@ function renderModal(){
   var sec2Html = ''+
   '<div class="fm-sec">'+
     '<div class="fm-sec-head"><span class="fm-sec-label">2 &middot; Ato</span><span class="fm-sec-rule"></span>'+(tiposSelecionados.length?'<span class="fm-sec-count">'+tiposSelecionados.length+' selecionado'+(tiposSelecionados.length>1?'s':'')+'</span>':'')+'</div>'+
-    '<div class="fm-seg-pessoa" style="margin-bottom:10px;">'+buildCategoriaAtoSegButtons(d)+'</div>'+
+    '<div class="fm-seg-pessoa" role="group" aria-label="Categoria do ato" style="margin-bottom:10px;">'+buildCategoriaAtoSegButtons(d)+'</div>'+
     '<div class="fm-tiposearch-wrap">'+
       '<input type="text" id="tipoSearchInput" aria-label="Buscar tipo de ato" class="fm-input" placeholder="Buscar entre os '+state.tiposAtos.length+' tipos de ato…" value="'+esc(d.tipoSearch||'')+'" oninput="App.setTipoSearch(this.value)">'+
       tipoDropdownHtml+
     '</div>'+
-    (tipoChipsHtml ? '<div><span class="fm-label">mais usados recentemente</span><div style="display:flex;gap:6px;flex-wrap:wrap;">'+tipoChipsHtml+'</div></div>' : '')+
+    (tipoChipsHtml ? '<div><span class="fm-label">mais usados recentemente</span><div style="display:flex;gap:6px;flex-wrap:wrap;" role="group" aria-label="Tipos de ato mais usados recentemente">'+tipoChipsHtml+'</div></div>' : '')+
     buildTipoSelecionadosOutraCategoriaHtml(d)+
     onusFieldHtml+
     '<div class="add-tipo-row"><input type="text" id="novoTipoModalInput" aria-label="Adicionar novo tipo de ato" class="fm-input" placeholder="Adicionar novo tipo de ato…"><button type="button" class="btn-ghost outlined" onclick="App.addTipoFromModal()">Adicionar</button></div>'+
@@ -4631,7 +4636,7 @@ function renderModal(){
   '<div class="fm-sec">'+
     '<div class="fm-sec-head"><span class="fm-sec-label">3 &middot; Atendimento</span><span class="fm-sec-rule"></span></div>'+
     '<div class="fm-row">'+
-      '<div class="fm-field"><span class="fm-label">Canais (múltipla escolha)</span><div style="display:flex;gap:6px;flex-wrap:wrap;">'+canalChipsHtml+'</div></div>'+
+      '<div class="fm-field"><span class="fm-label">Canais (múltipla escolha)</span><div style="display:flex;gap:6px;flex-wrap:wrap;" role="group" aria-label="Canais de atendimento, múltipla escolha">'+canalChipsHtml+'</div></div>'+
       '<div class="fm-field fixo" style="min-width:190px;"><label class="fm-label" for="f_responsavel">Responsável interno</label><select class="fm-input" id="f_responsavel" onchange="App.setResponsavel(this.value)">'+responsavelOptions+'</select>'+
         '<div class="add-tipo-row"><input type="text" id="novoResponsavelModalInput" aria-label="Adicionar novo responsável" class="fm-input" placeholder="Adicionar novo responsável…"><button type="button" class="btn-ghost outlined" onclick="App.addResponsavelFromModal()">Adicionar</button></div>'+
       '</div>'+
@@ -5287,10 +5292,10 @@ function renderTarefasModal(){
     }).join('');
     protocoloPickerHtml = '<input type="text" class="fm-input" aria-label="Buscar protocolo para vincular à tarefa" placeholder="Buscar por nome ou nº de protocolo…" value="'+esc(tarefaBuscaProtocolo)+'" oninput="App.setTarefaBuscaProtocolo(this.value)">'+resultadosHtml;
   }
-  var tipoSegHtml = '<div class="fm-seg-pessoa" style="flex-wrap:wrap;">'+
-    '<button type="button" class="'+(draft.tipo==='checklist'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'checklist\')">Retificação / Averbação / Aditamento</button>'+
-    '<button type="button" class="'+(draft.tipo==='substabelecimento'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'substabelecimento\')">Substabelecimento / Revogação / Renúncia</button>'+
-    '<button type="button" class="'+(draft.tipo==='livre'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'livre\')">Tarefa livre</button>'+
+  var tipoSegHtml = '<div class="fm-seg-pessoa" role="group" aria-label="Tipo de tarefa" style="flex-wrap:wrap;">'+
+    '<button type="button" aria-pressed="'+(draft.tipo==='checklist'?'true':'false')+'" class="'+(draft.tipo==='checklist'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'checklist\')">Retificação / Averbação / Aditamento</button>'+
+    '<button type="button" aria-pressed="'+(draft.tipo==='substabelecimento'?'true':'false')+'" class="'+(draft.tipo==='substabelecimento'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'substabelecimento\')">Substabelecimento / Revogação / Renúncia</button>'+
+    '<button type="button" aria-pressed="'+(draft.tipo==='livre'?'true':'false')+'" class="'+(draft.tipo==='livre'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'livre\')">Tarefa livre</button>'+
   '</div>';
   var tipoHintHtml;
   if(draft.tipo==='checklist'){
@@ -5304,9 +5309,9 @@ function renderTarefasModal(){
   if(draft.tipo==='substabelecimento'){
     var origem = draft.origemAto || 'proprio';
     origemHtml = '<div><span class="fm-label">Origem do ato substabelecido/revogado/renunciado</span>'+
-      '<div class="fm-seg-pessoa">'+
-        '<button type="button" class="'+(origem==='proprio'?'active':'')+'" onclick="App.setTarefaDraftOrigemAto(\'proprio\')">Do meu cartório (acervo próprio)</button>'+
-        '<button type="button" class="'+(origem==='outro_cartorio'?'active':'')+'" onclick="App.setTarefaDraftOrigemAto(\'outro_cartorio\')">De outro cartório</button>'+
+      '<div class="fm-seg-pessoa" role="group" aria-label="Origem do ato substabelecido, revogado ou renunciado">'+
+        '<button type="button" aria-pressed="'+(origem==='proprio'?'true':'false')+'" class="'+(origem==='proprio'?'active':'')+'" onclick="App.setTarefaDraftOrigemAto(\'proprio\')">Do meu cartório (acervo próprio)</button>'+
+        '<button type="button" aria-pressed="'+(origem==='outro_cartorio'?'true':'false')+'" class="'+(origem==='outro_cartorio'?'active':'')+'" onclick="App.setTarefaDraftOrigemAto(\'outro_cartorio\')">De outro cartório</button>'+
       '</div>'+
       (origem==='outro_cartorio'
         ? '<div class="fm-hint">3ª etapa vira "Comunicar Cartório de origem" (ofício + malote digital) em vez de "Anotar no livro".</div>'
