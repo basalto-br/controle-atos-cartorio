@@ -57,11 +57,18 @@ if(!IS_PROD){
   --tinta-media:#3F3C34;
   --tinta-media-2:#57544B;
   --apagado:#6B675C;
-  --apagado-2:#77705F;
+  --apagado-2:#6C6556;
   --carimbo:#8C2A20;
   --borda:#E0DCCE;
   --borda-ficha:#E6E1D2;
   --borda-forte:#D9D4C6;
+  /* So para o contorno de campo de entrada. O --borda-forte acima continua
+     valendo em todo o resto (39 usos): ele desenha divisao entre areas, que
+     e decorativa. Ja o contorno de um campo e o que diz onde da para
+     escrever, e a WCAG 1.4.11 pede 3:1 para isso. Com o --borda-forte o
+     campo media 1.42 contra a propria superficie — invisivel sob luz forte
+     ou em monitor ruim. Este mede 3.06. */
+  --borda-campo:#939086;
   --borda-atraso:#D8A79B;
   --trilho:#E2DDCC;
   --divisor-suave:#EFEBDD;
@@ -71,7 +78,7 @@ if(!IS_PROD){
   --r-selo:5px;
 
   --gray:#57544B;      --gray-soft:#E7E4DA;
-  --gold:#A26A1C;       --gold-soft:#F2E4C9;
+  --gold:#8C5C18;       --gold-soft:#F2E4C9;
   --blue:#2C3E5C;       --blue-soft:#E3E8F1;
   --plum:#5B3A5C;       --plum-soft:#EEE2EE;
   --green:#3E6B4B;      --green-soft:#E1EDE3;
@@ -184,7 +191,7 @@ button{font-family:var(--font-body);cursor:pointer;}
   display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;
 }
 .search-input{
-  flex:1;min-width:180px;padding:9px 12px 9px 30px;border:1px solid var(--borda-forte);
+  flex:1;min-width:180px;padding:9px 12px 9px 30px;border:1px solid var(--borda-campo);
   border-radius:var(--r-field);font-size:13.5px;background:var(--painel);color:var(--ink);
   font-family:var(--font-body);
 }
@@ -341,8 +348,12 @@ select.sortsel{
 .fm-edit-col-right{background:var(--apoio);border-left:1px solid var(--borda-forte);display:flex;flex-direction:column;overflow-y:auto;}
 .fm-diario-bloco{padding:16px 18px;border-bottom:1px solid var(--borda-forte);}
 .fm-diario-bloco:last-child{border-bottom:none;}
-.fm-obs-box{border:1px solid var(--borda-forte);background:var(--ficha);border-radius:var(--r-field);padding:9px 11px;}
+.fm-obs-box{border:1px solid var(--borda-campo);background:var(--ficha);border-radius:var(--r-field);padding:9px 11px;}
 .fm-obs-box textarea{width:100%;box-sizing:border-box;border:none;outline:none;background:transparent;resize:none;min-height:38px;color:var(--ink);font-family:var(--font-body);font-size:12px;line-height:1.5;padding:0;}
+/* O textarea zera a propria borda e o outline, entao quem mostra o foco e a
+   caixa em volta — mesmo tratamento que .fm-input:focus recebe. Sem isto, o
+   campo de observacao e o unico do app que nao da sinal nenhum de foco. */
+.fm-obs-box:focus-within{border-color:var(--ink);box-shadow:0 0 0 3px rgba(34,31,26,.10);}
 @media (max-width:760px){
   .side-panel-body.edit-grid{grid-template-columns:1fr;}
   .fm-edit-col-right{border-left:none;border-top:1px solid var(--borda-forte);}
@@ -362,7 +373,7 @@ select.sortsel{
 .fm-field{flex:1;min-width:150px;}
 .fm-field.fixo{flex:none;}
 .fm-label{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--apagado);margin-bottom:6px;display:block;}
-.fm-input{width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--borda-forte);border-radius:var(--r-field);background:var(--ficha);color:var(--ink);font-family:var(--font-body);font-size:12.5px;}
+.fm-input{width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--borda-campo);border-radius:var(--r-field);background:var(--ficha);color:var(--ink);font-family:var(--font-body);font-size:12.5px;}
 .fm-input:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px rgba(34,31,26,.07);}
 .fm-input-nome{font-family:var(--font-display);font-size:17px;font-weight:600;padding:11px 13px;}
 .fm-input-mono{font-family:var(--font-mono);font-size:12.5px;}
@@ -606,7 +617,7 @@ select.sortsel{
 .ab-btn-menos1{border:1px solid var(--borda-forte);background:var(--painel);color:var(--tinta-media-2);border-radius:8px;padding:6px 10px;font-family:var(--font-mono);font-size:13px;font-weight:700;cursor:pointer;}
 .ab-btn-menos1:hover{border-color:var(--carimbo);color:var(--carimbo);}
 .ab-somar-row{display:flex;align-items:flex-end;gap:8px;}
-.ab-somar-input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--borda-forte);border-radius:8px;background:var(--ficha);color:var(--ink);font-family:var(--font-mono);font-size:15px;font-weight:700;text-align:center;}
+.ab-somar-input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--borda-campo);border-radius:8px;background:var(--ficha);color:var(--ink);font-family:var(--font-mono);font-size:15px;font-weight:700;text-align:center;}
 .ab-somar-btn{flex-shrink:0;border:1px solid var(--ink);background:var(--painel);color:var(--ink);border-radius:8px;padding:11px 16px;font:600 12.5px var(--font-body);cursor:pointer;}
 .ab-somar-btn:hover{background:var(--ink);color:var(--painel);}
 .ab-lancamentos-box{background:var(--apoio);border-radius:9px;padding:12px 14px;}
