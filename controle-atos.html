@@ -3415,11 +3415,11 @@ function renderFiltersBar(){
   '<div class="filters-bar no-print">'+
     '<div class="search-wrap">'+
       '<span class="search-icon">&#8981;</span>'+
-      '<input id="searchInput" class="search-input" type="text" placeholder="Buscar por usuário, outorgado, nº de protocolo ou tipo de ato…" value="'+esc(ui.search)+'" oninput="App.setSearch(this.value)">'+
+      '<input id="searchInput" aria-label="Buscar protocolos" class="search-input" type="text" placeholder="Buscar por usuário, outorgado, nº de protocolo ou tipo de ato…" value="'+esc(ui.search)+'" oninput="App.setSearch(this.value)">'+
       (ui.search ? '<button class="search-clear" title="Limpar busca (Esc)" onclick="App.setSearch(\'\')">&times;</button>' : '')+
     '</div>'+
     (showFiltro ? '<button type="button" class="filtro-btn'+(ui.filtrosAbertos?' aberto':'')+'" onclick="App.toggleFiltrosPanel()">Filtrar'+(activeCount?' <span class="filtro-contador">'+activeCount+'</span>':'')+'</button>' : '')+
-    '<select class="sortsel" onchange="App.setSort(this.value)">'+
+    '<select class="sortsel" aria-label="Ordenar protocolos" onchange="App.setSort(this.value)">'+
       '<option value="prazo"'+(ui.sortBy==='prazo'?' selected':'')+'>Ordenar: prazo mais urgente</option>'+
       '<option value="data"'+(ui.sortBy==='data'?' selected':'')+'>Ordenar: protocolo mais recente</option>'+
     '</select>'+
@@ -3509,7 +3509,7 @@ function renderTimelineFicha(p){
   var addUi;
   if(App.obsInlineOpen[p.id]){
     addUi = '<div class="'+(justOpenedKey==='obsadd:'+p.id?'anim-in':'')+'" style="margin-top:6px;">'+
-      '<textarea id="obsnew_'+p.id+'" placeholder="Nova observação… (Enter salva, Shift+Enter quebra linha)" oninput="App.updateObsDraft(\''+p.id+'\', this.value)" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();App.addObservacaoQuick(\''+p.id+'\');}" style="width:100%;min-height:50px;padding:7px 9px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;font-family:var(--font-body);">'+esc(obsDraftText[p.id]||'')+'</textarea>'+
+      '<textarea id="obsnew_'+p.id+'" aria-label="Nova observação" placeholder="Nova observação… (Enter salva, Shift+Enter quebra linha)" oninput="App.updateObsDraft(\''+p.id+'\', this.value)" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();App.addObservacaoQuick(\''+p.id+'\');}" style="width:100%;min-height:50px;padding:7px 9px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;font-family:var(--font-body);">'+esc(obsDraftText[p.id]||'')+'</textarea>'+
       '<div style="display:flex;gap:8px;margin-top:4px;">'+
         '<button class="btn-ghost outlined" onclick="App.addObservacaoQuick(\''+p.id+'\')">Salvar observação</button>'+
         '<button class="btn-ghost" onclick="App.cancelarObsInline(\''+p.id+'\')">Cancelar</button>'+
@@ -3541,7 +3541,7 @@ function renderOnusFicha(p){
     return '<div class="cp-onus">'+
       '<span class="onus-rot">Certidão de ônus</span>'+
       '<span>emitida em</span>'+
-      '<input type="date" class="onus-data" id="onusdate_'+p.id+'" value="'+esc(p.dataOnus||'')+'">'+
+      '<input type="date" class="onus-data" id="onusdate_'+p.id+'" aria-label="Data de emissão da certidão de ônus" value="'+esc(p.dataOnus||'')+'">'+
       '<button class="grp-link" onclick="App.salvarDataOnus(\''+p.id+'\')">salvar</button>'+
       '<button class="grp-link" onclick="App.cancelarOnusEdit(\''+p.id+'\')">cancelar</button>'+
     '</div>';
@@ -3619,7 +3619,7 @@ function renderDocumentosChecklist(p){
     '</div>';
   }).join('');
   return '<div style="margin-top:8px;">'+toggle+'<div class="hist-box'+(justOpenedKey==='docs:'+p.id?' anim-in':'')+'">'+rows+
-    '<div class="add-tipo-row" style="margin-top:6px;"><input type="text" id="docExtra_'+p.id+'" placeholder="Documento extra só deste protocolo…"><button type="button" class="btn-ghost outlined" onclick="App.addDocumentoExtraProtocolo(\''+p.id+'\')">Adicionar</button></div>'+
+    '<div class="add-tipo-row" style="margin-top:6px;"><input type="text" id="docExtra_'+p.id+'" aria-label="Documento extra só deste protocolo" placeholder="Documento extra só deste protocolo…"><button type="button" class="btn-ghost outlined" onclick="App.addDocumentoExtraProtocolo(\''+p.id+'\')">Adicionar</button></div>'+
   '</div></div>';
 }
 
@@ -3671,10 +3671,10 @@ function renderPendenciasFicha(p){
   if(App.pendenciaInlineOpen[p.id]){
     var respOptions = '<option value="">— Responsável —</option>'+state.responsaveis.map(function(r){ return '<option value="'+esc(r)+'"'+(r===p.responsavel?' selected':'')+'>'+esc(r)+'</option>'; }).join('');
     addUi = '<div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">'+
-      '<input type="text" id="pendDesc_'+p.id+'" placeholder="Descrição (ex.: Cobrar matrícula atualizada)" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;font-family:var(--font-body);">'+
+      '<input type="text" id="pendDesc_'+p.id+'" aria-label="Descrição da pendência" placeholder="Descrição (ex.: Cobrar matrícula atualizada)" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;font-family:var(--font-body);">'+
       '<div style="display:flex;gap:6px;">'+
-        '<input type="date" id="pendData_'+p.id+'" value="'+esc(todayISO())+'" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+
-        '<select id="pendResp_'+p.id+'" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+respOptions+'</select>'+
+        '<input type="date" id="pendData_'+p.id+'" aria-label="Data prevista da pendência" value="'+esc(todayISO())+'" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+
+        '<select id="pendResp_'+p.id+'" aria-label="Responsável pela pendência" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+respOptions+'</select>'+
       '</div>'+
       '<div style="display:flex;gap:8px;">'+
         '<button class="btn-ghost outlined" onclick="App.addPendencia(\''+p.id+'\')">Adicionar pendência</button>'+
@@ -3757,7 +3757,7 @@ function renderColunaPrazo(p){
       '<span class="prazo-rot">PRAZO</span>'+
       '<span class="prazo-acao">Documentação incompleta.</span>'+
       (isOpen
-        ? '<input type="date" id="docdate_'+p.id+'" value="'+esc(todayISO())+'" style="font-family:var(--font-mono);font-size:11px;padding:4px 5px;border:1px solid var(--borda-forte);border-radius:6px;width:100%;">'+
+        ? '<input type="date" id="docdate_'+p.id+'" aria-label="Data em que a documentação ficou completa" value="'+esc(todayISO())+'" style="font-family:var(--font-mono);font-size:11px;padding:4px 5px;border:1px solid var(--borda-forte);border-radius:6px;width:100%;">'+
           '<button class="btn-avancar" onclick="App.markDocsComplete(\''+p.id+'\')">Confirmar recebimento</button>'
         : '<button class="btn-avancar" onclick="App.showDocDateField(\''+p.id+'\')">Marcar completa</button>'
       )+
@@ -3766,7 +3766,7 @@ function renderColunaPrazo(p){
   var isEditingRecebido = App.docEditOpen[p.id];
   var recebidoHtml = isEditingRecebido
     ? '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">'+
-        '<input type="date" id="doceditdate_'+p.id+'" value="'+esc(p.dataRecebimentoCompleto)+'" style="font-family:var(--font-mono);font-size:11px;padding:3px 5px;border:1px solid var(--borda-forte);border-radius:6px;">'+
+        '<input type="date" id="doceditdate_'+p.id+'" aria-label="Data em que a documentação ficou completa" value="'+esc(p.dataRecebimentoCompleto)+'" style="font-family:var(--font-mono);font-size:11px;padding:3px 5px;border:1px solid var(--borda-forte);border-radius:6px;">'+
         '<button class="grp-link" onclick="App.updateDocDate(\''+p.id+'\')">salvar</button>'+
         '<button class="grp-link" onclick="App.cancelarDocEdit(\''+p.id+'\')">cancelar</button>'+
       '</div>'
@@ -3823,7 +3823,7 @@ function renderFicha(p, dentroDeGrupo){
       '</div>'+
       '<div>'+nomeHtml+'</div>'+
       '<div class="cp-rodape">'+
-        '<select class="chip-status" style="background:var(--'+st.cor+'-soft);color:var(--'+st.cor+');" onchange="App.changeStatusQuick(\''+p.id+'\', this.value)" title="Mudar status">'+statusOptions+'</select>'+
+        '<select class="chip-status" style="background:var(--'+st.cor+'-soft);color:var(--'+st.cor+');" onchange="App.changeStatusQuick(\''+p.id+'\', this.value)" title="Mudar status" aria-label="Fase de andamento de '+esc(p.cliente||'protocolo sem identificação')+'">'+statusOptions+'</select>'+
         (canais ? '<span class="cp-canais">'+esc(canais)+'</span>' : '')+
         '<span class="cp-acoes">'+
           '<button class="ib28" title="Vincular a outro protocolo" onclick="App.abrirPainelVinculo(\''+p.id+'\')">&#128279;</button>'+
@@ -4226,7 +4226,7 @@ function renderModalQuickBody(d){
   return '<div class="fm-quick-body">'+
     '<div>'+
       '<span class="fm-label">Outorgante</span>'+
-      '<input type="text" id="f_cliente" class="fm-input fm-input-nome" value="'+esc(d.cliente||'')+'" placeholder="Nome do usuário / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
+      '<input type="text" id="f_cliente" class="fm-input fm-input-nome" aria-label="Nome do usuário ou outorgante" autocomplete="name" value="'+esc(d.cliente||'')+'" placeholder="Nome do usuário / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
       '<div id="vinculoSugestaoContainer" style="margin-top:8px;">'+computeVinculoSugestaoHtml(d)+'</div>'+
     '</div>'+
     '<div><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa">'+buildPessoaSegButtons(d)+'</div></div>'+
@@ -4237,7 +4237,7 @@ function renderModalQuickBody(d){
       '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+buildTipoChipsHtml(d)+'</div>'+
       buildTipoSelecionadosOutraCategoriaHtml(d)+
       '<div class="fm-tiposearch-wrap" style="margin-top:8px;">'+
-        '<input type="text" id="tipoSearchInput" class="fm-input dashed" placeholder="Buscar entre os '+state.tiposAtos.length+' tipos…" value="'+esc(d.tipoSearch||'')+'" oninput="App.setTipoSearch(this.value)">'+
+        '<input type="text" id="tipoSearchInput" aria-label="Buscar tipo de ato" class="fm-input dashed" placeholder="Buscar entre os '+state.tiposAtos.length+' tipos…" value="'+esc(d.tipoSearch||'')+'" oninput="App.setTipoSearch(this.value)">'+
         buildTipoDropdownHtml(d)+
       '</div>'+
     '</div>'+
@@ -4325,7 +4325,7 @@ function renderDiarioUnificado(p){
     if(editandoTs===o.ts){
       return '<div style="border-left:2px solid var(--borda-forte);padding-left:10px;">'+
         '<div class="fm-obs-box">'+
-          '<textarea id="obsedit_'+p.id+'" oninput="App.updateObsEditDraft(\''+p.id+'\', this.value)">'+esc(obsEditDraftText[p.id]||'')+'</textarea>'+
+          '<textarea id="obsedit_'+p.id+'" aria-label="Editar observação" oninput="App.updateObsEditDraft(\''+p.id+'\', this.value)">'+esc(obsEditDraftText[p.id]||'')+'</textarea>'+
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:7px;padding-top:7px;border-top:1px solid var(--divisor-suave);">'+
             renderEtiquetaChipsPicker(p.id, obsEditDraftEtiqueta[p.id]||null, 'setObsEditEtiquetaDraft')+
             '<div style="display:flex;gap:8px;">'+
@@ -4351,7 +4351,7 @@ function renderDiarioUnificado(p){
   return '<div class="fm-diario-bloco" style="flex:1;">'+
     '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;"><span class="fm-label" style="margin-bottom:0;">Andamento e observações</span>'+(itens.length?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--apagado-2);">'+itens.length+'</span>':'')+'</div>'+
     '<div class="fm-obs-box">'+
-      '<textarea id="obsnew_'+p.id+'" placeholder="Escrever observação…" oninput="App.updateObsDraft(\''+p.id+'\', this.value)" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();App.addObservacaoQuick(\''+p.id+'\');}">'+esc(obsDraftText[p.id]||'')+'</textarea>'+
+      '<textarea id="obsnew_'+p.id+'" aria-label="Nova observação" placeholder="Escrever observação…" oninput="App.updateObsDraft(\''+p.id+'\', this.value)" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();App.addObservacaoQuick(\''+p.id+'\');}">'+esc(obsDraftText[p.id]||'')+'</textarea>'+
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:7px;padding-top:7px;border-top:1px solid var(--divisor-suave);">'+
         renderEtiquetaChipsPicker(p.id, obsDraftEtiqueta[p.id]||null, 'setObsEtiquetaDraft')+
         '<div style="display:flex;align-items:center;gap:10px;">'+
@@ -4449,7 +4449,7 @@ function renderModal(){
     (d.vinculoManualAberto ? (
       '<div style="margin-top:10px;">'+
         selectedVinculoChipsHtml+
-        '<input type="text" id="vinculoSearchInput" class="fm-input" placeholder="Buscar por usuário ou nº de protocolo…" value="'+esc(d.vinculoSearch||'')+'" oninput="App.setVinculoSearch(this.value)">'+
+        '<input type="text" id="vinculoSearchInput" aria-label="Buscar protocolo para vincular" class="fm-input" placeholder="Buscar por usuário ou nº de protocolo…" value="'+esc(d.vinculoSearch||'')+'" oninput="App.setVinculoSearch(this.value)">'+
         (vinculoResultsHtml ? '<div class="checklist" style="max-height:140px;margin-top:6px;">'+vinculoResultsHtml+'</div>' : '')+
         '<div class="fm-hint" style="margin-top:6px;">Isso só serve para ver os protocolos juntos depois — não muda nada nos dados de cada um.</div>'+
       '</div>'
@@ -4458,14 +4458,14 @@ function renderModal(){
   var sec1Html = ''+
   '<div class="fm-sec">'+
     '<div class="fm-sec-head"><span class="fm-sec-label">1 &middot; Outorgante</span><span class="fm-sec-rule"></span></div>'+
-    '<input type="text" id="f_cliente" class="fm-input fm-input-nome" value="'+esc(d.cliente||'')+'" placeholder="Nome do usuário / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
+    '<input type="text" id="f_cliente" class="fm-input fm-input-nome" aria-label="Nome do usuário ou outorgante" autocomplete="name" value="'+esc(d.cliente||'')+'" placeholder="Nome do usuário / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
     '<div id="vinculoSugestaoContainer">'+dupWarningHtml+'</div>'+
     '<div class="fm-row">'+
       '<div class="fm-field fixo"><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa">'+pessoaSegHtml+'</div></div>'+
-      '<div class="fm-field"><span class="fm-label">Telefone (opcional)</span><div class="fm-input-row"><input type="text" id="f_clienteTelefone" class="fm-input fm-input-mono" inputmode="tel" value="'+esc(d.clienteTelefone||'')+'" placeholder="(00) 00000-0000" oninput="App.setPhone(\'clienteTelefone\', this)">'+telAuxHtml+'</div></div>'+
-      '<div class="fm-field"><span class="fm-label">E-mail (opcional)</span><div class="fm-input-row"><input type="text" id="f_clienteEmail" class="fm-input" value="'+esc(d.clienteEmail||'')+'" placeholder="nome@exemplo.com" oninput="App.setField(\'clienteEmail\', this.value)">'+emailAuxHtml+'</div></div>'+
+      '<div class="fm-field"><label class="fm-label" for="f_clienteTelefone">Telefone (opcional)</label><div class="fm-input-row"><input type="text" id="f_clienteTelefone" class="fm-input fm-input-mono" inputmode="tel" autocomplete="tel" value="'+esc(d.clienteTelefone||'')+'" placeholder="(00) 00000-0000" oninput="App.setPhone(\'clienteTelefone\', this)">'+telAuxHtml+'</div></div>'+
+      '<div class="fm-field"><label class="fm-label" for="f_clienteEmail">E-mail (opcional)</label><div class="fm-input-row"><input type="text" id="f_clienteEmail" class="fm-input" autocomplete="email" value="'+esc(d.clienteEmail||'')+'" placeholder="nome@exemplo.com" oninput="App.setField(\'clienteEmail\', this.value)">'+emailAuxHtml+'</div></div>'+
     '</div>'+
-    '<div><span class="fm-label">Outorgado(s) (opcional)</span><input type="text" id="f_outorgados" class="fm-input" value="'+esc(d.outorgados||'')+'" placeholder="Quem recebe os poderes" oninput="App.setField(\'outorgados\', this.value)"></div>'+
+    '<div><label class="fm-label" for="f_outorgados">Outorgado(s) (opcional)</label><input type="text" id="f_outorgados" class="fm-input" value="'+esc(d.outorgados||'')+'" placeholder="Quem recebe os poderes" oninput="App.setField(\'outorgados\', this.value)"></div>'+
     '<div>'+vinculoDisclosureHtml+'</div>'+
   '</div>';
 
@@ -4477,7 +4477,7 @@ function renderModal(){
      manda e o mapa de Configuracoes, nunca o nome do tipo escrito aqui. */
   var exigeOnusNoDraft = tiposSelecionados.some(function(t){ return !!(state.exigeOnusPorTipo||{})[t]; });
   var onusFieldHtml = exigeOnusNoDraft
-    ? '<div class="fm-field"><span class="fm-label">Data da certidão de ônus (validade '+ONUS_VALIDADE_DIAS+' dias corridos)</span>'+
+    ? '<div class="fm-field"><label class="fm-label" for="f_dataOnus">Data da certidão de ônus (validade '+ONUS_VALIDADE_DIAS+' dias corridos)</label>'+
         '<input type="date" id="f_dataOnus" class="fm-input" value="'+esc(d.dataOnus||'')+'" oninput="App.setField(\'dataOnus\', this.value)">'+
       '</div>'
     : '';
@@ -4486,13 +4486,13 @@ function renderModal(){
     '<div class="fm-sec-head"><span class="fm-sec-label">2 &middot; Ato</span><span class="fm-sec-rule"></span>'+(tiposSelecionados.length?'<span class="fm-sec-count">'+tiposSelecionados.length+' selecionado'+(tiposSelecionados.length>1?'s':'')+'</span>':'')+'</div>'+
     '<div class="fm-seg-pessoa" style="margin-bottom:10px;">'+buildCategoriaAtoSegButtons(d)+'</div>'+
     '<div class="fm-tiposearch-wrap">'+
-      '<input type="text" id="tipoSearchInput" class="fm-input" placeholder="Buscar entre os '+state.tiposAtos.length+' tipos de ato…" value="'+esc(d.tipoSearch||'')+'" oninput="App.setTipoSearch(this.value)">'+
+      '<input type="text" id="tipoSearchInput" aria-label="Buscar tipo de ato" class="fm-input" placeholder="Buscar entre os '+state.tiposAtos.length+' tipos de ato…" value="'+esc(d.tipoSearch||'')+'" oninput="App.setTipoSearch(this.value)">'+
       tipoDropdownHtml+
     '</div>'+
     (tipoChipsHtml ? '<div><span class="fm-label">mais usados recentemente</span><div style="display:flex;gap:6px;flex-wrap:wrap;">'+tipoChipsHtml+'</div></div>' : '')+
     buildTipoSelecionadosOutraCategoriaHtml(d)+
     onusFieldHtml+
-    '<div class="add-tipo-row"><input type="text" id="novoTipoModalInput" class="fm-input" placeholder="Adicionar novo tipo de ato…"><button type="button" class="btn-ghost outlined" onclick="App.addTipoFromModal()">Adicionar</button></div>'+
+    '<div class="add-tipo-row"><input type="text" id="novoTipoModalInput" aria-label="Adicionar novo tipo de ato" class="fm-input" placeholder="Adicionar novo tipo de ato…"><button type="button" class="btn-ghost outlined" onclick="App.addTipoFromModal()">Adicionar</button></div>'+
   '</div>';
 
   /* ---- Secao 3 · Atendimento ---- */
@@ -4502,8 +4502,8 @@ function renderModal(){
     '<div class="fm-sec-head"><span class="fm-sec-label">3 &middot; Atendimento</span><span class="fm-sec-rule"></span></div>'+
     '<div class="fm-row">'+
       '<div class="fm-field"><span class="fm-label">Canais (múltipla escolha)</span><div style="display:flex;gap:6px;flex-wrap:wrap;">'+canalChipsHtml+'</div></div>'+
-      '<div class="fm-field fixo" style="min-width:190px;"><span class="fm-label">Responsável interno</span><select class="fm-input" onchange="App.setResponsavel(this.value)">'+responsavelOptions+'</select>'+
-        '<div class="add-tipo-row"><input type="text" id="novoResponsavelModalInput" class="fm-input" placeholder="Adicionar novo responsável…"><button type="button" class="btn-ghost outlined" onclick="App.addResponsavelFromModal()">Adicionar</button></div>'+
+      '<div class="fm-field fixo" style="min-width:190px;"><label class="fm-label" for="f_responsavel">Responsável interno</label><select class="fm-input" id="f_responsavel" onchange="App.setResponsavel(this.value)">'+responsavelOptions+'</select>'+
+        '<div class="add-tipo-row"><input type="text" id="novoResponsavelModalInput" aria-label="Adicionar novo responsável" class="fm-input" placeholder="Adicionar novo responsável…"><button type="button" class="btn-ghost outlined" onclick="App.addResponsavelFromModal()">Adicionar</button></div>'+
       '</div>'+
     '</div>'+
   '</div>';
@@ -4523,7 +4523,7 @@ function renderModal(){
       var previewDate = d.dataRecebimentoCompleto || d.dataProtocolo || todayISO();
       var deadlinePreview = addBusinessDays(previewDate, PRAZO_DIAS_UTEIS);
       prazoExtraHtml = ''+
-        '<div><div class="fm-prazo-sub">recebida em</div><div class="fm-prazo-recebida"><input type="date" id="f_dataRecebimentoCompleto" value="'+esc(d.dataRecebimentoCompleto||todayISO())+'" oninput="App.setField(\'dataRecebimentoCompleto\', this.value)"></div></div>'+
+        '<div><div class="fm-prazo-sub">recebida em</div><div class="fm-prazo-recebida"><input type="date" id="f_dataRecebimentoCompleto" aria-label="Data em que a documentação ficou completa" value="'+esc(d.dataRecebimentoCompleto||todayISO())+'" oninput="App.setField(\'dataRecebimentoCompleto\', this.value)"></div></div>'+
         '<div class="fm-prazo-divisor"><div class="fm-prazo-sub">prazo &middot; '+PRAZO_DIAS_UTEIS+' d.ú.</div><div class="fm-prazo-venc">vence '+esc(formatBR(deadlinePreview))+'</div></div>';
     }
     sec4Html = ''+
@@ -4542,8 +4542,8 @@ function renderModal(){
 
   var numeroDataRowHtml = ''+
     '<div class="fm-row" style="margin-bottom:16px;">'+
-      '<div class="fm-field fixo" style="min-width:160px;"><span class="fm-label">Nº do protocolo (opcional)</span><input type="text" id="f_numeroProtocolo" class="fm-input fm-input-mono" value="'+esc(d.numeroProtocolo||'')+'" placeholder="Ex: 12345/2026" oninput="App.setField(\'numeroProtocolo\', this.value)"></div>'+
-      '<div class="fm-field fixo" style="min-width:150px;"><span class="fm-label">Data do protocolo</span><input type="date" id="f_dataProtocolo" class="fm-input fm-input-mono" value="'+esc(d.dataProtocolo||todayISO())+'" oninput="App.setField(\'dataProtocolo\', this.value)"></div>'+
+      '<div class="fm-field fixo" style="min-width:160px;"><label class="fm-label" for="f_numeroProtocolo">Nº do protocolo (opcional)</label><input type="text" id="f_numeroProtocolo" class="fm-input fm-input-mono" value="'+esc(d.numeroProtocolo||'')+'" placeholder="Ex: 12345/2026" oninput="App.setField(\'numeroProtocolo\', this.value)"></div>'+
+      '<div class="fm-field fixo" style="min-width:150px;"><label class="fm-label" for="f_dataProtocolo">Data do protocolo</label><input type="date" id="f_dataProtocolo" class="fm-input fm-input-mono" value="'+esc(d.dataProtocolo||todayISO())+'" oninput="App.setField(\'dataProtocolo\', this.value)"></div>'+
     '</div>';
 
   if(isEdit && original){
@@ -4600,7 +4600,7 @@ function renderModal(){
         numeroDataRowHtml+
         sec1Html+sec2Html+sec3Html+sec4Html+
         '<div class="fm-sec" style="border-bottom:none;padding-top:18px;">'+
-          '<span class="fm-label">Observação inicial</span>'+
+          '<label class="fm-label" for="f_novaObservacao">Observação inicial</label>'+
           obsHistoricoHtml+
           '<textarea id="f_novaObservacao" class="fm-input ta" placeholder="Ex.: usuário traz a certidão de ônus na segunda." oninput="App.setField(\'novaObservacao\', this.value)">'+esc(d.novaObservacao||'')+'</textarea>'+
         '</div>'+
@@ -4626,7 +4626,7 @@ function renderSettingsModal(){
     return '<div class="list-row">'+
       '<span style="flex:1;">'+esc(t)+'</span>'+
       '<label class="opt-lbl" title="Protocolos deste tipo pedem a data de emissão da certidão de ônus e avisam '+ONUS_AVISO_DIAS+' dias antes de ela vencer"><input type="checkbox" '+(exigeOnus?'checked':'')+' onchange="App.toggleExigeOnusDoTipo(\''+jsAttr(t)+'\', this.checked)"> Exige certidão de ônus</label>'+
-      '<select style="padding:4px 6px;border:1px solid var(--line);border-radius:3px;font-size:11.5px;" onchange="App.setCategoriaDoTipo(\''+jsAttr(t)+'\', this.value)">'+opts+'</select>'+
+      '<select style="padding:4px 6px;border:1px solid var(--line);border-radius:3px;font-size:11.5px;" aria-label="Categoria de '+esc(t)+'" onchange="App.setCategoriaDoTipo(\''+jsAttr(t)+'\', this.value)">'+opts+'</select>'+
       '<button class="remove-x" onclick="App.removeTipoSettings(\''+jsAttr(t)+'\')" title="Remover">&times;</button>'+
     '</div>';
   }
@@ -4657,8 +4657,8 @@ function renderSettingsModal(){
     var dependeCheckbox = s.isFinal ? '' : ('<label class="final-lbl" title="Nesta fase a espera é do usuário: o protocolo não conta como atrasado, aparece como “com o usuário”"><input type="checkbox" '+(s.dependeDoUsuario?'checked':'')+' onchange="App.updateStatusDependeDoUsuario(\''+jsAttr(s.key)+'\', this.checked)"> Depende do usuário</label>');
     return '<div class="status-row">'+
       '<span class="swatch" style="background:var(--'+s.cor+');"></span>'+
-      '<input type="text" value="'+esc(s.label)+'" onchange="App.updateStatusLabel(\''+jsAttr(s.key)+'\', this.value)">'+
-      '<select onchange="App.updateStatusColor(\''+jsAttr(s.key)+'\', this.value)">'+colorOptions+'</select>'+
+      '<input type="text" value="'+esc(s.label)+'" aria-label="Nome da fase '+esc(s.label)+'" onchange="App.updateStatusLabel(\''+jsAttr(s.key)+'\', this.value)">'+
+      '<select aria-label="Cor da fase '+esc(s.label)+'" onchange="App.updateStatusColor(\''+jsAttr(s.key)+'\', this.value)">'+colorOptions+'</select>'+
       '<label class="final-lbl"><input type="checkbox" '+(s.isFinal?'checked':'')+' onchange="App.updateStatusFinal(\''+jsAttr(s.key)+'\', this.checked)"> Fase final</label>'+
       dependeCheckbox+
       digitalizacaoCheckbox+
@@ -4693,7 +4693,7 @@ function renderSettingsModal(){
     }).join('') || '<div class="hint">Nenhum documento específico ainda — usa só a base comum.</div>';
     return '<div style="margin-bottom:10px;">'+toggle+
       '<div class="hist-box">'+docRows+
-        '<div class="add-tipo-row" style="margin-top:6px;"><input type="text" id="novoDocTipo_'+idx+'" placeholder="Novo documento específico deste tipo…"><button type="button" class="btn-ghost outlined" onclick="App.addChecklistTipoDoc(\''+jsAttr(t)+'\', '+idx+')">Adicionar</button></div>'+
+        '<div class="add-tipo-row" style="margin-top:6px;"><input type="text" id="novoDocTipo_'+idx+'" aria-label="Novo documento específico deste tipo" placeholder="Novo documento específico deste tipo…"><button type="button" class="btn-ghost outlined" onclick="App.addChecklistTipoDoc(\''+jsAttr(t)+'\', '+idx+')">Adicionar</button></div>'+
       '</div>'+
     '</div>';
   }).join('') || '<div class="hint">Nenhum tipo de ato cadastrado ainda.</div>';
@@ -4761,7 +4761,7 @@ function renderSettingsModal(){
         '<h3>Responsáveis internos</h3>'+
         '<div class="hint">Nomes disponíveis para selecionar como responsável em cada protocolo. Edite o nome direto no campo para renomear.</div>'+
         '<div class="checklist" style="max-height:150px;">'+responsaveisRows+'</div>'+
-        '<div class="add-tipo-row"><input type="text" id="settingsNovoResponsavel" placeholder="Novo responsável…"><button type="button" class="btn-ghost outlined" onclick="App.addResponsavelSettings()">Adicionar</button></div>'+
+        '<div class="add-tipo-row"><input type="text" id="settingsNovoResponsavel" aria-label="Novo responsável" placeholder="Novo responsável…"><button type="button" class="btn-ghost outlined" onclick="App.addResponsavelSettings()">Adicionar</button></div>'+
       '</div>'+
 
       '<div class="settings-section">'+
@@ -4769,8 +4769,8 @@ function renderSettingsModal(){
         '<div class="hint">Adicione, edite, reordene ou remova fases. Fase "final" encerra o prazo e sai da contagem de ativos; se também exigir digitalização, só arquiva depois de confirmar o rascunho na ficha.</div>'+
         '<div>'+statusRows+'</div>'+
         '<div class="new-status-form">'+
-          '<input type="text" id="settingsNovoStatusLabel" placeholder="Nome da nova fase…" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+
-          '<select id="settingsNovoStatusCor" style="padding:7px 8px;border:1px solid var(--line);border-radius:3px;font-size:12px;">'+newStatusColorOptions+'</select>'+
+          '<input type="text" id="settingsNovoStatusLabel" aria-label="Nome da nova fase" placeholder="Nome da nova fase…" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+
+          '<select id="settingsNovoStatusCor" aria-label="Cor da nova fase" style="padding:7px 8px;border:1px solid var(--line);border-radius:3px;font-size:12px;">'+newStatusColorOptions+'</select>'+
           '<label class="final-lbl"><input type="checkbox" id="settingsNovoStatusFinal"> Fase final</label>'+
           '<button type="button" class="btn-ghost outlined" onclick="App.addStatusType()">Adicionar fase</button>'+
         '</div>'+
@@ -4779,7 +4779,7 @@ function renderSettingsModal(){
       '<div class="settings-section">'+
         '<h3>Tipos de procuração / escritura</h3>'+
         '<div class="checklist" style="max-height:150px;">'+tiposRows+'</div>'+
-        '<div class="add-tipo-row"><input type="text" id="settingsNovoTipo" placeholder="Novo tipo de ato…"><select id="settingsNovoTipoCategoria" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+categoriaNovoTipoOptions+'</select><button type="button" class="btn-ghost outlined" onclick="App.addTipoSettings()">Adicionar</button></div>'+
+        '<div class="add-tipo-row"><input type="text" id="settingsNovoTipo" aria-label="Novo tipo de ato" placeholder="Novo tipo de ato…"><select id="settingsNovoTipoCategoria" aria-label="Categoria do novo tipo de ato" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+categoriaNovoTipoOptions+'</select><button type="button" class="btn-ghost outlined" onclick="App.addTipoSettings()">Adicionar</button></div>'+
       '</div>'+
 
       '<div class="settings-section">'+
@@ -4802,8 +4802,8 @@ function renderSettingsModal(){
         '<h3>Feriados municipais / locais adicionais</h3>'+
         '<div class="checklist" style="max-height:120px;">'+feriadosRows+'</div>'+
         '<div class="field-row" style="margin-top:8px;">'+
-          '<div class="field" style="flex:0 0 150px;"><input type="date" id="settingsFeriadoData"></div>'+
-          '<div class="field"><input type="text" id="settingsFeriadoLabel" placeholder="Descrição (ex: aniversário da cidade)"></div>'+
+          '<div class="field" style="flex:0 0 150px;"><input type="date" id="settingsFeriadoData" aria-label="Data do feriado"></div>'+
+          '<div class="field"><input type="text" id="settingsFeriadoLabel" aria-label="Descrição do feriado" placeholder="Descrição (ex: aniversário da cidade)"></div>'+
         '</div>'+
         '<button type="button" class="btn-ghost outlined" onclick="App.addFeriadoExtra()">Adicionar feriado</button>'+
       '</div>'+
@@ -4998,7 +4998,7 @@ function renderAtosBalcaoModal(){
   }).join('');
 
   var totalEditHtml = edicaoTotalBalcaoAberta
-    ? '<input type="text" id="totalBalcaoEditInput" class="ab-total-edit-input" value="'+totalHoje+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.confirmarEdicaoTotalBalcao();}">'
+    ? '<input type="text" id="totalBalcaoEditInput" aria-label="Total de atos de balcão do dia" class="ab-total-edit-input" value="'+totalHoje+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.confirmarEdicaoTotalBalcao();}">'
     : ('<span class="ab-total-num">'+totalHoje+'</span><button type="button" class="ab-editar-link" onclick="App.abrirEdicaoTotalBalcao()">editar</button>');
 
   return '<div class="side-overlay'+(modalJustOpened?' entering':'')+'" onclick="if(event.target===this) App.closeAtosBalcao()">'+
@@ -5023,7 +5023,7 @@ function renderAtosBalcaoModal(){
           '</div>'+
         '</div>'+
         '<div class="ab-somar-row" style="margin-top:18px;">'+
-          '<div style="flex:1;"><span class="fm-label">Somar quantidade</span><input type="text" id="qtdBalcaoInput" class="ab-somar-input" placeholder="Ex: 4" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.adicionarQuantidadeBalcao();}"></div>'+
+          '<div style="flex:1;"><label class="fm-label" for="qtdBalcaoInput">Somar quantidade</label><input type="text" id="qtdBalcaoInput" class="ab-somar-input" placeholder="Ex: 4" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.adicionarQuantidadeBalcao();}"></div>'+
           '<button type="button" class="ab-somar-btn" onclick="App.adicionarQuantidadeBalcao()">Somar ao dia</button>'+
         '</div>'+
         '<div class="ab-lancamentos-box" style="margin-top:18px;">'+
@@ -5155,7 +5155,7 @@ function renderTarefasModal(){
         (p.numeroProtocolo?('nº '+esc(p.numeroProtocolo)+' — '):'')+esc(p.cliente||'sem nome')+
       '</div>';
     }).join('');
-    protocoloPickerHtml = '<input type="text" class="fm-input" placeholder="Buscar por nome ou nº de protocolo…" value="'+esc(tarefaBuscaProtocolo)+'" oninput="App.setTarefaBuscaProtocolo(this.value)">'+resultadosHtml;
+    protocoloPickerHtml = '<input type="text" class="fm-input" aria-label="Buscar protocolo para vincular à tarefa" placeholder="Buscar por nome ou nº de protocolo…" value="'+esc(tarefaBuscaProtocolo)+'" oninput="App.setTarefaBuscaProtocolo(this.value)">'+resultadosHtml;
   }
   var tipoSegHtml = '<div class="fm-seg-pessoa" style="flex-wrap:wrap;">'+
     '<button type="button" class="'+(draft.tipo==='checklist'?'active':'')+'" onclick="App.setTarefaDraftTipo(\'checklist\')">Retificação / Averbação / Aditamento</button>'+
@@ -5187,8 +5187,8 @@ function renderTarefasModal(){
   '<div style="display:flex;flex-direction:column;gap:10px;">'+
     '<div><span class="fm-label">Tipo de tarefa</span>'+tipoSegHtml+tipoHintHtml+'</div>'+
     origemHtml+
-    '<div><span class="fm-label">Descrição</span><input type="text" class="fm-input" placeholder="O que precisa ser feito? (ex.: Retificação de ata nº 123)" value="'+esc(draft.descricao)+'" oninput="App.setTarefaDraftField(\'descricao\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.addTarefa();}"></div>'+
-    '<div><span class="fm-label">Data prevista</span><input type="date" class="fm-input" style="max-width:170px;" value="'+esc(draft.data)+'" oninput="App.setTarefaDraftField(\'data\',this.value)"></div>'+
+    '<div><label class="fm-label" for="tarefaDescricao">Descrição</label><input type="text" id="tarefaDescricao" class="fm-input" placeholder="O que precisa ser feito? (ex.: Retificação de ata nº 123)" value="'+esc(draft.descricao)+'" oninput="App.setTarefaDraftField(\'descricao\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.addTarefa();}"></div>'+
+    '<div><label class="fm-label" for="tarefaDataPrevista">Data prevista</label><input type="date" id="tarefaDataPrevista" class="fm-input" style="max-width:170px;" value="'+esc(draft.data)+'" oninput="App.setTarefaDraftField(\'data\',this.value)"></div>'+
     '<div><span class="fm-label">Vínculo com protocolo (opcional)</span>'+protocoloPickerHtml+'</div>'+
     '<button type="button" class="btn btn-primary" style="align-self:flex-start;" onclick="App.addTarefa()">Adicionar tarefa</button>'+
   '</div>';
@@ -5284,7 +5284,7 @@ function renderAtosBalcaoStrip(){
     '<div class="ab-strip-acoes">'+
       '<button type="button" class="ab-strip-mais1" onclick="App.ajustarAtoBalcao(1)">+1</button>'+
       '<button type="button" class="ab-strip-menos1" onclick="App.ajustarAtoBalcao(-1)">&minus;1</button>'+
-      '<input type="text" id="qtdBalcaoStripInput" class="ab-strip-input" placeholder="4" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.adicionarQuantidadeBalcao(\'qtdBalcaoStripInput\');}">'+
+      '<input type="text" id="qtdBalcaoStripInput" aria-label="Quantidade de atos a somar" class="ab-strip-input" placeholder="4" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.adicionarQuantidadeBalcao(\'qtdBalcaoStripInput\');}">'+
       '<button type="button" class="ab-strip-somar" onclick="App.adicionarQuantidadeBalcao(\'qtdBalcaoStripInput\')">somar</button>'+
     '</div>'+
     '<div style="flex:1"></div>'+
