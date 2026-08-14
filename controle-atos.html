@@ -109,6 +109,22 @@ body{
    desenho de cada uma continua vindo da sua propria classe, que aparece
    depois no arquivo e por isso vence na cascata. Fica no topo de proposito.
    Sem sinal de menor/maior aqui de proposito: contador de tag le como tag. */
+/* Link de pular a navegacao: fora da tela ate receber foco pelo Tab, que e
+   quando ele passa a ser a primeira parada de quem usa teclado. */
+.pular-para-conteudo{
+  position:absolute;left:-9999px;top:0;z-index:200;
+  background:var(--ficha);color:var(--ink);
+  border:1px solid var(--ink);border-radius:0 0 var(--r-field) 0;
+  padding:10px 16px;font-family:var(--font-body);font-size:13px;
+  text-decoration:none;
+}
+.pular-para-conteudo:focus{left:0;}
+/* Em ambiente de teste a faixa vermelha e fixa no topo com z-index bem alto,
+   e cobriria o link justo quando ele aparece. Descer 34px o poe logo abaixo
+   dela — e o criterio 2.4.11 pede exatamente que o foco nao fique encoberto. */
+html.ambiente-teste .pular-para-conteudo:focus{top:34px;}
+#conteudo:focus{outline:none;}
+
 .kbd-btn{
   appearance:none;-webkit-appearance:none;
   font:inherit;color:inherit;background:none;border:none;
@@ -785,6 +801,7 @@ html.ambiente-teste body::before{
 </style>
 </head>
 <body>
+<a class="pular-para-conteudo" href="#conteudo">Pular para a lista de protocolos</a>
 <div id="app"><div style="padding:60px;text-align:center;color:#6B675C;font-family:'JetBrains Mono',monospace;font-size:13px;">Carregando protocolos…</div></div>
 <div id="toast-layer" aria-live="polite"></div>
 <div id="fichaPrintArea"></div>
@@ -3382,12 +3399,16 @@ function renderFsBanner(){
 }
 function renderAll(){
   var app = document.getElementById('app');
+  /* Os tres landmarks abaixo dao ao leitor de tela por onde saltar; antes o
+     arquivo nao tinha nenhum, e a unica forma de chegar na lista era passar
+     por tudo. O id conteudo e o destino do link de pular, que fica no HTML
+     estatico: o #app e recriado a cada render, mas o id volta igual. */
   var html =
-    renderFsBanner() +
-    renderHeader() +
-    renderStats() +
-    renderFiltersBar() +
-    '<div class="'+(justSwitchedView?'anim-in':'')+'">'+renderListArea()+'</div>' +
+    '<header>' + renderFsBanner() + renderHeader() + '</header>' +
+    '<nav aria-label="Filtros e visualização">' + renderStats() + renderFiltersBar() + '</nav>' +
+    '<main id="conteudo" tabindex="-1">' +
+      '<div class="'+(justSwitchedView?'anim-in':'')+'">'+renderListArea()+'</div>' +
+    '</main>' +
     (draftModal ? renderModal() : '') +
     (settingsOpen ? renderSettingsModal() : '') +
     (clienteHistoryModal ? renderClienteHistoryModal() : '') +
