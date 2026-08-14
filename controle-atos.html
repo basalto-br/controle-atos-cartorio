@@ -103,6 +103,21 @@ body{
 }
 #app{max-width:1080px;margin:0 auto;padding:28px 20px 80px;}
 
+/* Areas clicaveis que eram div/span com onclick e viraram button para
+   funcionar no teclado. Esta regra so desfaz o visual que o navegador impoe
+   a um botao (fundo cinza, borda, fonte do sistema, texto centralizado); o
+   desenho de cada uma continua vindo da sua propria classe, que aparece
+   depois no arquivo e por isso vence na cascata. Fica no topo de proposito.
+   Sem sinal de menor/maior aqui de proposito: contador de tag le como tag. */
+.kbd-btn{
+  appearance:none;-webkit-appearance:none;
+  font:inherit;color:inherit;background:none;border:none;
+  padding:0;margin:0;text-align:inherit;width:auto;
+}
+/* Foco proprio: o outline padrao do navegador some contra o creme do papel
+   em alguns temas, e estas areas tem desenho proprio. */
+.kbd-btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:4px;}
+
 /* ---------- Header ---------- */
 .letterhead{
   display:flex;justify-content:space-between;align-items:flex-end;
@@ -404,7 +419,7 @@ select.sortsel{
 
 .fm-tiposearch-wrap{position:relative;}
 .fm-dropdown{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--ficha);border:1px solid var(--borda);border-radius:var(--r-field);box-shadow:0 6px 18px -12px rgba(0,0,0,.3);z-index:5;max-height:220px;overflow-y:auto;}
-.fm-dropdown-item{padding:8px 12px;border-bottom:1px solid var(--divisor-suave);font-size:12.5px;color:var(--tinta-media-2);cursor:pointer;}
+.fm-dropdown-item{display:block;width:100%;padding:8px 12px;border-bottom:1px solid var(--divisor-suave);font-size:12.5px;color:var(--tinta-media-2);cursor:pointer;}
 .fm-dropdown-item:last-child{border-bottom:none;}
 .fm-dropdown-item:hover{background:var(--apoio);color:var(--ink);}
 .fm-dropdown-empty{padding:10px 12px;font-size:12px;color:var(--apagado);font-style:italic;}
@@ -489,7 +504,7 @@ select.sortsel{
 .selo.pf{color:var(--plum);}
 .selo.pj{color:var(--blue);}
 .tag-atraso{font-family:var(--font-mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;background:var(--carimbo);color:var(--painel);padding:2px 7px;border-radius:3px;}
-.cp-nome{font-family:var(--font-display);font-size:19px;font-weight:600;line-height:1.2;cursor:pointer;text-wrap:pretty;}
+.cp-nome{display:block;width:100%;font-family:var(--font-display);font-size:19px;font-weight:600;line-height:1.2;cursor:pointer;text-wrap:pretty;}
 .cp-nome:hover{color:var(--carimbo);}
 .cp-nome.vazio{font-family:var(--font-body);font-size:13px;font-weight:400;font-style:italic;color:var(--apagado);cursor:default;}
 .cp-tipo{font-size:13px;color:var(--tinta-media-2);text-wrap:pretty;}
@@ -3362,7 +3377,7 @@ function renderStats(){
   function item(num, lbl, o){
     o = o || {};
     var cls = 'regua-item'+(o.warn?' warn':'')+(o.late?' late':'')+(o.on?' on':'');
-    return '<div class="'+cls+'" onclick="'+o.onclick+'" title="'+esc(o.title||'')+'"><span class="rn">'+num+'</span><span class="rl">'+lbl+'</span></div>';
+    return '<button type="button" class="kbd-btn '+cls+'"'+(o.on?' aria-pressed="true"':'')+' onclick="'+o.onclick+'" title="'+esc(o.title||'')+'"><span class="rn">'+num+'</span><span class="rl">'+lbl+'</span></button>';
   }
   return '<div class="regua no-print">'+
     item(ativos.length,'ativos',{onclick:"App.filtroAtivos()", on:isLista&&noQuick&&ui.statusFilter==='all', title:'Ver todos os ativos'})+
@@ -3403,7 +3418,7 @@ function renderFiltersBar(){
     chip('Pessoa jurídica', ui.pessoaFilter==='pj', "App.setPessoaFilter('pj')", 'pj');
   var agruparToggle = (ui.viewMode==='lista' || ui.viewMode==='arquivados') ?
     '<span class="pf-divisor"></span>'+
-    '<label class="pf-toggle" onclick="App.toggleAgrupar()"><span class="toggle-track'+(ui.agruparPessoa?' on':'')+'"><span class="toggle-knob"></span></span>Separar em seções</label>'
+    '<button type="button" class="kbd-btn pf-toggle" role="switch" aria-checked="'+(ui.agruparPessoa?'true':'false')+'" onclick="App.toggleAgrupar()"><span class="toggle-track'+(ui.agruparPessoa?' on':'')+'"><span class="toggle-knob"></span></span>Separar em seções</button>'
     : '';
   var canalChips = chip('Todos', ui.canalFilter==='all', "App.setCanalFilter('all')");
   CANAIS.forEach(function(c){
@@ -3594,7 +3609,7 @@ function renderVinculados(p){
   var statusMap = getStatusMap();
   var rows = vinculados.slice().sort(function(a,b){ return a.dataProtocolo<b.dataProtocolo?1:-1; }).map(function(v){
     var st = statusMap[v.status] || {label:v.status, cor:'gray'};
-    return '<div class="hist-row"><span style="cursor:pointer;text-decoration:underline;" onclick="App.openEdit(\''+v.id+'\')">'+esc(formatBR(v.dataProtocolo))+(v.numeroProtocolo?(' — nº '+esc(v.numeroProtocolo)):'')+' — '+esc(v.cliente||'Sem identificação')+'</span><span class="stamp '+st.cor+'" style="transform:none;">'+esc(st.label)+'</span></div>';
+    return '<div class="hist-row"><button type="button" class="kbd-btn" style="cursor:pointer;text-decoration:underline;" onclick="App.openEdit(\''+v.id+'\')">'+esc(formatBR(v.dataProtocolo))+(v.numeroProtocolo?(' — nº '+esc(v.numeroProtocolo)):'')+' — '+esc(v.cliente||'Sem identificação')+'</button><span class="stamp '+st.cor+'" style="transform:none;">'+esc(st.label)+'</span></div>';
   }).join('');
   return '<div style="margin-top:8px;">'+toggle+'<div class="hist-box'+(justOpenedKey==='vinc:'+p.id?' anim-in':'')+'">'+rows+'</div></div>';
 }
@@ -3819,7 +3834,7 @@ function renderFicha(p, dentroDeGrupo){
   var nomeHtml = dentroDeGrupo
     ? '<div class="cp-tipo" style="font-size:14px;font-weight:500;color:var(--ink);">'+tipoLinha+'</div>'
     : (
-      (p.cliente ? '<div class="cp-nome" title="Ver histórico deste usuário" onclick="App.showClienteHistory(\''+jsAttr(p.cliente)+'\')">'+esc(p.cliente)+'</div>' : '<div class="cp-nome vazio">Sem identificação de usuário</div>')+
+      (p.cliente ? '<button type="button" class="kbd-btn cp-nome" title="Ver histórico deste usuário" onclick="App.showClienteHistory(\''+jsAttr(p.cliente)+'\')">'+esc(p.cliente)+'</button>' : '<div class="cp-nome vazio">Sem identificação de usuário</div>')+
       '<div class="cp-tipo">'+tipoLinha+'</div>'
     );
   return ''+
@@ -3986,7 +4001,7 @@ function renderLinhaVinculoPanel(x, motivo){
   var checked = !!vinculoPanelSelected[x.id];
   return ''+
   '<div class="vp-linha'+(checked?' sel':'')+'">'+
-    '<div class="vp-check'+(checked?' on':'')+'" onclick="App.toggleVinculoPanelSelecao(\''+x.id+'\')">'+(checked?'&#10003;':'')+'</div>'+
+    '<button type="button" class="kbd-btn vp-check'+(checked?' on':'')+'" role="checkbox" aria-checked="'+(checked?'true':'false')+'" aria-label="Vincular '+esc(x.cliente||'protocolo sem identificação')+'" onclick="App.toggleVinculoPanelSelecao(\''+x.id+'\')">'+(checked?'&#10003;':'')+'</button>'+
     '<div style="min-width:0;">'+
       '<div class="vp-linha-top">'+
         '<span class="vp-num">'+(x.numeroProtocolo?('nº '+esc(x.numeroProtocolo)):'sem nº')+'</span>'+
@@ -4123,7 +4138,7 @@ function renderKanbanCard(p){
   var foot = [];
   if(p.responsavel) foot.push(esc(p.responsavel));
   (p.canais||[]).forEach(function(c){ foot.push(esc((CANAL_MAP[c]||{label:c}).label)); });
-  return '<div class="kb-card '+(p.tipoPessoa==='pj'?'pj':'pf')+'" draggable="true" ondragstart="App.dragStart(event,\''+p.id+'\')" ondragend="App.dragEnd(event)" onclick="App.openEdit(\''+p.id+'\')">'+
+  return '<button type="button" class="kbd-btn kb-card '+(p.tipoPessoa==='pj'?'pj':'pf')+'" draggable="true" ondragstart="App.dragStart(event,\''+p.id+'\')" ondragend="App.dragEnd(event)" onclick="App.openEdit(\''+p.id+'\')">'+
     '<div class="kb-meta">'+
       '<span class="selo '+(p.tipoPessoa==='pj'?'pj':'pf')+'">'+(p.tipoPessoa==='pj'?'PJ':'PF')+'</span>'+
       (p.numeroProtocolo ? '<span class="kb-num">nº '+esc(p.numeroProtocolo)+'</span>' : '')+
@@ -4133,7 +4148,7 @@ function renderKanbanCard(p){
     ((p.tipos && p.tipos.length) ? '<div class="kb-tipo">'+esc(p.tipos.join(' · '))+'</div>' : '')+
     prazoHtml+
     (foot.length ? '<div class="kb-foot">'+foot.join(' · ')+'</div>' : '')+
-  '</div>';
+  '</button>';
 }
 function renderKanban(list){
   var cols = state.statusList.map(function(s){
@@ -4227,7 +4242,7 @@ function buildTipoDropdownHtml(d){
   }).slice(0,8);
   return '<div class="fm-dropdown">'+
     (tipoMatches.length ? tipoMatches.map(function(t){
-      return '<div class="fm-dropdown-item" onclick="App.pickTipoFromSearch(\''+jsAttr(t)+'\')">'+(d.tipos[t]?'&#10003; ':'')+esc(t)+'</div>';
+      return '<button type="button" class="kbd-btn fm-dropdown-item" onclick="App.pickTipoFromSearch(\''+jsAttr(t)+'\')">'+(d.tipos[t]?'&#10003; ':'')+esc(t)+'</button>';
     }).join('') : '<div class="fm-dropdown-empty">Nenhum tipo encontrado com esse termo nesta categoria.</div>')+
   '</div>';
 }
@@ -4438,7 +4453,7 @@ function renderModal(){
     selectedVinculoChipsHtml = '<div style="margin-bottom:6px;">'+vinculoIdsAtuais.map(function(id){
       var p = state.protocolos.filter(function(x){return x.id===id;})[0];
       if(!p) return '';
-      return '<span class="tag" style="cursor:pointer;" onclick="App.toggleVinculo(\''+id+'\')" title="Clique para remover o vínculo">'+esc(p.cliente||p.numeroProtocolo||'(sem nome)')+' &times;</span> ';
+      return '<button type="button" class="kbd-btn tag" style="cursor:pointer;" onclick="App.toggleVinculo(\''+id+'\')" title="Clique para remover o vínculo" aria-label="Remover vínculo com '+esc(p.cliente||p.numeroProtocolo||'(sem nome)')+'">'+esc(p.cliente||p.numeroProtocolo||'(sem nome)')+' &times;</button> ';
     }).join('')+'</div>';
   }
   var vinculoResultsHtml = '';
@@ -4542,7 +4557,7 @@ function renderModal(){
       '<div class="fm-sec-head"><span class="fm-sec-label">4 &middot; Prazo</span><span class="fm-sec-rule"></span></div>'+
       '<div class="fm-prazo-box">'+
         '<div class="fm-prazo-toggle-wrap">'+
-          '<span class="fm-toggle-lg'+(d.docsCompletos?' on':'')+'" onclick="App.setDocsCompletos('+(!d.docsCompletos)+')"><span class="knob"></span></span>'+
+          '<button type="button" class="kbd-btn fm-toggle-lg'+(d.docsCompletos?' on':'')+'" role="switch" aria-checked="'+(d.docsCompletos?'true':'false')+'" aria-label="Documentação completa" onclick="App.setDocsCompletos('+(!d.docsCompletos)+')"><span class="knob"></span></button>'+
           '<span class="fm-prazo-toggle-lbl">Documentação completa</span>'+
         '</div>'+
         prazoExtraHtml+
@@ -5143,7 +5158,7 @@ function renderTarefaLinha(t){
           '<span style="font-family:var(--font-mono);font-size:11px;color:'+(atrasada?'var(--carimbo)':'var(--ink-soft,#888)')+';">prevista '+esc(formatBR(t.data))+(atrasada?' · atrasada':'')+'</span>'+
         '</div>'+
         '<div style="font-size:10.5px;color:var(--ink-soft,#888);margin-top:1px;">criada em '+criadaEm+tipoTag+'</div>'+
-        (protocolo ? ('<div style="font-size:11.5px;color:var(--ink-soft,#888);margin-top:2px;">vinculada a <span style="cursor:pointer;text-decoration:underline;" onclick="App.openEdit(\''+protocolo.id+'\')">'+(protocolo.numeroProtocolo?('nº '+esc(protocolo.numeroProtocolo)):esc(protocolo.cliente||'protocolo'))+'</span></div>') : '')+
+        (protocolo ? ('<div style="font-size:11.5px;color:var(--ink-soft,#888);margin-top:2px;">vinculada a <button type="button" class="kbd-btn" style="cursor:pointer;text-decoration:underline;" onclick="App.openEdit(\''+protocolo.id+'\')">'+(protocolo.numeroProtocolo?('nº '+esc(protocolo.numeroProtocolo)):esc(protocolo.cliente||'protocolo'))+'</button></div>') : '')+
       '</div>'+
       '<button type="button" class="ib28" title="Excluir tarefa" onclick="App.pedirExcluirTarefa(\''+t.id+'\')">&times;</button>'+
     '</div>'+
@@ -5162,9 +5177,9 @@ function renderTarefasModal(){
     '</div>';
   }else{
     var resultadosHtml = computeBuscaProtocoloTarefa(tarefaBuscaProtocolo).map(function(p){
-      return '<div style="padding:6px 9px;border:1px solid var(--line);border-radius:var(--r-field);cursor:pointer;font-size:12px;margin-top:4px;" onclick="App.selecionarProtocoloTarefa(\''+p.id+'\')">'+
+      return '<button type="button" class="kbd-btn" style="display:block;width:100%;padding:6px 9px;border:1px solid var(--line);border-radius:var(--r-field);cursor:pointer;font-size:12px;margin-top:4px;" onclick="App.selecionarProtocoloTarefa(\''+p.id+'\')">'+
         (p.numeroProtocolo?('nº '+esc(p.numeroProtocolo)+' — '):'')+esc(p.cliente||'sem nome')+
-      '</div>';
+      '</button>';
     }).join('');
     protocoloPickerHtml = '<input type="text" class="fm-input" aria-label="Buscar protocolo para vincular à tarefa" placeholder="Buscar por nome ou nº de protocolo…" value="'+esc(tarefaBuscaProtocolo)+'" oninput="App.setTarefaBuscaProtocolo(this.value)">'+resultadosHtml;
   }
@@ -5263,7 +5278,7 @@ function renderAgendaPainel(tipo, buckets){
     if(!lista.length) return '<div class="hint">Todos os protocolos ativos já têm um próximo passo agendado.</div>';
     return lista.map(function(p){
       return '<div class="agenda-row">'+
-        '<span class="agenda-row-nome" onclick="App.openEdit(\''+p.id+'\')">'+esc(p.cliente||'Sem identificação')+'</span>'+
+        '<button type="button" class="kbd-btn agenda-row-nome" onclick="App.openEdit(\''+p.id+'\')">'+esc(p.cliente||'Sem identificação')+'</button>'+
         '<span class="agenda-row-meta">'+(p.numeroProtocolo?('nº '+esc(p.numeroProtocolo)):'sem nº')+'</span>'+
       '</div>';
     }).join('');
@@ -5273,7 +5288,7 @@ function renderAgendaPainel(tipo, buckets){
   return itens.map(function(it){
     var p = it.p, pd = it.pd;
     return '<div class="agenda-row">'+
-      '<span class="agenda-row-nome" onclick="App.openEdit(\''+p.id+'\')">'+esc(p.cliente||'Sem identificação')+'</span>'+
+      '<button type="button" class="kbd-btn agenda-row-nome" onclick="App.openEdit(\''+p.id+'\')">'+esc(p.cliente||'Sem identificação')+'</button>'+
       '<span class="agenda-row-desc">'+esc(pd.descricao)+'</span>'+
       '<span class="agenda-row-meta">'+esc(formatBR(pd.dataPrevista))+(pd.responsavel?(' · '+esc(pd.responsavel)):'')+'</span>'+
     '</div>';
