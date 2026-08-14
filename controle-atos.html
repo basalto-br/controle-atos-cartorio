@@ -1711,6 +1711,73 @@ function withFocus(fn){
   window.scrollTo(0, winScrollY);
 }
 
+/* ---------- Semantica e confinamento dos paineis modais ----------
+   Os nove paineis sao parte do innerHTML do #app e sao reconstruidos a cada
+   render, entao marcar cada um na string de origem seria repetir a mesma
+   coisa em nove lugares e esquecer no decimo. A marcacao e aplicada aqui,
+   uma vez por render, sobre o DOM ja montado. */
+
+/* Guarda o onclick de quem abriu o painel, para devolver o foco ao fechar.
+   Guardamos a string, e nao o elemento: o render recria o DOM inteiro e a
+   referencia ao no antigo morre, mas o mesmo botao volta com o mesmo
+   onclick. So registra quando nao ha painel aberto — assim o disparador
+   guardado e sempre o da tela de fundo. */
+var disparadorDoPainel = null;
+var painelEstavaAberto = false;
+
+document.addEventListener('click', function(e){
+  if(document.querySelector('.side-overlay')) return;
+  var alvo = e.target && e.target.closest ? e.target.closest('[onclick]') : null;
+  if(alvo) disparadorDoPainel = alvo.getAttribute('onclick');
+}, true);
+
+function devolverFocoAoDisparador(){
+  if(!disparadorDoPainel) return;
+  var cands = document.querySelectorAll('[onclick]');
+  for(var i=0;i<cands.length;i++){
+    if(cands[i].getAttribute('onclick') === disparadorDoPainel){ cands[i].focus(); return; }
+  }
+}
+
+function aplicarSemanticaDeModal(){
+  var app = document.getElementById('app');
+  if(!app) return;
+  for(var i=0;i<app.children.length;i++) app.children[i].removeAttribute('inert');
+
+  var overlay = document.querySelector('.side-overlay');
+  if(!overlay){
+    if(painelEstavaAberto) devolverFocoAoDisparador();
+    painelEstavaAberto = false;
+    return;
+  }
+  painelEstavaAberto = true;
+
+  var painel = overlay.querySelector('.side-panel');
+  if(painel){
+    painel.setAttribute('role','dialog');
+    painel.setAttribute('aria-modal','true');
+    if(painel.tabIndex < 0) painel.tabIndex = -1;
+    var titulo = painel.querySelector('.side-panel-head h1, .side-panel-head h2, .side-panel-head h3');
+    if(titulo){
+      if(!titulo.id) titulo.id = 'painel-titulo';
+      painel.setAttribute('aria-labelledby', titulo.id);
+    }
+    /* So assume o foco se ninguem dentro do painel ja tem — openEdit, por
+       exemplo, manda o foco para o campo de nome, e isso tem precedencia. */
+    var focado = document.activeElement;
+    if(!focado || focado === document.body || !painel.contains(focado)) painel.focus();
+  }
+
+  /* Confinamento: tudo que nao e o ramo do painel sai da ordem de tabulacao
+     e da arvore de acessibilidade. Sem isto o Tab sai do painel e passeia
+     pela tela de fundo, que continua inteira focavel. */
+  var ramo = overlay;
+  while(ramo.parentElement && ramo.parentElement !== app) ramo = ramo.parentElement;
+  for(var j=0;j<app.children.length;j++){
+    if(app.children[j] !== ramo) app.children[j].setAttribute('inert','');
+  }
+}
+
 /* ===================== App ===================== */
 var App = {};
 window.App = App;
@@ -3333,6 +3400,7 @@ function renderAll(){
   justCreatedId = null;
   justSwitchedView = false;
   modalJustOpened = false;
+  aplicarSemanticaDeModal();
 }
 
 function renderHeader(){
