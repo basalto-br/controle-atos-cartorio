@@ -525,7 +525,7 @@ select.sortsel{
 .cp-nome.vazio{font-family:var(--font-body);font-size:13px;font-weight:400;font-style:italic;color:var(--apagado);cursor:default;}
 .cp-tipo{font-size:13px;color:var(--tinta-media-2);text-wrap:pretty;}
 .cp-rodape{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.chip-status{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-body);font-size:11.5px;font-weight:600;border-radius:var(--r-chip);padding:4px 11px 4px 9px;border:none;cursor:pointer;-webkit-appearance:none;appearance:none;}
+.chip-status{display:inline-flex;align-items:center;gap:6px;min-height:24px;font-family:var(--font-body);font-size:11.5px;font-weight:600;border-radius:var(--r-chip);padding:4px 11px 4px 9px;border:none;cursor:pointer;-webkit-appearance:none;appearance:none;}
 .chip-status .pt{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
 .cp-canais{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--apagado);}
 .cp-acoes{margin-left:auto;display:flex;gap:4px;}
@@ -753,10 +753,23 @@ select.sortsel{
 /* toasts (feedback + desfazer) */
 #toast-layer{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;}
 .toast{background:var(--ink);color:var(--card);padding:10px 14px;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,0.25);font-size:13px;display:flex;align-items:center;gap:14px;pointer-events:auto;animation:toastIn .18s ease;max-width:90vw;}
-.toast-undo{background:none;border:1px solid var(--card);color:var(--card);border-radius:4px;padding:3px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body);}
+.toast-undo{background:none;border:1px solid var(--card);color:var(--card);border-radius:4px;padding:3px 10px;min-height:24px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body);}
 .toast-undo:hover{background:var(--card);color:var(--ink);}
 .toast-out{opacity:0;transform:translateY(6px);transition:opacity .2s ease,transform .2s ease;}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* Quem pediu menos movimento no sistema recebe o estado final na hora, sem a
+   transicao. Nao e zero: um tempo minimo mantem de pe os handlers de
+   animationend e transitionend, que zerados podem nem disparar. A ferramenta
+   e de uso diario, e o realce de protocolo novo dura 1,8s a cada criacao. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
+}
 
 /* ficha para impressão (oculta na tela) */
 #fichaPrintArea{display:none;}
@@ -764,8 +777,8 @@ select.sortsel{
 #fichaPrintArea .fp-eyebrow{font-family:var(--font-mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;}
 #fichaPrintArea .fp-title{font-family:var(--font-display);font-size:22px;margin:4px 0 14px;}
 #fichaPrintArea .fp-table{width:100%;border-collapse:collapse;font-size:13px;}
-#fichaPrintArea .fp-table td{border:1px solid #999;padding:6px 8px;vertical-align:top;}
-#fichaPrintArea .fp-table td.pl{width:170px;font-weight:600;background:#f0f0f0;}
+#fichaPrintArea .fp-table td,#fichaPrintArea .fp-table th{border:1px solid #999;padding:6px 8px;vertical-align:top;}
+#fichaPrintArea .fp-table th.pl{width:170px;font-weight:600;background:#f0f0f0;text-align:left;}
 #fichaPrintArea .fp-sec{margin-top:14px;font-size:13px;}
 #fichaPrintArea .fp-h{font-family:var(--font-display);font-size:15px;margin-bottom:6px;border-bottom:1px solid #000;padding-bottom:3px;}
 #fichaPrintArea .fp-foot{margin-top:20px;font-family:var(--font-mono);font-size:10px;color:#555;}
@@ -2748,7 +2761,9 @@ function buildFichaPrintHTML(p){
   else if(info.isOverdue) prazoTxt = 'Atrasado há '+info.diasAtraso+' dia(s) útil(eis) — prazo era '+formatBR(info.deadline);
   else if(info.isDueToday) prazoTxt = 'Vence hoje ('+formatBR(info.deadline)+')';
   else prazoTxt = 'Faltam '+(PRAZO_DIAS_UTEIS-info.elapsedCapped)+' dia(s) útil(eis) — prazo '+formatBR(info.deadline);
-  function row(label, val){ return val ? '<tr><td class="pl">'+esc(label)+'</td><td>'+val+'</td></tr>' : ''; }
+  /* O rotulo da linha e cabecalho, nao dado: com th scope=row o leitor de
+     tela anuncia "Telefone: 99999-9999" em vez de ler as duas celulas soltas. */
+  function row(label, val){ return val ? '<tr><th scope="row" class="pl">'+esc(label)+'</th><td>'+val+'</td></tr>' : ''; }
   var docs = getChecklistDoProtocolo(p).map(function(doc){
     return ((p.documentosMarcados && p.documentosMarcados[doc]) ? '&#9745; ' : '&#9744; ')+esc(doc);
   }).join('<br>');
@@ -5133,8 +5148,8 @@ function renderAtosBalcaoModal(){
             '<div style="display:flex;align-items:baseline;gap:8px;margin-top:2px;">'+totalEditHtml+'</div>'+
           '</div>'+
           '<div class="ab-acoes-col">'+
-            '<button type="button" class="ab-btn-mais1" onclick="App.ajustarAtoBalcao(1)">+1</button>'+
-            '<button type="button" class="ab-btn-menos1" onclick="App.ajustarAtoBalcao(-1)">&minus;1</button>'+
+            '<button type="button" class="ab-btn-mais1" aria-label="Somar um ato de balcão" onclick="App.ajustarAtoBalcao(1)">+1</button>'+
+            '<button type="button" class="ab-btn-menos1" aria-label="Tirar um ato de balcão" onclick="App.ajustarAtoBalcao(-1)">&minus;1</button>'+
           '</div>'+
         '</div>'+
         '<div class="ab-somar-row" style="margin-top:18px;">'+
@@ -5397,8 +5412,8 @@ function renderAtosBalcaoStrip(){
   '<div class="faixa-balcao">'+
     '<div class="ab-strip-total"><span class="fm-label" style="margin-bottom:0;">balcão hoje</span><span class="ab-strip-num">'+totalHoje+'</span></div>'+
     '<div class="ab-strip-acoes">'+
-      '<button type="button" class="ab-strip-mais1" onclick="App.ajustarAtoBalcao(1)">+1</button>'+
-      '<button type="button" class="ab-strip-menos1" onclick="App.ajustarAtoBalcao(-1)">&minus;1</button>'+
+      '<button type="button" class="ab-strip-mais1" aria-label="Somar um ato de balcão" onclick="App.ajustarAtoBalcao(1)">+1</button>'+
+      '<button type="button" class="ab-strip-menos1" aria-label="Tirar um ato de balcão" onclick="App.ajustarAtoBalcao(-1)">&minus;1</button>'+
       '<input type="text" id="qtdBalcaoStripInput" aria-label="Quantidade de atos a somar" class="ab-strip-input" placeholder="4" onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.adicionarQuantidadeBalcao(\'qtdBalcaoStripInput\');}">'+
       '<button type="button" class="ab-strip-somar" onclick="App.adicionarQuantidadeBalcao(\'qtdBalcaoStripInput\')">somar</button>'+
     '</div>'+
