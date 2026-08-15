@@ -4280,7 +4280,7 @@ function computeVinculoSugestaoHtml(d){
     var st = statusMap[p.status] || {label:p.status||''};
     var quem = p.numeroProtocolo ? ('nº '+esc(p.numeroProtocolo)) : ('de '+esc(formatBR(p.dataProtocolo)));
     return '<div class="fm-warn" style="margin-bottom:6px;">'+
-      '<span class="fm-warn-bang">!</span>'+
+      '<span class="fm-warn-bang" aria-hidden="true">!</span>'+
       '<span class="fm-warn-txt">Já existe protocolo em andamento para este nome — <strong>'+quem+'</strong>, '+esc((st.label||'').toLowerCase())+'.</span>'+
       '<button type="button" class="fm-warn-btn" onclick="App.toggleVinculo(\''+p.id+'\')">Vincular</button>'+
     '</div>';
@@ -4362,7 +4362,12 @@ function renderModalQuickBody(d){
     '<div>'+
       '<span class="fm-label">Outorgante</span>'+
       '<input type="text" id="f_cliente" class="fm-input fm-input-nome" aria-label="Nome do usuário ou outorgante" autocomplete="name" value="'+esc(d.cliente||'')+'" placeholder="Nome do usuário / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
-      '<div id="vinculoSugestaoContainer" style="margin-top:8px;">'+computeVinculoSugestaoHtml(d)+'</div>'+
+      /* role=status: o aviso de nome repetido entra aqui depois, sem que o foco
+         saia do campo, entao so aparece na tela. Com o papel de status o leitor
+         de tela le a mensagem quando ela surge (WCAG 4.1.3). O contentor precisa
+         existir vazio desde o render — aria-live so anuncia o que muda dentro de
+         um no que ja estava na pagina. */
+      '<div id="vinculoSugestaoContainer" role="status" style="margin-top:8px;">'+computeVinculoSugestaoHtml(d)+'</div>'+
     '</div>'+
     '<div><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa" role="group" aria-label="Pessoa">'+buildPessoaSegButtons(d)+'</div></div>'+
     '<div>'+
@@ -4594,7 +4599,7 @@ function renderModal(){
   '<div class="fm-sec">'+
     '<div class="fm-sec-head"><span class="fm-sec-label">1 &middot; Outorgante</span><span class="fm-sec-rule"></span></div>'+
     '<input type="text" id="f_cliente" class="fm-input fm-input-nome" aria-label="Nome do usuário ou outorgante" autocomplete="name" value="'+esc(d.cliente||'')+'" placeholder="Nome do usuário / outorgante" oninput="App.setField(\'cliente\', this.value)" onchange="App.refreshClienteVinculoCheck(this.value)">'+
-    '<div id="vinculoSugestaoContainer">'+dupWarningHtml+'</div>'+
+    '<div id="vinculoSugestaoContainer" role="status">'+dupWarningHtml+'</div>'+
     '<div class="fm-row">'+
       '<div class="fm-field fixo"><span class="fm-label">Pessoa</span><div class="fm-seg-pessoa" role="group" aria-label="Pessoa">'+pessoaSegHtml+'</div></div>'+
       '<div class="fm-field"><label class="fm-label" for="f_clienteTelefone">Telefone (opcional)</label><div class="fm-input-row"><input type="text" id="f_clienteTelefone" class="fm-input fm-input-mono" inputmode="tel" autocomplete="tel" value="'+esc(d.clienteTelefone||'')+'" placeholder="(00) 00000-0000" oninput="App.setPhone(\'clienteTelefone\', this)">'+telAuxHtml+'</div></div>'+
