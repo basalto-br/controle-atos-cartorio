@@ -214,9 +214,26 @@ na `main`.** Sem CI — testar manualmente antes de cada commit.
   **`https://app.ritonotas.com.br`** (ver "Deploy", em Stack e comandos). Não existe
   etapa de aprovação depois do merge — **o merge *é* o deploy**. Mesclar um PR e "ver
   depois se ficou bom" não é uma opção.
-- **Não há URL de preview por branch.** O que se testa antes do PR é o servidor local
-  (porta 8123) — é a única verificação que existe antes da produção, e por isso não é
-  opcional.
+- **Existem duas verificações antes da produção, e as duas importam.**
+
+  1. **O servidor local** (porta 8123). Rápido, é onde se testa comportamento. Continua
+     não sendo opcional.
+  2. **A URL de preview da branch**, que a Cloudflare gera sozinha a cada push fora da
+     `main`: `https://<branch>.controle-atos-cartorio.pages.dev`. É a única forma de
+     testar o que só existe na Cloudflare — em especial o `_headers`, que o servidor
+     local não aplica. Confirmado: a CSP vem na resposta do preview.
+
+  O alias da branch é o nome com tudo que não é letra ou número virando `-`, **truncado
+  em 28 caracteres**. `fix/doc-github-pages-desligado` (30) vira
+  `fix-doc-github-pages-desliga` (28). Consultar o nome inteiro devolve 404 e parece que
+  o preview não existe.
+
+  A branch de produção **não** ganha alias: `main.controle-atos-cartorio.pages.dev` dá
+  404, porque a `main` é servida na raiz do projeto e em `app.ritonotas.com.br`.
+
+  O preview roda **em modo de teste** — o host não é `app.ritonotas.com.br`, então a
+  detecção por hostname já separa o armazenamento. Testar no preview não toca no dado
+  real.
 - **Rollback = `git revert` do merge + push.** Reverter o commit de merge na `main` e
   empurrar; o Pages republica sozinho. **Nunca `git reset` nem force-push na `main`** —
   o histórico da produção tem que continuar auditável.
