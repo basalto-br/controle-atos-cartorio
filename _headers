@@ -17,6 +17,7 @@
   Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), midi=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), browsing-topics=()
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Resource-Policy: same-origin
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
 
 # Notas sobre cada escolha que não é óbvia:
 #
@@ -51,6 +52,29 @@
 #   Mais estrito que o strict-origin-when-cross-origin do site. Aqui cabe: o app não
 #   linka para fora, então não há referrer legítimo a vazar — e a URL pode conter
 #   estado que não interessa a ninguém.
+#
+# Cache-Control: public, max-age=0, must-revalidate, no-transform
+#   Os três primeiros valores são EXATAMENTE o padrão que a Cloudflare Pages já
+#   servia — foram copiados da resposta de produção para não mudar o cache por
+#   acidente. `max-age=0, must-revalidate` é o que faz o merge aparecer na hora:
+#   o navegador revalida antes de usar. Não troque por max-age maior sem entender
+#   que isso passa a atrasar a publicação.
+#
+#   O que muda é `no-transform`, e ele resolve um problema concreto: no plano
+#   gratuito a Cloudflare liga sozinha o RUM da zona e injeta um <script> de
+#   analytics (static.cloudflareinsights.com) em toda página HTML servida a
+#   navegador. Num app vendido com a promessa de que o dado não sai do computador,
+#   uma tag de rastreamento de terceiro é má notícia — mesmo bloqueada, como estava
+#   sendo, pela CSP acima.
+#
+#   `no-transform` proíbe o proxy de alterar o corpo da resposta, e a injeção é uma
+#   alteração. Foi a única saída encontrada que resolve só aqui: desligar o RUM no
+#   painel só existe no host apex, e derrubaria junto a analítica da landing, que é
+#   legítima e desejada. Ver handoff.md para a caçada inteira.
+#
+#   Efeito colateral aceito: desliga também as otimizações automáticas da Cloudflare
+#   (minificação, Polish). Aqui não custa nada — o app é um arquivo escrito à mão com
+#   as fontes já embutidas em base64.
 #
 # Strict-Transport-Security NÃO está aqui, de propósito.
 #   HSTS é difícil de desfazer: uma vez que o navegador guarda a política, ele recusa
