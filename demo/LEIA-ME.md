@@ -9,44 +9,49 @@ este repositório é público.
 
 ## Como usar
 
-**1. Gere os dados no dia da conversa.**
+1. Abra **`controle-atos-cartorio.pages.dev`** no navegador.
+2. Clique em **"Carregar dados de demonstração"**, no meio da tela vazia.
 
-```bash
-python demo/gerar-dados-demo.py
-```
+Só isso. Não há arquivo para baixar, nem seletor de arquivo, nem nada a preparar
+antes — inclusive na máquina de outra pessoa, que é justamente o caso em que
+baixar um `.json` desconhecido seria constrangedor ou bloqueado.
 
-As datas são relativas ao dia em que o script roda. Um arquivo gerado há duas
-semanas mostra tudo atrasado — que é a impressão oposta da que se quer passar. Se
-o dia não for útil, o script ancora tudo no próximo dia útil e avisa na saída.
+O mesmo botão fica em **⚙ Configurações → Demonstração**, para recarregar depois
+que já houver dados na tela. Aí ele pede confirmação, porque substitui tudo.
 
-**2. Abra a ferramenta em `controle-atos-cartorio.pages.dev`.**
+## Onde a demonstração roda
 
-Esse endereço serve a mesma `main` que a produção, mas **não é** produção: como o
-host não é `app.ritonotas.com.br`, o app entra em modo de teste sozinho — faixa
-vermelha no topo, `[TESTE]` no título da aba e armazenamento separado
-(`cartorio-data-TESTE`).
+Em `controle-atos-cartorio.pages.dev`, que serve a mesma `main` que a produção mas
+**não é** produção: como o host não é `app.ritonotas.com.br`, o app entra em modo
+de teste sozinho — faixa vermelha no topo, `[TESTE]` no título da aba e chave de
+armazenamento separada.
 
-A faixa vermelha aparece na demonstração. Se atrapalhar, o servidor local
-(`.claude/serve.ps1`, porta 8123) tem o mesmo comportamento e roda sem internet —
-o que também protege contra o wi-fi do cartório visitado.
+O servidor local (`.claude/serve.ps1`, porta 8123) tem o mesmo comportamento e roda
+sem internet, o que protege contra o wi-fi do cartório visitado.
 
-**3. Importe `demo/dados-demo.json`.**
+**Em `app.ritonotas.com.br` o botão não existe.** Não é escondido: não é
+renderizado, e a função recusa mesmo se alguém a chamar pelo console. A trava é
+`IS_PROD`, a mesma que governa a faixa vermelha e a chave de armazenamento.
 
-Não existe botão de "modo demonstração" — os dados entram pelo caminho normal de
-restauração de backup: **⚙ Configurações → Backup → "Restaurar de um backup"**, e
-escolha o arquivo no seletor.
+## Não fica nada na máquina
 
-> **A importação substitui tudo.** É inofensivo no armazenamento de teste, que
-> existe para isso. **Nunca faça isso em `app.ritonotas.com.br`** — lá apagaria
-> protocolo real do cartório, e não há como desfazer.
+Sem pasta de dados conectada, o app guarda tudo **em memória** — fechou a aba,
+acabou. Nada em disco, nada no `localStorage`, nada no IndexedDB, e os backups
+automáticos nem chegam a rodar.
 
-Feito uma vez, os dados ficam no navegador daquela máquina. Só é preciso repetir
-em computador novo, ou quando quiser as datas atualizadas.
+Isso é o que torna seguro demonstrar no computador do próprio cartório visitado. E
+serve de argumento na conversa: dá para recarregar a página na frente do tabelião e
+mostrar que não sobrou nada — o que demonstra, de graça, a promessa central do
+produto.
+
+O outro lado da moeda: a demonstração precisa ser carregada de novo a cada aba
+nova. Como é um clique, não incomoda.
 
 ## O que cada protocolo mostra
 
-Cada um exercita uma regra diferente. Ao editar a lista, veja o que está apagando —
-vários são o único caso que exercita o que exercitam.
+São 15, e cada um exercita uma regra diferente. Ao editar a lista, veja o que está
+apagando — vários são o único caso que exercita o que exercitam. Cada entrada tem
+um campo `mostra`, no código, dizendo para que serve.
 
 | Protocolo | O que demonstra |
 |---|---|
@@ -69,17 +74,26 @@ Fora dos protocolos: três responsáveis, três tarefas no painel (uma com check
 de anotação no livro, um substabelecimento de outra serventia e uma tarefa livre),
 e doze dias úteis de atos de balcão para o gráfico ter forma.
 
-## Sobre o gerador
+## Onde mexer
 
-O arquivo de saída é exatamente o que `App.exportBackup` grava: o objeto `state`
-inteiro. Entra pelo mesmo caminho de importação de backup e passa por `migrate()`,
-então campo ausente aqui é preenchido lá.
+Tudo vive no `controle-atos.html`, na seção **"Dados de demonstração"**, logo antes
+de "Persistência". Para mudar a lista, edite `demoEspecificacoes()`.
 
-`statusList` fica **de fora de propósito**. Sem a chave, `migrate()` semeia as 8
-fases padrão. Fixá-la aqui congelaria a demonstração numa versão antiga das fases
+Três decisões que valem conhecer antes de alterar:
+
+**É gerador, não arquivo.** As datas são calculadas na hora, relativas ao dia em
+que se clica, então a demonstração nunca envelhece. Um arquivo fixo mostraria tudo
+atrasado depois de uma semana — a impressão contrária à que se quer causar.
+
+**Usa `addBusinessDays` e `isBusinessDay` do próprio app.** Não há um segundo
+calendário de feriados para divergir em silêncio. Uma versão anterior deste
+material era um script em Python que espelhava esse cálculo; foi removida
+justamente por isso.
+
+**A âncora é o próximo dia útil quando hoje não é.** Cartório não abre no fim de
+semana. Sem isso, num domingo o protocolo que deveria "vencer hoje" venceria só na
+segunda, e os deslocamentos de 0 e de 1 dia útil cairiam na mesma data.
+
+**`statusList` fica fora do estado gerado**, de propósito. Sem a chave, `migrate()`
+semeia as 8 fases padrão; fixá-la congelaria a demonstração numa versão antiga
 assim que alguém editasse `DEFAULT_STATUS_LIST`.
-
-O cálculo de dias úteis e o calendário de feriados são espelhados do
-`controle-atos.html`. Se os feriados mudarem lá, mudem aqui também — o prazo de 5
-dias úteis depende dos dois concordarem, e o desencontro só apareceria como uma
-data estranha na tela, sem erro nenhum.

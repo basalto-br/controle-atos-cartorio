@@ -63,11 +63,11 @@ ferramenta é hoje, e continua valendo.**
 
 - `controle-atos.html` — app inteiro (dados, lógica, render, estilo).
 - `index.html` — redirect estático pra `controle-atos.html`.
-- `demo/` — dados fictícios para apresentar a ferramenta. `gerar-dados-demo.py`
-  emite um backup completo com datas relativas ao dia em que roda; entra pelo
-  caminho normal de importação e passa por `migrate()`, sem tocar no app. O
-  cálculo de dias úteis e o calendário de feriados são **espelhados** do
-  `controle-atos.html` — mudou feriado lá, mude aqui. Ver `demo/LEIA-ME.md`.
+- `demo/LEIA-ME.md` — como usar os dados de demonstração. **Os dados em si não
+  são arquivo**: são gerados em JavaScript, na seção "Dados de demonstração" do
+  `controle-atos.html`, logo antes de "Persistência". Editar a lista =
+  `demoEspecificacoes()`. Travado em `!IS_PROD`: em `app.ritonotas.com.br` os
+  botões não são renderizados e `App.carregarDemonstracao` recusa.
 - **Não manter um mapa de linhas do arquivo** (já foi tentado com um
   `ARCHITECTURE.md` e removido) — reconferir as faixas a cada mudança de tamanho
   do arquivo custava um agente inteiro relendo tudo, mais caro do que o que
