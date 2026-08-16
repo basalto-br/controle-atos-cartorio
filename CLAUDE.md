@@ -63,6 +63,11 @@ ferramenta é hoje, e continua valendo.**
 
 - `controle-atos.html` — app inteiro (dados, lógica, render, estilo).
 - `index.html` — redirect estático pra `controle-atos.html`.
+- `demo/` — dados fictícios para apresentar a ferramenta. `gerar-dados-demo.py`
+  emite um backup completo com datas relativas ao dia em que roda; entra pelo
+  caminho normal de importação e passa por `migrate()`, sem tocar no app. O
+  cálculo de dias úteis e o calendário de feriados são **espelhados** do
+  `controle-atos.html` — mudou feriado lá, mude aqui. Ver `demo/LEIA-ME.md`.
 - **Não manter um mapa de linhas do arquivo** (já foi tentado com um
   `ARCHITECTURE.md` e removido) — reconferir as faixas a cada mudança de tamanho
   do arquivo custava um agente inteiro relendo tudo, mais caro do que o que
