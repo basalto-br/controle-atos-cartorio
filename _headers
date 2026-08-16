@@ -1,0 +1,58 @@
+# Cabeçalhos de segurança — lidos pela Cloudflare Pages na publicação.
+#
+# A promessa central do produto é que o dado do cartório não sai do computador.
+# Até aqui isso era uma propriedade do código: nenhuma requisição de rede, fontes
+# embutidas em base64, nenhum CDN. Estes cabeçalhos transformam a promessa em algo
+# que o NAVEGADOR impõe — mesmo que um dia alguém injete HTML na página.
+#
+# Ao mexer, teste no preview da branch antes do merge: erro de CSP não aparece na
+# tela, aparece só no console, e o sintoma é um botão que silenciosamente para de
+# funcionar.
+
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src data:; connect-src 'none'; form-action 'none'; frame-ancestors 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; object-src 'none'; media-src 'none'; manifest-src 'none'; base-uri 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), midi=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), browsing-topics=()
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+
+# Notas sobre cada escolha que não é óbvia:
+#
+# connect-src 'none'
+#   O mais importante da lista. Bloqueia fetch, XHR, WebSocket, EventSource e
+#   sendBeacon. Conferido que o código não usa nenhum deles (zero ocorrências), então
+#   não quebra nada — e passa a impedir exfiltração de protocolo mesmo em caso de
+#   injeção. É o que dá dente à frase "os dados nunca saem do seu computador".
+#
+# script-src 'unsafe-inline'
+#   Indesejado, e inevitável hoje: o app usa 167 onclick e 56 oninput/onchange
+#   inline, que é a arquitetura descrita no CLAUDE.md. Manipulador inline não aceita
+#   nonce nem hash — ou se permite tudo, ou o app inteiro para. Tirar isso exigiria
+#   trocar o modelo de eventos por addEventListener, o que é refatoração grande e
+#   arriscada, não item de segurança rápido.
+#
+# style-src 'unsafe-inline'
+#   Mesma razão: 296 atributos style= inline, mais o <style> do cabeçalho.
+#
+# font-src data:
+#   As fontes são base64 embutidas no CSS. Sem 'self' de propósito — não há arquivo
+#   de fonte para servir, e o que não é necessário fica proibido.
+#
+# img-src inclui blob:
+#   Exportação de CSV e backup criam blob: via createObjectURL.
+#
+# frame-ancestors 'none'
+#   Impede que a ferramenta seja embutida em iframe de terceiro. O X-Frame-Options
+#   logo abaixo é o equivalente antigo, mantido só para navegador que ignora CSP.
+#
+# Referrer-Policy: no-referrer
+#   Mais estrito que o strict-origin-when-cross-origin do site. Aqui cabe: o app não
+#   linka para fora, então não há referrer legítimo a vazar — e a URL pode conter
+#   estado que não interessa a ninguém.
+#
+# Strict-Transport-Security NÃO está aqui, de propósito.
+#   HSTS é difícil de desfazer: uma vez que o navegador guarda a política, ele recusa
+#   HTTP naquele domínio até o max-age expirar. Vale ligar depois, com max-age curto,
+#   em SSL/TLS → Edge Certificates, e só aumentar quando estiver estável.
