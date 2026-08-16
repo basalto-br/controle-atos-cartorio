@@ -5,7 +5,7 @@ escrituras) pra cartório de notas. Acompanha prazo, status de andamento, víncu
 entre protocolos, checklist de documentos e agenda de pendências — tudo num único
 arquivo HTML, sem servidor, sem instalação.
 
-**Usar agora**: https://fabricio-lv.github.io/controle-atos-cartorio/
+**Usar agora**: https://app.ritonotas.com.br
 
 ## Sobre os dados: código público, dados sempre locais
 

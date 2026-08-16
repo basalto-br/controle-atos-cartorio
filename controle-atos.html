@@ -7,11 +7,15 @@
 <script>
 /* ==================== AMBIENTE: teste x produção ====================
 
-   >>>>>>>>>>  TROQUE 'app.EXEMPLO.com.br' PELO SEU DOMÍNIO REAL  <<<<<<<<<<
+   >>>  MUDAR HOST_PRODUCAO MUDA A CHAVE DOS DADOS. Leia antes de trocar.  <<<
 
-   Enquanto estiver com o valor de exemplo, TUDO é tratado como TESTE —
-   inclusive o site publicado. Isso é de propósito: o padrão seguro é teste,
-   nunca produção. Só é produção se o hostname bater exatamente.
+   O padrão seguro é teste, nunca produção: só é produção se o hostname bater
+   exatamente. Qualquer outro host usa STORAGE_KEY, FS_DATA_FILE e FS_BACKUP_DIR
+   com sufixo de teste — ou seja, um conjunto de dados inteiramente separado.
+
+   A consequência: trocar este valor com protocolo real já lançado faz os dados
+   SUMIREM DA TELA. Eles continuam salvos, sob a chave antiga, mas o app passa a
+   ler outra. Se o domínio mudar um dia, migre o conteúdo da chave antes.
 
    Detecção em tempo de execução, pelo hostname: não há etapa de build, é o
    mesmo arquivo se comportando diferente conforme o domínio que o serve.
@@ -22,7 +26,7 @@
    aparece já na primeira pintura (sem piscar o layout normal antes), e esta
    é a definição ÚNICA — o script principal lá embaixo reaproveita estas duas
    variáveis, para o domínio não ficar escrito em dois lugares e divergir. */
-var HOST_PRODUCAO = 'app.EXEMPLO.com.br';
+var HOST_PRODUCAO = 'app.ritonotas.com.br';
 var IS_PROD = (location.hostname === HOST_PRODUCAO);
 if(!IS_PROD){
   document.documentElement.classList.add('ambiente-teste');
