@@ -13,8 +13,8 @@ ferramenta é hoje, e continua valendo.**
 ### O que já é verdade hoje
 
 - Uso individual, dados locais, um usuário por instalação.
-- Hospedagem no GitHub Pages, sem domínio próprio. A mudança para Cloudflare Pages está
-  planejada e **ainda não foi feita** — ver "Publicação", no Fluxo de trabalho.
+- Hospedagem na **Cloudflare Pages**, em `app.ritonotas.com.br`. Repositório na
+  organização `basalto-br` — ver "Publicação", no Fluxo de trabalho.
 - Ambiente detectado por hostname em tempo de execução (`HOST_PRODUCAO` / `IS_PROD`):
   qualquer host que não seja o de produção é ambiente de teste, com chave de
   armazenamento e arquivo de dados separados.
@@ -43,7 +43,8 @@ ferramenta é hoje, e continua valendo.**
 ## Stack e comandos
 
 - **Arquivo único `controle-atos.html`** — HTML + CSS + JS puro, sem framework, sem
-  build, sem bundler. `index.html` só redireciona pra ele (usado pelo GitHub Pages).
+  build, sem bundler. `index.html` só redireciona pra ele (é a entrada da hospedagem
+  estática).
   **Nunca dividir em módulos/arquivos separados sem perguntar antes**, mesmo em
   refatorações grandes.
 - **Sem testes automatizados** — verificação é manual, no navegador.
@@ -52,8 +53,9 @@ ferramenta é hoje, e continua valendo.**
   `http://localhost:8123/controle-atos.html` — não usa Node nem nenhum bundler.
   (Node foi instalado nesta máquina depois, só para os MCPs de `github`/`perplexity`,
   não para o servidor de dev.)
-- **Deploy**: push em `main` publica direto via GitHub Pages
-  (`fabricio-lv/controle-atos-cartorio`). Sem CI/CD.
+- **Deploy**: push em `main` publica direto via Cloudflare Pages, projeto
+  `controle-atos-cartorio` em `basalto-br/controle-atos-cartorio` → `app.ritonotas.com.br`.
+  Sem comando de build, servindo a raiz. Sem CI/CD.
 - Fontes embutidas em base64 no `<style>` — app não faz nenhuma requisição de rede
   depois de carregar (requisito de privacidade/LGPD; dados nunca saem do PC do usuário).
 
@@ -208,10 +210,10 @@ na `main`.** Sem CI — testar manualmente antes de cada commit.
 
 ### Publicação (a `main` é produção)
 
-- **Todo merge vai ao ar na hora.** O GitHub Pages publica a `main` em
-  `https://fabricio-lv.github.io/controle-atos-cartorio/` (ver "Deploy", em Stack e
-  comandos). Não existe etapa de aprovação depois do merge — **o merge *é* o deploy**.
-  Mesclar um PR e "ver depois se ficou bom" não é uma opção.
+- **Todo merge vai ao ar na hora.** A Cloudflare Pages publica a `main` em
+  **`https://app.ritonotas.com.br`** (ver "Deploy", em Stack e comandos). Não existe
+  etapa de aprovação depois do merge — **o merge *é* o deploy**. Mesclar um PR e "ver
+  depois se ficou bom" não é uma opção.
 - **Não há URL de preview por branch.** O que se testa antes do PR é o servidor local
   (porta 8123) — é a única verificação que existe antes da produção, e por isso não é
   opcional.
@@ -222,14 +224,31 @@ na `main`.** Sem CI — testar manualmente antes de cada commit.
   script do cabeçalho. Qualquer host diferente do de produção entra em modo de teste —
   faixa vermelha, `[TESTE]` no título, e chave de armazenamento e arquivo de dados
   separados. Testar fora da produção nunca toca no dado real.
-- **`HOST_PRODUCAO` ainda está com o valor de exemplo `app.EXEMPLO.com.br`**, então hoje
-  **tudo** é tratado como teste, inclusive o site publicado, que exibe a faixa vermelha.
-  Isso é intencional e não perde dado (o app não tem dado real), mas precisa ser trocado
-  no dia em que houver domínio próprio.
+- **`HOST_PRODUCAO` vale `app.ritonotas.com.br`.** Só nesse endereço o app se trata
+  como produção. Qualquer outro — `localhost`, `*.pages.dev`, o GitHub Pages — entra em
+  modo de teste, com armazenamento separado.
 
-**A migração para Cloudflare Pages ainda não aconteceu** — em agosto de 2026 não havia
-projeto no ar, domínio próprio nem `CNAME` no repositório, e o GitHub Pages continuava
-sendo quem publica. Quando ela acontecer, mudam quatro coisas: `HOST_PRODUCAO`, a URL do
-`README.md`, a linha de "Deploy" acima, e a decisão de desligar ou não o GitHub Pages
-(hoje ele publica de `main`/raiz, sem domínio próprio). Enquanto isso não for feito, não
-escrever em lugar nenhum que a Cloudflare é a produção.
+  **Trocar essa constante troca a chave dos dados**, e é por isso que ela foi acertada
+  antes de existir protocolo real:
+
+  | | Teste | Produção |
+  |---|---|---|
+  | `STORAGE_KEY` | `cartorio-data-TESTE` | `cartorio-data` |
+  | `FS_DATA_FILE` | `controle-atos-dados-TESTE.json` | `controle-atos-dados.json` |
+  | `FS_BACKUP_DIR` | `backups-TESTE` | `backups` |
+
+  Mudá-la depois que o cartório já lançou protocolo faz os dados **sumirem da tela** —
+  continuam salvos, mas sob a chave antiga. Se algum dia o domínio mudar, migre o
+  conteúdo da chave antes de trocar a constante.
+
+**A migração para Cloudflare Pages aconteceu em 16/08/2026.** Os dois repositórios
+(ferramenta e site) estão na organização `basalto-br`, e o projeto Pages
+`controle-atos-cartorio` publica a `main` em `app.ritonotas.com.br`, sem comando de
+build e servindo a raiz.
+
+**O GitHub Pages continua ligado** em
+`https://basalto-br.github.io/controle-atos-cartorio/`, servindo a mesma `main`. São
+duas cópias públicas do app, e **só a da Cloudflare é produção** — a do GitHub abre em
+modo de teste, com armazenamento separado. Isso é uma forma fácil de alguém lançar
+protocolo no lugar errado: desligar o Pages em Settings → Pages é a pendência que fecha
+a migração.
