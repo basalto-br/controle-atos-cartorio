@@ -28,9 +28,27 @@
    variáveis, para o domínio não ficar escrito em dois lugares e divergir. */
 var HOST_PRODUCAO = 'app.ritonotas.com.br';
 var IS_PROD = (location.hostname === HOST_PRODUCAO);
+
+/* Endereço usado para apresentar a ferramenta a quem ainda não a conhece.
+   IS_DEMO é PURAMENTE COSMÉTICO: muda o texto da faixa e o prefixo do título,
+   nada mais. Não toca em IS_PROD nem em nenhuma chave de armazenamento — o
+   host de demonstração é um ambiente de teste como qualquer outro, e grava em
+   cartorio-data-TESTE igual ao localhost.
+
+   Existe porque "AMBIENTE DE TESTE" soa como produto inacabado para um
+   tabelião que está vendo a ferramenta pela primeira vez, e o que a faixa
+   precisa dizer ali é outra coisa: que os dados são fictícios e que nada fica
+   na máquina dele. */
+var HOST_DEMO = 'demo.ritonotas.com.br';
+var IS_DEMO = (!IS_PROD && location.hostname === HOST_DEMO);
+
 if(!IS_PROD){
+  /* .ambiente-teste sempre entra: é ela que carrega o layout da faixa (altura,
+     posição, o padding compensatório no body). .ambiente-demo só troca o texto
+     e a cor por cima. */
   document.documentElement.classList.add('ambiente-teste');
-  document.title = '[TESTE] ' + document.title;
+  if(IS_DEMO) document.documentElement.classList.add('ambiente-demo');
+  document.title = (IS_DEMO ? '[DEMONSTRAÇÃO] ' : '[TESTE] ') + document.title;
 }
 </script>
 <style>
@@ -809,6 +827,14 @@ html.ambiente-teste body::before{
   font-family:var(--font-body); font-size:13px; letter-spacing:.02em;
   z-index:99999; pointer-events:none;
 }
+/* Faixa do endereço de demonstração. Só troca texto e cor — toda a geometria
+   vem da regra .ambiente-teste acima, que continua valendo junto. O vermelho de
+   alarme dá lugar à tinta sóbria: ali a faixa não avisa de risco, informa que a
+   tela é uma amostra. */
+html.ambiente-demo body::before{
+  content:'DEMONSTRAÇÃO — dados fictícios, nada é salvo neste computador';
+  background:var(--tinta-media);
+}
 /* Na impressão a faixa sai: é `position:fixed`, e elemento fixo se repete em
    toda página impressa e atravessa o layout da ficha. O aviso é de tela. */
 @media print{
@@ -1280,6 +1306,338 @@ function migrate(raw){
   });
   s.tarefas.forEach(function(t){ if(t) t.id = limparId(t.id); });
   return s;
+}
+
+/* ===================== Dados de demonstração =====================
+   So aparece fora de producao (!IS_PROD). Existe para as conversas de
+   apresentacao a tabeliaes: abrir o app em qualquer maquina — inclusive a do
+   proprio cartorio visitado — clicar uma vez e ter a tela cheia de protocolos
+   ficticios com as datas de hoje.
+
+   E gerador, e nao um arquivo de dados, por tres motivos:
+     - as datas sao calculadas na hora, entao a demonstracao nunca envelhece;
+     - nao ha arquivo para baixar na maquina de terceiro, gesto que ninguem
+       quer fazer no computador de um cliente (e que o connect-src 'none' dos
+       cabecalhos de seguranca impediria de buscar pela rede, de todo jeito);
+     - reaproveita addBusinessDays/isBusinessDay do proprio app, entao nao ha
+       um segundo calendario de feriados para divergir em silencio.
+
+   NENHUM dado real. Nomes, telefones, documentos, valores e empresas sao
+   inventados — este repositorio e publico. */
+
+var DEMO_RESPONSAVEIS = ['Marina Salles', 'Tiago Mendonça', 'Rafaela Bittencourt'];
+
+var DEMO_CHECKLIST_POR_TIPO = {
+  'Procuração para venda de imóvel': [
+    'Matrícula atualizada do imóvel',
+    'Certidão de ônus reais',
+    'IPTU do exercício'
+  ],
+  'Escritura de Compra e Venda': [
+    'Matrícula atualizada do imóvel',
+    'Certidão negativa de débitos municipais',
+    'Comprovante de pagamento do ITBI',
+    'Certidão de ônus reais'
+  ],
+  'Escritura de Inventário e Partilha': [
+    'Certidão de óbito',
+    'Certidão negativa de testamento (CENSEC)',
+    'Plano de partilha assinado pelos herdeiros',
+    'Certidão negativa de débitos federais'
+  ],
+  'Escritura de Divórcio Consensual': [
+    'Certidão de casamento atualizada',
+    'Acordo de partilha de bens'
+  ]
+};
+
+/* Ancora da demonstracao. Em sabado, domingo ou feriado tudo e montado para o
+   proximo dia util: cartorio nao abre no fim de semana, e sem isso o protocolo
+   que deveria "vencer hoje" venceria so na segunda — e os deslocamentos de 0 e
+   de 1 dia util cairiam na mesma data. */
+function demoHoje(){
+  var h = todayISO();
+  return isBusinessDay(h) ? h : addBusinessDays(h, 1);
+}
+function demoMenosDiasUteis(iso, n){
+  var d = parseISODate(iso);
+  while(n > 0){
+    d = addDays(d, -1);
+    if(isBusinessDay(toISO(d))) n--;
+  }
+  return toISO(d);
+}
+function demoDesloca(iso, n){
+  if(n > 0) return addBusinessDays(iso, n);
+  if(n < 0) return demoMenosDiasUteis(iso, -n);
+  return iso;
+}
+function demoDiasCorridos(iso, n){ return toISO(addDays(parseISODate(iso), n)); }
+function demoTs(iso, h, m){
+  var d = parseISODate(iso);
+  d.setHours(h, m, 0, 0);
+  return d.getTime();
+}
+
+/* Cada entrada exercita UMA regra da ferramenta. A coluna `mostra` nao vai para
+   o estado — esta ali para quem for editar a lista nao apagar sem querer o unico
+   protocolo que exercita alguma coisa. */
+function demoEspecificacoes(){
+  var TODOS_BASE = {};
+  DOCUMENTOS_BASE_CHECKLIST.forEach(function(d){ TODOS_BASE[d] = true; });
+  function baseMais(){
+    var m = {};
+    DOCUMENTOS_BASE_CHECKLIST.forEach(function(d){ m[d] = true; });
+    for(var i=0;i<arguments.length;i++) m[arguments[i]] = true;
+    return m;
+  }
+  return [
+    {n:1, mostra:'documentacao incompleta — o prazo ainda nem comecou a contar',
+     numero:'2026-0834', cliente:'Helena Vasconcelos Prado', tipos:['Procuração Ad Judicia'],
+     status:'aguardando_documentos', responsavel:'Marina Salles',
+     docsCompletos:false, protocoloHa:2, telefone:'(27) 99000-0001',
+     outorgados:'Dr. Anselmo Ribeiro Tavares',
+     marcados:{'Documento de identificação com CPF do(s) outorgante(s)':true},
+     observacoes:[['Faltou a qualificação do outorgado. Avisado no balcão.', 2, null]]},
+
+    {n:2, mostra:'fase que depende do usuario — o relogio corre, mas nao acusa atraso',
+     numero:'2026-0836', cliente:'Otávio Camargo Lins', tipos:['Escritura de Doação'],
+     status:'pendencia_documentos', responsavel:'Tiago Mendonça',
+     diasPrazo:-3, protocoloHa:12, canais:['whatsapp','balcao'],
+     telefone:'(27) 99000-0002', email:'otavio.lins@exemplo.com.br',
+     observacoes:[['Aguardando o doador trazer a certidão de casamento atualizada.', 4, 'pendencia']],
+     pendencias:[['Cobrar certidão de casamento', 1, 'Tiago Mendonça', 'pendente']]},
+
+    {n:3, mostra:'vence HOJE',
+     numero:'2026-0841', cliente:'Beatriz Nogueira Sampaio', tipos:['Procuração Ad Negotia'],
+     status:'em_confeccao', responsavel:'Marina Salles',
+     diasPrazo:0, protocoloHa:9, telefone:'(27) 99000-0003',
+     outorgados:'Clarice Nogueira Sampaio', marcados:TODOS_BASE},
+
+    {n:4, mostra:'ATRASADO — o unico vermelho legitimo da tela + pendencia VENCIDA',
+     numero:'2026-0843', cliente:'Transportadora Vale Norte Ltda.',
+     tipos:['Procuração bancária/financeira'], status:'em_confeccao',
+     responsavel:'Rafaela Bittencourt', tipoPessoa:'pj',
+     diasPrazo:-2, protocoloHa:11, canais:['email'],
+     email:'administrativo@valenorte.exemplo.com.br', documento:'00.000.000/0001-00',
+     outorgados:'Sérgio Amorim Peçanha', marcados:TODOS_BASE,
+     observacoes:[['Procuração precisa sair hoje — cliente cobrou por e-mail.', 1, 'urgente']],
+     pendencias:[['Confirmar os poderes com o setor jurídico da empresa', -2, 'Rafaela Bittencourt', 'pendente']]},
+
+    {n:5, mostra:'no prazo, com checklist longo pela metade e agenda de pendencias',
+     numero:'2026-0845', cliente:'Joana Ferraz Coutinho',
+     tipos:['Escritura de Inventário e Partilha'], status:'em_analise',
+     responsavel:'Tiago Mendonça', diasPrazo:2, protocoloHa:8,
+     telefone:'(27) 99000-0005', valor:480000,
+     marcados:{'Documento de identificação com CPF do(s) outorgante(s)':true,
+               'Qualificação do(s) outorgante(s)':true,
+               'Certidão de óbito':true,
+               'Certidão negativa de testamento (CENSEC)':true},
+     pendencias:[['Pedir certidão negativa de débitos federais', 2, 'Tiago Mendonça', 'pendente'],
+                 ['Conferir plano de partilha com os herdeiros', -1, 'Rafaela Bittencourt', 'concluida']]},
+
+    {n:6, mostra:'minuta com o usuario para conferencia',
+     numero:'2026-0847', cliente:'Ricardo Malheiros Fontes',
+     tipos:['Escritura de União Estável'], status:'em_conferencia_usuario',
+     responsavel:'Rafaela Bittencourt', diasPrazo:3, protocoloHa:7,
+     telefone:'(27) 99000-0006', outorgados:'Letícia Andrade Bueno',
+     marcados:TODOS_BASE,
+     pendencias:[['Enviar minuta por e-mail para conferência do casal', 1, 'Rafaela Bittencourt', 'pendente']]},
+
+    {n:7, mostra:'certidao de onus A VENCER (aviso de 5 dias) + depende do usuario',
+     numero:'2026-0849', cliente:'Eduarda Pimentel Rocha',
+     tipos:['Procuração para venda de imóvel'], status:'aguardando_assinatura',
+     responsavel:'Marina Salles', diasPrazo:-1, protocoloHa:10,
+     telefone:'(27) 99000-0007', outorgados:'Imobiliária Serra Azul Ltda.',
+     onusDias:3,
+     marcados:baseMais('Matrícula atualizada do imóvel', 'Certidão de ônus reais'),
+     observacoes:[['Cliente vem assinar na sexta pela manhã.', 2, null]]},
+
+    {n:8, mostra:'certidao de onus VENCIDA + pendencia de HOJE',
+     numero:'2026-0852', cliente:'Gustavo Freire Antunes',
+     tipos:['Procuração para venda de imóvel'], status:'em_confeccao',
+     responsavel:'Rafaela Bittencourt', diasPrazo:4, protocoloHa:5,
+     telefone:'(27) 99000-0008', onusDias:-6,
+     outorgados:'Marcos Vinícius Delgado', marcados:TODOS_BASE,
+     pendencias:[['Pedir certidão de ônus atualizada no Registro de Imóveis', 0, 'Rafaela Bittencourt', 'pendente']]},
+
+    {n:9, mostra:'exige onus e a data de emissao ainda nao foi informada',
+     numero:'2026-0853', cliente:'Construtora Pedra Branca S/A',
+     tipos:['Procuração para venda de imóvel'], status:'aguardando_documentos',
+     responsavel:'Marina Salles', tipoPessoa:'pj', docsCompletos:false, protocoloHa:3,
+     onusSemData:true, canais:['email','balcao'], documento:'00.000.000/0001-91',
+     email:'juridico@pedrabranca.exemplo.com.br'},
+
+    {n:10, mostra:'par vinculado + certidao de onus EM DIA (o quarto estado, sem alarme)',
+     numero:'2026-0855', cliente:'Sônia Rezende Vilela',
+     tipos:['Escritura de Compra e Venda'], status:'em_analise',
+     responsavel:'Tiago Mendonça', diasPrazo:1, protocoloHa:9,
+     telefone:'(27) 99000-0010', grupo:'gdemovenda01', valor:315000, onusDias:18,
+     marcados:baseMais('Matrícula atualizada do imóvel', 'Comprovante de pagamento do ITBI'),
+     pendencias:[['Conferir o valor do ITBI recolhido', 3, 'Tiago Mendonça', 'pendente']]},
+
+    {n:11, mostra:'a outra metade do vinculo, ja finalizada e digitalizada',
+     numero:'2026-0856', cliente:'Sônia Rezende Vilela', tipos:['Procuração Ad Negotia'],
+     status:'finalizado', responsavel:'Tiago Mendonça', diasPrazo:-4, protocoloHa:16,
+     telefone:'(27) 99000-0010', grupo:'gdemovenda01', digitalizado:true,
+     outorgados:'Sônia Rezende Vilela', marcados:TODOS_BASE},
+
+    {n:12, mostra:'FINALIZADO mas sem digitalizar — ainda nao pode arquivar',
+     numero:'2026-0858', cliente:'Padaria Dois Irmãos Ltda. ME',
+     tipos:['Escritura Declaratória'], status:'finalizado',
+     responsavel:'Rafaela Bittencourt', tipoPessoa:'pj', diasPrazo:-2, protocoloHa:13,
+     documento:'00.000.000/0001-72',
+     observacoes:[['Falta escanear o rascunho assinado antes de arquivar.', 1, null]]},
+
+    {n:13, mostra:'fase final que nao exige digitalizacao',
+     numero:'2026-0860', cliente:'Ana Lúcia Barcelos Pinto',
+     tipos:['Escritura de Divórcio Consensual'], status:'desistiu',
+     responsavel:'Marina Salles', diasPrazo:-6, protocoloHa:20,
+     telefone:'(27) 99000-0013',
+     observacoes:[['Casal desistiu — vão tentar acordo pela via judicial.', 5, null]]},
+
+    {n:14, mostra:'no prazo, folgado — o caso comum, que precisa aparecer tambem',
+     numero:'2026-0862', cliente:'Henrique Salgado Moreira', tipos:['Procuração Ad Judicia'],
+     status:'em_confeccao', responsavel:'Marina Salles', diasPrazo:4, protocoloHa:4,
+     telefone:'(27) 99000-0014', outorgados:'Dra. Priscila Tavares Rangel',
+     marcados:TODOS_BASE},
+
+    {n:15, mostra:'lixeira: excluir nunca apaga, so move para ca',
+     numero:'2026-0829', cliente:'Lançamento duplicado — conferir',
+     tipos:['Procuração Ad Judicia'], status:'aguardando_documentos',
+     responsavel:'Rafaela Bittencourt', docsCompletos:false, protocoloHa:15,
+     naLixeira:true, excluidoHa:4}
+  ];
+}
+
+function demoProtocolo(spec, hoje){
+  var docsCompletos = spec.docsCompletos !== false;
+  var dProtocolo = demoDiasCorridos(hoje, -(spec.protocoloHa == null ? 6 : spec.protocoloHa));
+  var dReceb = (docsCompletos && spec.diasPrazo != null)
+    ? demoMenosDiasUteis(demoDesloca(hoje, spec.diasPrazo), PRAZO_DIAS_UTEIS)
+    : null;
+
+  var historico = [{status:'aguardando_documentos', ts:demoTs(dProtocolo, 9, 15)}];
+  if(spec.status !== 'aguardando_documentos'){
+    historico.push({status:spec.status, ts:demoTs(dReceb || demoDiasCorridos(dProtocolo, 1), 14, 5)});
+  }
+
+  var observacoes = (spec.observacoes || []).map(function(o){
+    return {texto:o[0], ts:demoTs(demoDiasCorridos(hoje, -o[1]), 11, 20), etiqueta:o[2], editadoEm:null};
+  });
+
+  var pendencias = (spec.pendencias || []).map(function(pd, i){
+    var criada = demoDiasCorridos(hoje, -3);
+    var item = {
+      id: 'pdemo' + spec.n + '-pend' + (i+1),
+      descricao: pd[0],
+      dataPrevista: demoDesloca(hoje, pd[1]),
+      responsavel: pd[2],
+      situacao: pd[3],
+      notaConclusao: null,
+      historico: [{situacao:'pendente', ts:demoTs(criada, 9, 40), nota:null}],
+      createdAt: demoTs(criada, 9, 40)
+    };
+    if(pd[3] === 'concluida'){
+      item.notaConclusao = 'Recebido pelo balcão e conferido.';
+      item.historico.push({situacao:'concluida', ts:demoTs(demoDiasCorridos(hoje,-1), 16, 10), nota:item.notaConclusao});
+    }
+    return item;
+  });
+
+  return {
+    id: 'pdemo' + (spec.n < 10 ? '0' : '') + spec.n,
+    numeroProtocolo: spec.numero,
+    cliente: spec.cliente,
+    clienteTelefone: spec.telefone || '',
+    clienteEmail: spec.email || '',
+    clienteDocumento: spec.documento || '',
+    outorgados: spec.outorgados || '',
+    responsavel: spec.responsavel,
+    tipoPessoa: spec.tipoPessoa || 'pf',
+    canais: spec.canais || ['balcao'],
+    dataProtocolo: dProtocolo,
+    docsCompletos: docsCompletos,
+    dataRecebimentoCompleto: dReceb,
+    dataOnus: (spec.onusSemData || spec.onusDias == null) ? '' : demoDiasCorridos(hoje, spec.onusDias - ONUS_VALIDADE_DIAS),
+    valorAto: spec.valor == null ? null : spec.valor,
+    status: spec.status,
+    tipos: spec.tipos,
+    observacoesHistorico: observacoes,
+    historico: historico,
+    rascunhoDigitalizado: !!spec.digitalizado,
+    dataDigitalizacao: spec.digitalizado ? demoDiasCorridos(hoje, -2) : null,
+    grupoVinculoId: spec.grupo || null,
+    documentosMarcados: spec.marcados || {},
+    documentosExtras: [],
+    pendencias: pendencias,
+    naLixeira: !!spec.naLixeira,
+    dataExclusao: spec.excluidoHa ? demoDiasCorridos(hoje, -spec.excluidoHa) : null,
+    createdAt: demoTs(dProtocolo, 9, 15)
+  };
+}
+
+function demoTarefas(hoje){
+  return [
+    {id:'tdemo01', tipo:'checklist',
+     descricao:'Procuração de Beatriz Nogueira Sampaio',
+     data:hoje, status:'pendente', createdAt:demoTs(demoDiasCorridos(hoje,-1), 15, 0),
+     concluidoEm:null, protocoloRelacionadoId:'pdemo03',
+     numeroLivro:'412', folha:'087',
+     etapas:[
+       {key:'verificar_sistema', label:'Verificar no sistema', feita:true, ts:demoTs(demoDiasCorridos(hoje,-1), 15, 30)},
+       {key:'levar_tabeliao', label:'Levar ao tabelião para anotação no sistema', feita:false, ts:null},
+       {key:'anotar_livro', label:'Anotar no livro', feita:false, ts:null, subetapas:[
+         {key:'assinatura', label:'Levado para assinatura do tabelião', feita:false, ts:null},
+         {key:'guardado', label:'Devolvido assinado e guardado', feita:false, ts:null}
+       ]}
+     ]},
+    {id:'tdemo02', tipo:'substabelecimento', origemAto:'outro_cartorio',
+     descricao:'Substabelecimento recebido de outra serventia',
+     data:demoDesloca(hoje, 1), status:'pendente', createdAt:demoTs(hoje, 9, 0),
+     concluidoEm:null, protocoloRelacionadoId:null, numeroLivro:'', folha:'',
+     etapas:defaultTarefaEtapas('substabelecimento', 'outro_cartorio')},
+    {id:'tdemo03', tipo:'livre',
+     descricao:'Conferir a numeração do livro 412 antes do fechamento do mês',
+     data:demoDesloca(hoje, 2), status:'pendente', createdAt:demoTs(hoje, 9, 5),
+     concluidoEm:null, protocoloRelacionadoId:null}
+  ];
+}
+
+/* Doze dias uteis para tras, para o grafico de balcao ter forma. Numeros
+   plausiveis para uma serventia de porte medio, com dois lancamentos por dia
+   (manha e tarde), que e como acontece de verdade. */
+function demoAtosBalcao(hoje){
+  var padrao = [14, 9, 11, 17, 8, 12, 15, 10, 13, 7, 16, 11];
+  var porDia = {}, lancamentos = {};
+  padrao.forEach(function(qtd, i){
+    var d = demoMenosDiasUteis(hoje, i);
+    var manha = Math.floor(qtd / 2);
+    porDia[d] = qtd;
+    lancamentos[d] = [{qtd:manha, ts:demoTs(d, 11, 45)},
+                      {qtd:qtd - manha, ts:demoTs(d, 17, 20)}];
+  });
+  return {porDia:porDia, lancamentos:lancamentos};
+}
+
+/* Monta o state completo da demonstracao. statusList fica de FORA de proposito:
+   sem a chave, migrate() semeia a lista padrao de fases. Fixa-la aqui congelaria
+   a demonstracao numa versao antiga assim que alguem editasse
+   DEFAULT_STATUS_LIST. Mesma logica para os campos que migrate() ja preenche. */
+function demoState(){
+  var hoje = demoHoje();
+  var balcao = demoAtosBalcao(hoje);
+  var base = defaultState();
+  base.protocolos = demoEspecificacoes().map(function(spec){ return demoProtocolo(spec, hoje); });
+  base.tarefas = demoTarefas(hoje);
+  base.responsaveis = DEMO_RESPONSAVEIS.slice();
+  base.ultimoResponsavel = DEMO_RESPONSAVEIS[0];
+  base.checklistPorTipo = DEMO_CHECKLIST_POR_TIPO;
+  base.exigeOnusPorTipo = {'Procuração para venda de imóvel':true, 'Escritura de Compra e Venda':true};
+  base.atosBalcao = balcao.porDia;
+  base.atosBalcaoLancamentos = balcao.lancamentos;
+  delete base.statusList;
+  return base;
 }
 
 /* ===================== Persistência ===================== */
@@ -3136,6 +3494,24 @@ App.importBackupFile = function(inputEl){
   reader.readAsText(file);
 };
 
+/* Carrega a demonstracao. A trava e IS_PROD, a mesma que governa a faixa
+   vermelha e a chave de armazenamento — em app.ritonotas.com.br esta funcao
+   recusa mesmo se alguem a chamar pelo console. Os dois botoes que a acionam
+   tambem so sao renderizados fora de producao; esta checagem e a segunda
+   linha, nao a unica. */
+App.carregarDemonstracao = function(){
+  if(IS_PROD){
+    window.alert('Os dados de demonstração não estão disponíveis no ambiente de produção.');
+    return;
+  }
+  var temDados = state.protocolos.length > 0;
+  if(temDados && !window.confirm('Isso vai SUBSTITUIR todos os protocolos e configurações atuais pelos dados fictícios de demonstração. Deseja continuar?')) return;
+  state = migrate(demoState());
+  holidayCache = {};
+  saveState();
+  App.render();
+};
+
 App.dispensarFsBanner = function(){
   fsBannerDispensado = true;
   App.render();
@@ -4201,8 +4577,17 @@ function renderListArea(){
      durante o atendimento. Kanban/Arquivados/Lixeira ficam sem elas (fora de escopo). */
   var stripHtml = (ui.viewMode==='lista') ? renderFaixasSecundarias() : '';
   if(state.protocolos.length===0){
+    /* Fora de producao, o estado vazio e exatamente a tela que se abre na
+       frente de um tabeliao numa conversa de apresentacao. O atalho da
+       demonstracao mora aqui por isso. Em producao nao e renderizado. */
+    var demoHtml = IS_PROD ? '' :
+      '<div style="margin-top:14px;">'+
+        '<button type="button" class="btn-ghost outlined" onclick="App.carregarDemonstracao()">Carregar dados de demonstração</button>'+
+        '<div class="hint" style="margin-top:6px;">15 protocolos fictícios, com as datas de hoje. Só existe fora do ambiente de produção.</div>'+
+      '</div>';
     return stripHtml+'<div class="empty-state">'+
       '<div class="big">Nenhum protocolo registrado ainda</div>Clique em "+ Novo Protocolo" para começar o controle.'+
+      demoHtml+
     '</div>';
   }
   var list = getFilteredSorted();
@@ -4892,6 +5277,16 @@ function renderSettingsModal(){
         '</div>'+
         '<div class="hint" style="margin-top:8px;">Restaurar um backup substitui todos os protocolos e configurações atuais — use com cuidado.</div>'+
       '</div>'+
+
+      (IS_PROD ? '' :
+      '<div class="settings-section">'+
+        '<h3>Demonstração</h3>'+
+        '<div class="hint">Preenche a ferramenta com 15 protocolos fictícios, com as datas de hoje, para apresentá-la a alguém. Esta seção só aparece fora do ambiente de produção.</div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">'+
+          '<button type="button" class="btn-ghost outlined" onclick="App.carregarDemonstracao()">Carregar dados de demonstração</button>'+
+        '</div>'+
+        '<div class="hint" style="margin-top:8px;">Substitui tudo o que estiver na tela. Sem pasta de dados conectada, nada disso é gravado no computador — fechou a aba, acabou.</div>'+
+      '</div>')+
 
       '<div class="settings-section">'+
         '<h3>Armazenamento em pasta local (salva automático + backup)</h3>'+
