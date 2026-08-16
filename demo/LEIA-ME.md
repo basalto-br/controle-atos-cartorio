@@ -30,7 +30,11 @@ A faixa vermelha aparece na demonstração. Se atrapalhar, o servidor local
 (`.claude/serve.ps1`, porta 8123) tem o mesmo comportamento e roda sem internet —
 o que também protege contra o wi-fi do cartório visitado.
 
-**3. Importe `demo/dados-demo.json`** em Configurações → Backup → Importar.
+**3. Importe `demo/dados-demo.json`.**
+
+Não existe botão de "modo demonstração" — os dados entram pelo caminho normal de
+restauração de backup: **⚙ Configurações → Backup → "Restaurar de um backup"**, e
+escolha o arquivo no seletor.
 
 > **A importação substitui tudo.** É inofensivo no armazenamento de teste, que
 > existe para isso. **Nunca faça isso em `app.ritonotas.com.br`** — lá apagaria
