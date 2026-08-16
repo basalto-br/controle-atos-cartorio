@@ -225,8 +225,8 @@ na `main`.** Sem CI — testar manualmente antes de cada commit.
   faixa vermelha, `[TESTE]` no título, e chave de armazenamento e arquivo de dados
   separados. Testar fora da produção nunca toca no dado real.
 - **`HOST_PRODUCAO` vale `app.ritonotas.com.br`.** Só nesse endereço o app se trata
-  como produção. Qualquer outro — `localhost`, `*.pages.dev`, o GitHub Pages — entra em
-  modo de teste, com armazenamento separado.
+  como produção. Qualquer outro — `localhost`, `*.pages.dev` — entra em modo de teste,
+  com armazenamento separado.
 
   **Trocar essa constante troca a chave dos dados**, e é por isso que ela foi acertada
   antes de existir protocolo real:
@@ -246,9 +246,8 @@ na `main`.** Sem CI — testar manualmente antes de cada commit.
 `controle-atos-cartorio` publica a `main` em `app.ritonotas.com.br`, sem comando de
 build e servindo a raiz.
 
-**O GitHub Pages continua ligado** em
-`https://basalto-br.github.io/controle-atos-cartorio/`, servindo a mesma `main`. São
-duas cópias públicas do app, e **só a da Cloudflare é produção** — a do GitHub abre em
-modo de teste, com armazenamento separado. Isso é uma forma fácil de alguém lançar
-protocolo no lugar errado: desligar o Pages em Settings → Pages é a pendência que fecha
-a migração.
+**O GitHub Pages foi desligado**, e com isso a migração está fechada. Enquanto esteve
+ligado, `https://basalto-br.github.io/controle-atos-cartorio/` servia a mesma `main`:
+duas cópias públicas do app, das quais só a da Cloudflare era produção. Era uma forma
+fácil de alguém lançar protocolo no lugar errado. Hoje esse endereço responde 404, e
+existe uma cópia pública só.
