@@ -28,9 +28,27 @@
    variáveis, para o domínio não ficar escrito em dois lugares e divergir. */
 var HOST_PRODUCAO = 'app.ritonotas.com.br';
 var IS_PROD = (location.hostname === HOST_PRODUCAO);
+
+/* Endereço usado para apresentar a ferramenta a quem ainda não a conhece.
+   IS_DEMO é PURAMENTE COSMÉTICO: muda o texto da faixa e o prefixo do título,
+   nada mais. Não toca em IS_PROD nem em nenhuma chave de armazenamento — o
+   host de demonstração é um ambiente de teste como qualquer outro, e grava em
+   cartorio-data-TESTE igual ao localhost.
+
+   Existe porque "AMBIENTE DE TESTE" soa como produto inacabado para um
+   tabelião que está vendo a ferramenta pela primeira vez, e o que a faixa
+   precisa dizer ali é outra coisa: que os dados são fictícios e que nada fica
+   na máquina dele. */
+var HOST_DEMO = 'demo.ritonotas.com.br';
+var IS_DEMO = (!IS_PROD && location.hostname === HOST_DEMO);
+
 if(!IS_PROD){
+  /* .ambiente-teste sempre entra: é ela que carrega o layout da faixa (altura,
+     posição, o padding compensatório no body). .ambiente-demo só troca o texto
+     e a cor por cima. */
   document.documentElement.classList.add('ambiente-teste');
-  document.title = '[TESTE] ' + document.title;
+  if(IS_DEMO) document.documentElement.classList.add('ambiente-demo');
+  document.title = (IS_DEMO ? '[DEMONSTRAÇÃO] ' : '[TESTE] ') + document.title;
 }
 </script>
 <style>
@@ -808,6 +826,14 @@ html.ambiente-teste body::before{
   display:flex; align-items:center; justify-content:center;
   font-family:var(--font-body); font-size:13px; letter-spacing:.02em;
   z-index:99999; pointer-events:none;
+}
+/* Faixa do endereço de demonstração. Só troca texto e cor — toda a geometria
+   vem da regra .ambiente-teste acima, que continua valendo junto. O vermelho de
+   alarme dá lugar à tinta sóbria: ali a faixa não avisa de risco, informa que a
+   tela é uma amostra. */
+html.ambiente-demo body::before{
+  content:'DEMONSTRAÇÃO — dados fictícios, nada é salvo neste computador';
+  background:var(--tinta-media);
 }
 /* Na impressão a faixa sai: é `position:fixed`, e elemento fixo se repete em
    toda página impressa e atravessa o layout da ficha. O aviso é de tela. */
