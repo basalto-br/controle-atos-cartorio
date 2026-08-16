@@ -1,4 +1,4 @@
-# Livro de Protocolos — Controle de Atos
+# Controle de Atos — controle de protocolos para cartório de notas
 
 Ferramenta de controle de protocolos de atos notariais (procurações públicas e
 escrituras) pra cartório de notas. Acompanha prazo, status de andamento, vínculos
