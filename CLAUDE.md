@@ -1,4 +1,4 @@
-# Livro de Protocolos — Controle de Atos (Cartório de Notas)
+# Controle de Atos — Protocolos (Cartório de Notas)
 
 Ferramenta de controle de protocolos de atos notariais (procurações públicas e
 escrituras) para um tabelião/escrevente. Cada protocolo tem prazo, status de
@@ -159,6 +159,16 @@ nunca editada pelo usuário), é idempotente, e cai pra "acrescenta no fim" se a
 - Nomenclatura em português (funções, variáveis, comentários).
 - Nomes internos (`p.cliente`, `App.showClienteHistory`) ficam "cliente" por
   herança histórica; todo texto **visível na UI** usa "usuário".
+- **"Livro" não descreve a ferramenta.** Em serventia é termo de arte com peso legal
+  (Livro de Notas, Livro Protocolo) e usá-lo para o produto cria ambiguidade sobre
+  escopo — a ferramenta acompanha andamento, não é livro de nada. O `<h1>` já foi
+  "Livro de Protocolos" e virou "Controle de Protocolos"; os `<title>` viraram
+  "Controle de Atos — Protocolos".
+  **Mas "livro" continua certo quando é o livro de verdade:** a tarefa "Anotar no
+  livro", a chave `anotar_livro`, o campo `numeroLivro` / "Nº do livro" e os textos
+  sobre averbação e aditamento nos livros descrevem o Livro de Notas real. Não troque
+  esses — é exatamente o termo que a regra existe para preservar.
+  A mesma regra vale na landing (`site-ritonotas/CLAUDE.md`, "O que não fazer").
 - Visual: tokens CSS em `:root` (`--painel`, `--ficha`, `--apoio`, etc.) e famílias
   de classe por tela (`.cp*` ficha, `.kb-*` kanban, `.fm-*` formulário, `.vp-*`
   vínculo, `.ab-*` atos de balcão, `.lx-*` lixeira). Usar os tokens existentes em
