@@ -30,6 +30,28 @@ ferramenta é hoje, e continua valendo.**
   invisível na interface enquanto houver só um.
 - Regra de visibilidade: vê tudo do cartório, edita só o do próprio setor.
 
+
+### Ausência de rede: propriedade de hoje, não dogma
+
+Hoje o app não faz nenhuma requisição depois de carregar, e o `_headers` impõe isso pelo
+navegador com `connect-src 'none'`. Isso **foi** o argumento central do produto.
+
+**Deixou de ser restrição de projeto em 18/08/2026**, por decisão do dono: a ferramenta
+está sendo posicionada como produto completo, e a versão em nuvem exige rede por
+definição. Duas consequências práticas:
+
+- **Não relaxe `connect-src 'none'` por antecipação.** Enquanto não houver nada para
+  chamar, ele custa zero e continua verdadeiro. Troque no mesmo PR que ligar a primeira
+  chamada de rede — nunca antes, e nunca "para deixar pronto".
+- **A promessa comercial está datada, e isso é proposital.** A landing diz "na versão
+  atual, nada é enviado para nenhum servidor" e já anuncia a nuvem. O roteiro de
+  conversas diz o mesmo. Não há retratação a fazer; há um título de seção a revisitar
+  quando a nuvem existir.
+
+O que a nuvem traz de obrigação — contrato, isolamento por serventia, trilha de
+auditoria, incidente em 24 h para a Corregedoria — está em
+`PRONTIDAO-seguranca-nuvem-cartorio.md`, na raiz do espaço de trabalho.
+
 ### Restrições que valem desde já
 
 - Continuar em arquivo único. Não dividir em módulos.
@@ -57,7 +79,8 @@ ferramenta é hoje, e continua valendo.**
   `controle-atos-cartorio` em `basalto-br/controle-atos-cartorio` → `app.ritonotas.com.br`.
   Sem comando de build, servindo a raiz. Sem CI/CD.
 - Fontes embutidas em base64 no `<style>` — app não faz nenhuma requisição de rede
-  depois de carregar (requisito de privacidade/LGPD; dados nunca saem do PC do usuário).
+  depois de carregar. **Isso é propriedade da versão atual, não regra permanente** — ver
+  "Ausência de rede" em Rumo do produto antes de tratar como intocável.
 
 ## Estrutura do projeto
 
