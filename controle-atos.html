@@ -1997,11 +1997,57 @@ function computePrazo(p){
      so deixa de culpar. Sem isso sumiria a informacao de ha quantos dias o usuario
      esta com o ato na mao. */
   var diasAtraso = vencido ? businessDaysBetween(deadline, today) : 0;
+  /* Só calcula a espera quando existe atraso para explicar. Fora disso a atribuição
+     não tem uso e varrer o histórico a cada render sairia caro à toa. */
+  var diasComUsuario = vencido ? diasEsperandoUsuario(p) : 0;
   return {deadline:deadline, elapsedCapped:elapsedCapped,
           isOverdue: vencido && !comUsuario,
           isDueToday: venceHoje && !comUsuario,
           comUsuario: comUsuario,
-          diasAtraso: diasAtraso};
+          diasAtraso: diasAtraso,
+          diasComUsuario: diasComUsuario};
+}
+
+/* Dias úteis que o ato passou em fases com dependeDoUsuario. Existe para responder
+   "de quem foi a demora": quando o ato volta de uma fase do usuário já vencido, o
+   comUsuario some e ele fica vermelho como se a culpa fosse do cartório. Sem isso a
+   informação de que houve espera se perde no instante em que ela deixa de valer.
+
+   Conta a partir da documentação completa, nunca antes: espera anterior a essa data é
+   anterior ao relógio do prazo, e somá-la inflaria a atribuição — "Pendência de
+   documentos" costuma acontecer justamente antes de a documentação ficar completa.
+
+   Lê p.historico, que é imutável e guarda a KEY da fase. Fase que o usuário apagou de
+   Configurações não está no mapa e não conta — some como false, sem palpite, igual ao
+   fallback de getStatusOf. */
+function diasEsperandoUsuario(p){
+  if(!p.dataRecebimentoCompleto) return 0;
+  var hist = p.historico || [];
+  if(!hist.length) return 0;
+  var mapa = getStatusMap();
+  var inicio = p.dataRecebimentoCompleto;
+  var hoje = todayISO();
+  var total = 0;
+  for(var i=0;i<hist.length;i++){
+    var st = mapa[hist[i].status];
+    if(!st || !st.dependeDoUsuario) continue;
+    var de = toISO(new Date(hist[i].ts));
+    var ate = (i+1<hist.length) ? toISO(new Date(hist[i+1].ts)) : hoje;
+    if(de < inicio) de = inicio;
+    if(ate > hoje) ate = hoje;
+    total += businessDaysBetween(de, ate);
+  }
+  return total;
+}
+
+/* Sufixo único de atribuição do atraso, para os cinco lugares que desenham o prazo não
+   divergirem no texto. Devolve '' quando não houve espera — aí o atraso é do cartório
+   mesmo e não há o que ressalvar. */
+function esperaUsuarioTxt(info, curto){
+  var n = info && info.diasComUsuario;
+  if(!n) return '';
+  return curto ? (' · '+n+'d de espera')
+               : (', sendo '+n+' de espera com o usuário');
 }
 
 /* Certidao de onus do imovel. A exigencia vem do TIPO do ato (mapa editavel em
@@ -3120,7 +3166,7 @@ function buildFichaPrintHTML(p){
   if(!p.docsCompletos || !p.dataRecebimentoCompleto) prazoTxt = 'Documentação incompleta';
   else if(!info) prazoTxt = 'Documentação completa em '+formatBR(p.dataRecebimentoCompleto);
   else if(info.comUsuario) prazoTxt = 'Com o usuário'+(info.diasAtraso>0 ? ' há '+info.diasAtraso+' dia(s) útil(eis) além do prazo' : '')+' — prazo '+formatBR(info.deadline);
-  else if(info.isOverdue) prazoTxt = 'Atrasado há '+info.diasAtraso+' dia(s) útil(eis) — prazo era '+formatBR(info.deadline);
+  else if(info.isOverdue) prazoTxt = 'Atrasado há '+info.diasAtraso+' dia(s) útil(eis)'+esperaUsuarioTxt(info,false)+' — prazo era '+formatBR(info.deadline);
   else if(info.isDueToday) prazoTxt = 'Vence hoje ('+formatBR(info.deadline)+')';
   else prazoTxt = 'Faltam '+(PRAZO_DIAS_UTEIS-info.elapsedCapped)+' dia(s) útil(eis) — prazo '+formatBR(info.deadline);
   /* O rotulo da linha e cabecalho, nao dado: com th scope=row o leitor de
@@ -4294,7 +4340,7 @@ function renderColunaPrazo(p){
   var txtCls = info.comUsuario ? 'com-usuario' : (info.isOverdue ? 'late' : (info.isDueToday ? 'warn' : 'ok'));
   /* Com o usuario: mostra ha quantos dias uteis passou do prazo, sem chamar de atraso. */
   var txt = info.comUsuario ? ('com o usuário'+(info.diasAtraso>0 ? ' · '+info.diasAtraso+'d' : ''))
-          : (info.isOverdue ? (info.diasAtraso+'d em atraso') : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d restantes'));
+          : (info.isOverdue ? (info.diasAtraso+'d em atraso'+esperaUsuarioTxt(info,true)) : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d restantes'));
   var idx=-1; state.statusList.forEach(function(s,i){ if(s.key===p.status) idx=i; });
   var avancar = (idx>=0 && idx<state.statusList.length-1) ? '<button class="btn-avancar" onclick="App.avancarFase(\''+p.id+'\')">Avançar fase →</button>' : '';
   return '<div class="cp-prazo '+cls+'">'+
@@ -4433,7 +4479,7 @@ function renderDiariosLadoALado(){
     if(info){
       var cor = info.comUsuario ? 'var(--blue)' : (info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)'));
       var txt = info.comUsuario ? ('com o usuário'+(info.diasAtraso>0 ? ' · '+info.diasAtraso+'d' : ''))
-              : (info.isOverdue ? (info.diasAtraso+'d atraso') : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d restantes'));
+              : (info.isOverdue ? (info.diasAtraso+'d atraso'+esperaUsuarioTxt(info,true)) : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d restantes'));
       prazoHtml = '<span class="diario-prazo" style="color:'+cor+';">'+esc(txt)+'</span>';
     }
     var obsRows = (p.observacoesHistorico||[]).slice().reverse().map(function(o){
@@ -4623,7 +4669,7 @@ function renderKanbanCard(p){
     var cor = info.comUsuario ? 'var(--blue)' : (info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)'));
     var txtCls = info.comUsuario ? 'com-usuario' : (info.isOverdue ? 'late' : (info.isDueToday ? 'warn' : 'ok'));
     var txt = info.comUsuario ? ('c/ usuário'+(info.diasAtraso>0 ? ' · '+info.diasAtraso+'d' : ''))
-            : (info.isOverdue ? (info.diasAtraso+'d atraso') : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d rest.'));
+            : (info.isOverdue ? (info.diasAtraso+'d atraso'+esperaUsuarioTxt(info,true)) : (info.isDueToday ? 'vence hoje' : (PRAZO_DIAS_UTEIS-info.elapsedCapped)+'d rest.'));
     var marks = '';
     for(var i=1;i<=PRAZO_DIAS_UTEIS;i++){ marks += '<div class="marca-mini"'+(i<=info.elapsedCapped?' style="background:'+cor+';"':'')+'></div>'; }
     prazoHtml = '<div class="kb-prazo"><div class="trilha-mini">'+marks+'</div><span class="kb-prazo-txt '+txtCls+'">'+esc(txt)+'</span></div>';
@@ -4795,7 +4841,7 @@ function renderPrazoLeituraHtml(original){
   }
   var cor = info.comUsuario ? 'var(--blue)' : (info.isOverdue ? 'var(--carimbo)' : (info.isDueToday ? 'var(--gold)' : 'var(--green)'));
   var vencTxt = info.comUsuario ? ('com o usuário'+(info.diasAtraso>0 ? ' há '+info.diasAtraso+'d' : ''))
-              : (info.isOverdue ? ('atrasado há '+info.diasAtraso+'d') : (info.isDueToday ? ('hoje, '+formatBR(info.deadline).slice(0,5)) : formatBR(info.deadline)));
+              : (info.isOverdue ? ('atrasado há '+info.diasAtraso+'d'+esperaUsuarioTxt(info,true)) : (info.isDueToday ? ('hoje, '+formatBR(info.deadline).slice(0,5)) : formatBR(info.deadline)));
   return ''+
   '<div class="fm-prazo-box">'+
     '<div class="fm-prazo-toggle-wrap">'+
