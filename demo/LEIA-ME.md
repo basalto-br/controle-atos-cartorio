@@ -49,7 +49,7 @@ nova. Como é um clique, não incomoda.
 
 ## O que cada protocolo mostra
 
-São 15, e cada um exercita uma regra diferente. Ao editar a lista, veja o que está
+São 16, e cada um exercita uma regra diferente. Ao editar a lista, veja o que está
 apagando — vários são o único caso que exercita o que exercitam. Cada entrada tem
 um campo `mostra`, no código, dizendo para que serve.
 
@@ -58,7 +58,7 @@ um campo `mostra`, no código, dizendo para que serve.
 | Helena Vasconcelos Prado | Documentação incompleta: o prazo ainda nem começou a contar |
 | Otávio Camargo Lins | Fase que depende do usuário — o relógio corre, mas não acusa atraso |
 | Beatriz Nogueira Sampaio | Vence hoje |
-| Transportadora Vale Norte | **Atrasado de verdade** — o único vermelho legítimo da tela |
+| Transportadora Vale Norte | **Atrasado de verdade**, com a demora do próprio cartório |
 | Joana Ferraz Coutinho | Checklist longo pela metade, com agenda de pendências |
 | Ricardo Malheiros Fontes | Minuta em conferência pelo usuário |
 | Eduarda Pimentel Rocha | Certidão de ônus a vencer, dentro do aviso de 5 dias |
@@ -68,6 +68,7 @@ um campo `mostra`, no código, dizendo para que serve.
 | Padaria Dois Irmãos | Finalizado mas **não digitalizado** — ainda não pode arquivar |
 | Ana Lúcia Barcelos Pinto | Fase final que não exige digitalização |
 | Henrique Salgado Moreira | No prazo, folgado. O caso comum precisa aparecer também |
+| Cláudia Bethânia Aragão | Atrasada, mas a demora foi do usuário — o rótulo do prazo atribui a espera |
 | "Lançamento duplicado" | Lixeira: excluir nunca apaga, só move |
 
 Fora dos protocolos: três responsáveis, três tarefas no painel (uma com checklist
