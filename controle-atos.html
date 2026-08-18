@@ -1008,7 +1008,7 @@ var backupRunning = false;
 var ui = {
   search:'', statusFilter:'all', canalFilter:'all', pessoaFilter:'all',
   onlyOverdue:false, onlyDueToday:false, onlyPendingDocs:false,
-  onlyComUsuario:false, onlyOnus:false,
+  onlyComUsuario:false, onlyOnus:false, onlyDatasCriticas:false,
   sortBy:'prazo', viewMode:'lista', agruparPessoa:false, filtrosAbertos:false,
   agendaFiltroAberto:null, datasFiltroAberto:null
 };
@@ -2018,6 +2018,17 @@ function buildDatasCriticasUnificadas(p){
 
    Arquivado fica de fora junto com a lixeira: ato arquivado nao tem proxima acao, e
    uma certidao vencida nele nao pede nada de ninguem. */
+
+/* Usado pela regua e pelo filtro rapido: considera as datas manuais E a de onus, que
+   e' o que faz sentido numa contagem de "o que pede atencao agora".
+
+   Nao confundir com datasCriticasEmAlerta(), que fica so nas manuais — aquela serve o
+   rotulo da secao da ficha, onde o onus ja tem bloco proprio logo acima e apareceria
+   contado duas vezes. */
+function temDataCriticaEmAlerta(p){
+  return buildDatasCriticasUnificadas(p).some(function(dc){ return dc.vencida || dc.avisar; });
+}
+
 function computeDatasCriticasBuckets(){
   var hoje = todayISO();
   var limite7 = addBusinessDays(hoje, 7);
@@ -2339,13 +2350,13 @@ App.setPessoaFilter = function(v){ ui.pessoaFilter=v; App.render(); };
    tempo e a lista some sem explicacao. */
 function limparFiltrosRapidos(){
   ui.onlyOverdue=false; ui.onlyDueToday=false; ui.onlyPendingDocs=false;
-  ui.onlyComUsuario=false; ui.onlyOnus=false;
+  ui.onlyComUsuario=false; ui.onlyOnus=false; ui.onlyDatasCriticas=false;
 }
 App.toggleOverdue = function(){ var v=!ui.onlyOverdue; limparFiltrosRapidos(); ui.onlyOverdue=v; App.render(); };
 App.toggleQuick = function(kind){
   ui.viewMode='lista';
   var flags={docs:'onlyPendingDocs', today:'onlyDueToday', overdue:'onlyOverdue',
-             comusuario:'onlyComUsuario', onus:'onlyOnus'};
+             comusuario:'onlyComUsuario', onus:'onlyOnus', datas:'onlyDatasCriticas'};
   var flag=flags[kind];
   var was=ui[flag];
   limparFiltrosRapidos();
@@ -2528,6 +2539,7 @@ function matchesFilters(p){
     var onus = computeOnus(p);
     if(!onus || !(onus.vencida || onus.avisar || onus.faltaData)) return false;
   }
+  if(ui.onlyDatasCriticas && !temDataCriticaEmAlerta(p)) return false;
   if(ui.onlyPendingDocs && p.docsCompletos) return false;
   if(ui.search){
     var q = ui.search.toLowerCase();
@@ -4019,7 +4031,7 @@ function renderHeader(){
 function renderStats(){
   var all = state.protocolos.filter(function(p){ return !p.naLixeira; });
   var ativos = all.filter(function(p){ return !isArquivado(p); });
-  var overdue=0, dueToday=0, comUsuario=0, onusAlerta=0;
+  var overdue=0, dueToday=0, comUsuario=0, onusAlerta=0, datasAlerta=0;
   ativos.forEach(function(p){
     var info = computePrazo(p);
     /* comUsuario e excludente dos outros dois: computePrazo ja zera isOverdue e
@@ -4027,10 +4039,11 @@ function renderStats(){
     if(info){ if(info.isOverdue) overdue++; else if(info.isDueToday) dueToday++; else if(info.comUsuario) comUsuario++; }
     var onus = computeOnus(p);
     if(onus && (onus.vencida || onus.avisar || onus.faltaData)) onusAlerta++;
+    if(temDataCriticaEmAlerta(p)) datasAlerta++;
   });
   var arquivados = all.filter(isArquivado).length;
   var isLista = ui.viewMode==='lista';
-  var noQuick = !ui.onlyOverdue && !ui.onlyDueToday && !ui.onlyPendingDocs && !ui.onlyComUsuario && !ui.onlyOnus;
+  var noQuick = !ui.onlyOverdue && !ui.onlyDueToday && !ui.onlyPendingDocs && !ui.onlyComUsuario && !ui.onlyOnus && !ui.onlyDatasCriticas;
   function item(num, lbl, o){
     o = o || {};
     var cls = 'regua-item'+(o.warn?' warn':'')+(o.late?' late':'')+(o.on?' on':'');
@@ -4042,6 +4055,7 @@ function renderStats(){
     item(overdue,'atrasados',{late:overdue>0, onclick:"App.toggleQuick('overdue')", on:isLista&&ui.onlyOverdue, title:'Filtrar os atrasados'})+
     item(comUsuario,'com o usuário',{onclick:"App.toggleQuick('comusuario')", on:isLista&&ui.onlyComUsuario, title:'Aguardando o usuário — o prazo corre, mas a espera não é sua'})+
     item(onusAlerta,'ônus',{warn:onusAlerta>0, onclick:"App.toggleQuick('onus')", on:isLista&&ui.onlyOnus, title:'Certidão de ônus vencida, a vencer ou sem data preenchida'})+
+    item(datasAlerta,'datas críticas',{warn:datasAlerta>0, onclick:"App.toggleQuick('datas')", on:isLista&&ui.onlyDatasCriticas, title:'Protocolos com data crítica vencida ou a vencer nos próximos '+DATA_CRITICA_AVISO_DIAS+' dias — inclui a certidão de ônus'})+
     item(arquivados,'arquivados',{onclick:"App.setViewMode('arquivados')", on:ui.viewMode==='arquivados', title:'Ver arquivados'})+
   '</div>';
 }
