@@ -1008,9 +1008,9 @@ var backupRunning = false;
 var ui = {
   search:'', statusFilter:'all', canalFilter:'all', pessoaFilter:'all',
   onlyOverdue:false, onlyDueToday:false, onlyPendingDocs:false,
-  onlyComUsuario:false, onlyOnus:false,
+  onlyComUsuario:false, onlyOnus:false, onlyDatasCriticas:false,
   sortBy:'prazo', viewMode:'lista', agruparPessoa:false, filtrosAbertos:false,
-  agendaFiltroAberto:null
+  agendaFiltroAberto:null, datasFiltroAberto:null
 };
 var draftModal = null;
 var draftModalSnapshot = null;
@@ -1985,6 +1985,68 @@ function computeAgendaBuckets(){
   return {vencidas:vencidas, hoje:hojeList, semana:semana, semProximo:semProximo};
 }
 
+/* Espelho de LEITURA das datas criticas de um protocolo: junta as manuais
+   (p.datasCriticas) com a certidao de onus, que continua guardada em p.dataOnus com
+   regra propria de 30 dias corridos. Nada aqui e' gravado — mesma disciplina de
+   buildTimelineUnificada. Guardar o onus como data critica generica obrigaria a
+   redigitar o vencimento em cada procuracao de venda, e criaria duas fontes para o
+   mesmo dado.
+
+   O campo `origem` existe para a tela poder dizer de onde a data veio: sem ele, uma
+   linha de onus pareceria digitada a mao e o usuario tentaria remove-la. */
+function buildDatasCriticasUnificadas(p){
+  var out = (p.datasCriticas||[]).map(function(dc){
+    var c = computeDataCritica(dc);
+    return {id:dc.id, nome:dc.nome, data:dc.data, obs:dc.obs||'', origem:'manual',
+            diasRestantes:c.diasRestantes, vencida:c.vencida, avisar:c.avisar};
+  });
+  var o = computeOnus(p);
+  /* faltaData de proposito fora: sem data de emissao nao ha vencimento a exibir numa
+     agenda por data. Esse caso ja tem tratamento proprio na regua e na ficha. */
+  if(o && !o.faltaData){
+    out.push({id:'onus:'+p.id, nome:'Validade da certidão de ônus', data:o.vencimento,
+              obs:'', origem:'onus',
+              diasRestantes:o.diasRestantes, vencida:o.vencida, avisar:o.avisar});
+  }
+  out.sort(function(a,b){ return a.data<b.data ? -1 : (a.data>b.data ? 1 : 0); });
+  return out;
+}
+
+/* Baldes das datas criticas de TODOS os protocolos, para a faixa. Janela de 7 dias
+   uteis, igual a da agenda de pendencias (addBusinessDays), para as duas faixas
+   quererem dizer a mesma coisa por "proximos 7 dias".
+
+   Arquivado fica de fora junto com a lixeira: ato arquivado nao tem proxima acao, e
+   uma certidao vencida nele nao pede nada de ninguem. */
+
+/* Usado pela regua e pelo filtro rapido: considera as datas manuais E a de onus, que
+   e' o que faz sentido numa contagem de "o que pede atencao agora".
+
+   Nao confundir com datasCriticasEmAlerta(), que fica so nas manuais — aquela serve o
+   rotulo da secao da ficha, onde o onus ja tem bloco proprio logo acima e apareceria
+   contado duas vezes. */
+function temDataCriticaEmAlerta(p){
+  return buildDatasCriticasUnificadas(p).some(function(dc){ return dc.vencida || dc.avisar; });
+}
+
+function computeDatasCriticasBuckets(){
+  var hoje = todayISO();
+  var limite7 = addBusinessDays(hoje, 7);
+  var vencidas=[], hojeList=[], semana=[];
+  state.protocolos.forEach(function(p){
+    if(p.naLixeira || isArquivado(p)) return;
+    buildDatasCriticasUnificadas(p).forEach(function(dc){
+      var item = {p:p, dc:dc};
+      if(dc.data < hoje) vencidas.push(item);
+      else if(dc.data === hoje) hojeList.push(item);
+      else if(dc.data <= limite7) semana.push(item);
+    });
+  });
+  function porData(a,b){ return a.dc.data<b.dc.data ? -1 : (a.dc.data>b.dc.data ? 1 : 0); }
+  vencidas.sort(porData); hojeList.sort(porData); semana.sort(porData);
+  return {vencidas:vencidas, hoje:hojeList, semana:semana};
+}
+
 function computePrazo(p){
   if(!p.dataRecebimentoCompleto) return null;
   var st = getStatusOf(p);
@@ -2288,13 +2350,13 @@ App.setPessoaFilter = function(v){ ui.pessoaFilter=v; App.render(); };
    tempo e a lista some sem explicacao. */
 function limparFiltrosRapidos(){
   ui.onlyOverdue=false; ui.onlyDueToday=false; ui.onlyPendingDocs=false;
-  ui.onlyComUsuario=false; ui.onlyOnus=false;
+  ui.onlyComUsuario=false; ui.onlyOnus=false; ui.onlyDatasCriticas=false;
 }
 App.toggleOverdue = function(){ var v=!ui.onlyOverdue; limparFiltrosRapidos(); ui.onlyOverdue=v; App.render(); };
 App.toggleQuick = function(kind){
   ui.viewMode='lista';
   var flags={docs:'onlyPendingDocs', today:'onlyDueToday', overdue:'onlyOverdue',
-             comusuario:'onlyComUsuario', onus:'onlyOnus'};
+             comusuario:'onlyComUsuario', onus:'onlyOnus', datas:'onlyDatasCriticas'};
   var flag=flags[kind];
   var was=ui[flag];
   limparFiltrosRapidos();
@@ -2477,6 +2539,7 @@ function matchesFilters(p){
     var onus = computeOnus(p);
     if(!onus || !(onus.vencida || onus.avisar || onus.faltaData)) return false;
   }
+  if(ui.onlyDatasCriticas && !temDataCriticaEmAlerta(p)) return false;
   if(ui.onlyPendingDocs && p.docsCompletos) return false;
   if(ui.search){
     var q = ui.search.toLowerCase();
@@ -3186,6 +3249,15 @@ App.reabrirPendencia = function(protocoloId, pendId){
 };
 App.toggleAgendaFiltro = function(key){
   ui.agendaFiltroAberto = (ui.agendaFiltroAberto===key) ? null : key;
+  if(ui.agendaFiltroAberto) ui.datasFiltroAberto = null;
+  App.render();
+};
+
+/* Os dois paineis da faixa sao exclusivos: abrir um fecha o outro. Empilhados eles
+   empurrariam a lista inteira para fora da tela. */
+App.toggleDatasFiltro = function(key){
+  ui.datasFiltroAberto = (ui.datasFiltroAberto===key) ? null : key;
+  if(ui.datasFiltroAberto) ui.agendaFiltroAberto = null;
   App.render();
 };
 
@@ -3959,7 +4031,7 @@ function renderHeader(){
 function renderStats(){
   var all = state.protocolos.filter(function(p){ return !p.naLixeira; });
   var ativos = all.filter(function(p){ return !isArquivado(p); });
-  var overdue=0, dueToday=0, comUsuario=0, onusAlerta=0;
+  var overdue=0, dueToday=0, comUsuario=0, onusAlerta=0, datasAlerta=0;
   ativos.forEach(function(p){
     var info = computePrazo(p);
     /* comUsuario e excludente dos outros dois: computePrazo ja zera isOverdue e
@@ -3967,10 +4039,11 @@ function renderStats(){
     if(info){ if(info.isOverdue) overdue++; else if(info.isDueToday) dueToday++; else if(info.comUsuario) comUsuario++; }
     var onus = computeOnus(p);
     if(onus && (onus.vencida || onus.avisar || onus.faltaData)) onusAlerta++;
+    if(temDataCriticaEmAlerta(p)) datasAlerta++;
   });
   var arquivados = all.filter(isArquivado).length;
   var isLista = ui.viewMode==='lista';
-  var noQuick = !ui.onlyOverdue && !ui.onlyDueToday && !ui.onlyPendingDocs && !ui.onlyComUsuario && !ui.onlyOnus;
+  var noQuick = !ui.onlyOverdue && !ui.onlyDueToday && !ui.onlyPendingDocs && !ui.onlyComUsuario && !ui.onlyOnus && !ui.onlyDatasCriticas;
   function item(num, lbl, o){
     o = o || {};
     var cls = 'regua-item'+(o.warn?' warn':'')+(o.late?' late':'')+(o.on?' on':'');
@@ -3982,6 +4055,7 @@ function renderStats(){
     item(overdue,'atrasados',{late:overdue>0, onclick:"App.toggleQuick('overdue')", on:isLista&&ui.onlyOverdue, title:'Filtrar os atrasados'})+
     item(comUsuario,'com o usuário',{onclick:"App.toggleQuick('comusuario')", on:isLista&&ui.onlyComUsuario, title:'Aguardando o usuário — o prazo corre, mas a espera não é sua'})+
     item(onusAlerta,'ônus',{warn:onusAlerta>0, onclick:"App.toggleQuick('onus')", on:isLista&&ui.onlyOnus, title:'Certidão de ônus vencida, a vencer ou sem data preenchida'})+
+    item(datasAlerta,'datas críticas',{warn:datasAlerta>0, onclick:"App.toggleQuick('datas')", on:isLista&&ui.onlyDatasCriticas, title:'Protocolos com data crítica vencida ou a vencer nos próximos '+DATA_CRITICA_AVISO_DIAS+' dias — inclui a certidão de ônus'})+
     item(arquivados,'arquivados',{onclick:"App.setViewMode('arquivados')", on:ui.viewMode==='arquivados', title:'Ver arquivados'})+
   '</div>';
 }
@@ -5971,6 +6045,47 @@ function renderAgendaPainel(tipo, buckets){
   }).join('');
 }
 
+/* Faixa das datas criticas — irma da faixa da agenda, mesma anatomia de chips e
+   painel. Responde "o que vence antes do prazo do ato e pode inviabiliza-lo?", que a
+   regua do topo nao responde: la o assunto e o prazo do ato. */
+function renderDatasCriticasStrip(){
+  var buckets = computeDatasCriticasBuckets();
+  var aberto = ui.datasFiltroAberto;
+  function chip(key, label, qtd, corDestaque){
+    var ativo = aberto===key;
+    var corStyle = (corDestaque && qtd>0 && !ativo) ? ('color:'+corDestaque+';') : '';
+    return '<button type="button" class="agenda-chip'+(ativo?' active':'')+'" style="'+corStyle+'" onclick="App.toggleDatasFiltro(\''+key+'\')"><span class="agenda-chip-num">'+qtd+'</span> '+esc(label)+'</button>';
+  }
+  var chipsHtml = ''+
+    chip('vencidas','datas vencidas',buckets.vencidas.length,'var(--carimbo,#8C2A20)')+
+    chip('hoje','vencem hoje',buckets.hoje.length,'var(--gold,#A26A1C)')+
+    chip('semana','próx. 7 dias',buckets.semana.length,null);
+  return {
+    chips: '<div class="faixa-agenda"><span class="fm-label" style="margin-bottom:0;">datas críticas</span>'+chipsHtml+'</div>',
+    painel: aberto ? ('<div class="agenda-strip-painel no-print">'+renderDatasCriticasPainel(aberto, buckets)+'</div>') : ''
+  };
+}
+function renderDatasCriticasPainel(tipo, buckets){
+  var itens = buckets[tipo] || [];
+  if(!itens.length) return '<div class="hint">Nenhuma data crítica nesta faixa.</div>';
+  return itens.map(function(it){
+    var p = it.p, dc = it.dc;
+    var situ = dc.vencida
+      ? ('vencida há '+Math.abs(dc.diasRestantes)+'d')
+      : (dc.diasRestantes===0 ? 'vence hoje' : ('faltam '+dc.diasRestantes+'d'));
+    var cor = dc.vencida ? 'var(--carimbo)' : (dc.avisar ? 'var(--gold)' : 'var(--ink-soft,#888)');
+    /* A origem so aparece quando e' onus: linha sem marca e' data digitada a mao, e
+       marcar as duas viraria ruido numa lista que se le de relance. */
+    var marca = dc.origem==='onus' ? '<span class="agenda-row-meta">ônus</span>' : '';
+    return '<div class="agenda-row">'+
+      '<button type="button" class="kbd-btn agenda-row-nome" onclick="App.openEdit(\''+p.id+'\')">'+esc(p.cliente||'Sem identificação')+'</button>'+
+      '<span class="agenda-row-desc">'+esc(dc.nome)+'</span>'+
+      marca+
+      '<span class="agenda-row-meta" style="color:'+cor+';">'+esc(formatBR(dc.data))+' · '+esc(situ)+'</span>'+
+    '</div>';
+  }).join('');
+}
+
 /* ---- 6b: faixa rapida no topo da lista, sem abrir nada ---- */
 function renderAtosBalcaoStrip(){
   var totalHoje = state.atosBalcao[todayISO()] || 0;
@@ -5999,13 +6114,17 @@ function renderAtosBalcaoStrip(){
    flex-row, anexado por baixo da faixa inteira. */
 function renderFaixasSecundarias(){
   var agenda = renderAgendaStrip();
+  var datas = renderDatasCriticasStrip();
   return '<div class="faixas-wrap no-print">'+
     '<div class="faixas-strip">'+
       agenda.chips+
       '<div class="faixa-divisor"></div>'+
+      datas.chips+
+      '<div class="faixa-divisor"></div>'+
       renderAtosBalcaoStrip()+
     '</div>'+
     agenda.painel+
+    datas.painel+
   '</div>';
 }
 
