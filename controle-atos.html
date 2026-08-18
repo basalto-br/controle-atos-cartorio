@@ -1420,7 +1420,7 @@ function demoEspecificacoes(){
      diasPrazo:0, protocoloHa:9, telefone:'(27) 99000-0003',
      outorgados:'Clarice Nogueira Sampaio', marcados:TODOS_BASE},
 
-    {n:4, mostra:'ATRASADO — o unico vermelho legitimo da tela + pendencia VENCIDA',
+    {n:4, mostra:'ATRASADO por demora do proprio cartorio + pendencia VENCIDA',
      numero:'2026-0843', cliente:'Transportadora Vale Norte Ltda.',
      tipos:['Procuração bancária/financeira'], status:'em_confeccao',
      responsavel:'Rafaela Bittencourt', tipoPessoa:'pj',
@@ -1508,6 +1508,18 @@ function demoEspecificacoes(){
      telefone:'(27) 99000-0014', outorgados:'Dra. Priscila Tavares Rangel',
      marcados:TODOS_BASE},
 
+    {n:16, mostra:'ATRASADO mas a demora foi do usuario — atribuicao no rotulo do prazo',
+     numero:'2026-0866', cliente:'Cláudia Bethânia Aragão',
+     tipos:['Escritura de Doação'], status:'em_confeccao',
+     responsavel:'Tiago Mendonça', diasPrazo:-3, protocoloHa:16,
+     telefone:'(27) 99000-0016', outorgados:'Marcos Vinícius Peixoto',
+     marcados:TODOS_BASE,
+     /* O caminho: entrou em confeccao, ficou aguardando a assinatura do usuario por
+        varios dias uteis e voltou para o cartorio ja vencido. E' o unico protocolo da
+        demonstracao cujo historico tem mais de duas entradas. */
+     passagens:[['em_confeccao', 12], ['aguardando_assinatura', 10], ['em_confeccao', 3]],
+     observacoes:[['Usuário demorou a comparecer para assinar; retomamos hoje.', 1, null]]},
+
     {n:15, mostra:'lixeira: excluir nunca apaga, so move para ca',
      numero:'2026-0829', cliente:'Lançamento duplicado — conferir',
      tipos:['Procuração Ad Judicia'], status:'aguardando_documentos',
@@ -1524,7 +1536,24 @@ function demoProtocolo(spec, hoje){
     : null;
 
   var historico = [{status:'aguardando_documentos', ts:demoTs(dProtocolo, 9, 15)}];
-  if(spec.status !== 'aguardando_documentos'){
+  /* passagens: o caminho INTEIRO depois da fase inicial, uma entrada por transicao,
+     terminando na fase atual. Cada item e' [chaveDaFase, diasCorridosAtras].
+
+     Existe porque sem isso o gerador so produz historico de duas entradas, e nenhum
+     protocolo da demonstracao passa por uma fase do usuario e volta — que e'
+     exatamente o caso que a atribuicao do atraso a espera precisa mostrar.
+
+     Guarda de consistencia: se a ultima passagem nao for a fase atual do spec, a fase
+     atual e acrescentada. Historico fora de ordem quebraria diasEsperandoUsuario, que
+     le os intervalos aos pares. */
+  if(spec.passagens && spec.passagens.length){
+    spec.passagens.forEach(function(pg){
+      historico.push({status:pg[0], ts:demoTs(demoDiasCorridos(hoje, -pg[1]), 10, 30)});
+    });
+    if(historico[historico.length-1].status !== spec.status){
+      historico.push({status:spec.status, ts:demoTs(hoje, 10, 30)});
+    }
+  }else if(spec.status !== 'aguardando_documentos'){
     historico.push({status:spec.status, ts:demoTs(dReceb || demoDiasCorridos(dProtocolo, 1), 14, 5)});
   }
 
