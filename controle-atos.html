@@ -1043,6 +1043,7 @@ var obsEditDraftEtiqueta = {};
 var pendenciasAbertos = {};
 var pendenciaConcluindoId = null;
 var pendenciaNotaDraft = '';
+var datasCriticasAbertos = {};
 var ETIQUETAS_OBS = [
   {key:'ligou', label:'ligou', viva:'#2C3E5C', suave:'#E3E8F1'},
   {key:'enviou_doc', label:'enviou doc', viva:'#1F6F66', suave:'#DCEDEA'},
@@ -1136,6 +1137,10 @@ function mapaOnusPadrao(){
    antecedencia com que o aviso comeca. Diferente do PRAZO_DIAS_UTEIS do ato. */
 var ONUS_VALIDADE_DIAS = 30;
 var ONUS_AVISO_DIAS = 5;
+/* Datas críticas genéricas: o usuário informa a data de vencimento direto, então não
+   há validade a calcular — só a antecedência do aviso. Fixa em 5 por enquanto, igual
+   à do ônus; virar configurável só depois de uso real dizer se 5 serve. */
+var DATA_CRITICA_AVISO_DIAS = 5;
 
 /* Insere uma fase nova logo apos outra ja existente (por key, que nunca muda mesmo
    se o usuario renomear o label) - usado em migrate() pra acrescentar fases padrao
@@ -1249,6 +1254,7 @@ function migrate(raw){
     if(!p.documentosMarcados) p.documentosMarcados={};
     if(!p.documentosExtras) p.documentosExtras=[];
     if(!p.pendencias) p.pendencias=[];
+    if(!p.datasCriticas) p.datasCriticas=[];
     if(!p.tipos) p.tipos=[];
     if(!p.canais){ p.canais = p.canal ? [p.canal] : ['balcao']; }
     if(!p.observacoesHistorico){
@@ -2067,6 +2073,29 @@ function computeOnus(p){
   return {faltaData:false, vencimento:vencimento, diasRestantes:dias,
           vencida: dias<0,
           avisar: dias>=0 && dias<=ONUS_AVISO_DIAS};
+}
+
+/* Datas críticas genéricas (p.datasCriticas). Existem para o que vence ANTES do prazo
+   do ato e pode inviabilizá-lo: validade de certidão que não seja a de ônus, prazo de
+   retorno do usuário, prazo interno. Uma data crítica não move o prazo — ela avisa.
+
+   Deliberadamente separada da certidão de ônus, que continua onde estava: o ônus é
+   derivado do TIPO do ato e tem regra própria (30 dias corridos da emissão), então
+   virar linha genérica obrigaria a redigitar o vencimento em cada procuração de venda.
+   As duas só se encontram na exibição, nunca no armazenamento — mesma disciplina de
+   buildTimelineUnificada. */
+function computeDataCritica(dc){
+  var dias = Math.round((parseISODate(dc.data) - parseISODate(todayISO()))/86400000);
+  return {diasRestantes: dias,
+          vencida: dias<0,
+          avisar: dias>=0 && dias<=DATA_CRITICA_AVISO_DIAS};
+}
+/* Datas críticas que merecem atenção hoje — vencidas ou dentro da antecedência. */
+function datasCriticasEmAlerta(p){
+  return (p.datasCriticas||[]).filter(function(dc){
+    var c = computeDataCritica(dc);
+    return c.vencida || c.avisar;
+  });
 }
 
 /* ===================== Helpers ===================== */
@@ -3050,6 +3079,44 @@ App.addPendencia = function(id){
   });
   saveState();
   App.pendenciaInlineOpen[id] = false;
+  App.render();
+};
+App.datasCriticasInlineOpen = {};
+App.toggleDatasCriticasView = function(id){
+  var opening = !datasCriticasAbertos[id];
+  datasCriticasAbertos[id] = opening;
+  if(opening) justOpenedKey='dc:'+id;
+  App.render();
+};
+App.showDataCriticaField = function(id){ App.datasCriticasInlineOpen[id]=true; justOpenedKey='dcadd:'+id; App.render(); };
+App.cancelarDataCriticaInline = function(id){
+  App.datasCriticasInlineOpen[id] = false;
+  App.render();
+};
+App.addDataCritica = function(id){
+  var nomeEl = document.getElementById('dcNome_'+id);
+  var dataEl = document.getElementById('dcData_'+id);
+  var obsEl  = document.getElementById('dcObs_'+id);
+  var nome = nomeEl ? nomeEl.value.trim() : '';
+  var data = dataEl ? dataEl.value : '';
+  if(!nome || !data) return;
+  var nova = {id: uid(), nome: nome, data: data, obs: (obsEl ? obsEl.value.trim() : ''), ts: Date.now()};
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===id){ p.datasCriticas = p.datasCriticas || []; p.datasCriticas.push(nova); }
+    return p;
+  });
+  saveState();
+  App.datasCriticasInlineOpen[id] = false;
+  App.render();
+};
+/* Remoção direta, sem lixeira: data crítica é anotação de apoio, não protocolo. O
+   equivalente de "excluir de vez" aqui seria atrito sem ganho. */
+App.removerDataCritica = function(protocoloId, dcId){
+  state.protocolos = state.protocolos.map(function(p){
+    if(p.id===protocoloId) p.datasCriticas = (p.datasCriticas||[]).filter(function(dc){ return dc.id!==dcId; });
+    return p;
+  });
+  saveState();
   App.render();
 };
 App.iniciarConcluirPendencia = function(pendId){
@@ -4243,6 +4310,55 @@ function renderPendenciasFicha(p){
   return '<div style="margin-top:8px;">'+toggle+'<div class="hist-box'+(justOpenedKey==='pend:'+p.id?' anim-in':'')+'">'+rows+'<div style="margin-top:6px;">'+addUi+'</div></div></div>';
 }
 
+/* Datas criticas na ficha - widget colapsavel, irmao da agenda de pendencias. O rotulo
+   do toggle so mostra contagem quando ha alerta: data critica distante e informacao de
+   apoio e nao deve competir por atencao com prazo e pendencia. */
+function renderDatasCriticasFicha(p){
+  var lista = p.datasCriticas || [];
+  var alerta = datasCriticasEmAlerta(p);
+  var isOpen = datasCriticasAbertos[p.id];
+  var rotulo = alerta.length
+    ? 'Datas críticas ('+alerta.length+' em alerta)'
+    : (lista.length ? 'Datas críticas ('+lista.length+')' : 'Datas críticas');
+  var toggle = '<button class="hist-toggle" onclick="App.toggleDatasCriticasView(\''+p.id+'\')">'+(isOpen?'Ocultar datas críticas':rotulo)+'</button>';
+  if(!isOpen) return '<div style="margin-top:8px;">'+toggle+'</div>';
+  var rows = lista.slice().sort(function(a,b){
+    return a.data<b.data ? -1 : (a.data>b.data ? 1 : 0);
+  }).map(function(dc){
+    var c = computeDataCritica(dc);
+    var cor = c.vencida ? 'var(--carimbo)' : (c.avisar ? 'var(--gold)' : 'var(--ink-soft,#888)');
+    var situ = c.vencida
+      ? ('vencida há '+Math.abs(c.diasRestantes)+'d')
+      : (c.diasRestantes===0 ? 'vence hoje' : ('faltam '+c.diasRestantes+'d'));
+    return '<div class="hist-row" style="display:block;">'+
+      '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">'+
+        '<strong style="font-weight:600;">'+esc(dc.nome)+'</strong>'+
+        '<span style="color:var(--ink-soft,#888);font-size:11.5px;">'+esc(formatBR(dc.data))+'</span>'+
+        '<span style="color:'+cor+';font-size:11px;font-weight:600;">'+esc(situ)+'</span>'+
+      '</div>'+
+      (dc.obs ? '<div style="font-size:11.5px;color:var(--ink-soft,#888);margin-top:2px;">'+esc(dc.obs)+'</div>' : '')+
+      '<div style="margin-top:4px;"><button class="btn-ghost" onclick="App.removerDataCritica(\''+p.id+'\',\''+dc.id+'\')">Remover</button></div>'+
+    '</div>';
+  }).join('') || '<div class="hint">Nenhuma data crítica registrada ainda.</div>';
+  var addUi;
+  if(App.datasCriticasInlineOpen[p.id]){
+    addUi = '<div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;">'+
+      '<input type="text" id="dcNome_'+p.id+'" aria-label="Nome da data crítica" placeholder="O que vence (ex.: Validade da certidão de casamento)" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;font-family:var(--font-body);">'+
+      '<div style="display:flex;gap:6px;">'+
+        '<input type="date" id="dcData_'+p.id+'" aria-label="Data de vencimento" value="'+esc(todayISO())+'" style="padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;">'+
+        '<input type="text" id="dcObs_'+p.id+'" aria-label="Observação da data crítica" placeholder="Observação (opcional)" style="flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;font-family:var(--font-body);">'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;">'+
+        '<button class="btn-ghost outlined" onclick="App.addDataCritica(\''+p.id+'\')">Adicionar data crítica</button>'+
+        '<button class="btn-ghost" onclick="App.cancelarDataCriticaInline(\''+p.id+'\')">Cancelar</button>'+
+      '</div>'+
+    '</div>';
+  }else{
+    addUi = '<button class="btn-ghost" onclick="App.showDataCriticaField(\''+p.id+'\')">+ Adicionar data crítica</button>';
+  }
+  return '<div style="margin-top:8px;">'+toggle+'<div class="hist-box'+(justOpenedKey==='dc:'+p.id?' anim-in':'')+'">'+rows+'<div style="margin-top:6px;">'+addUi+'</div></div></div>';
+}
+
 function renderLixeiraItem(p){
   var st = getStatusOf(p);
   var dataExcStr = p.dataExclusao ? formatBR(toISO(new Date(p.dataExclusao))) : '';
@@ -4394,6 +4510,7 @@ function renderFicha(p, dentroDeGrupo){
       renderTimelineFicha(p)+
       renderDocumentosChecklist(p)+
       renderPendenciasFicha(p)+
+      renderDatasCriticasFicha(p)+
     '</div>'+
     renderColunaPrazo(p)+
   '</div>';
