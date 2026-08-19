@@ -3608,8 +3608,24 @@ App.exportCSV = function(){
   var list = getFilteredSorted();
   var statusMap = getStatusMap();
   var headers = ['Nº Protocolo','Data do Protocolo','Tipo de Pessoa','Usuário/Outorgante','Telefone','E-mail','Outorgado(s)','Canais','Responsável','Documentos Completos','Data Recebimento Completo','Data do Prazo','Status','Tipos de Ato','Vinculado a','Observações (histórico)'];
+  /* Uma funcao de UM parametro so, de proposito: e usada em headers.map(csvField) e em
+     .map(csvField), e map passa (item, index, array) — um segundo parametro receberia o
+     indice sem querer. Nao acrescente parametro aqui. */
   function csvField(v){
     v = (v==null?'':String(v));
+    /* Neutraliza injecao de formula. Excel, Google Sheets e LibreOffice tratam campo que
+       comeca com = + - @ (e TAB ou CR) como inicio de formula, e os campos exportados
+       incluem texto livre digitado pelo usuario: nome, outorgados, observacoes. O
+       apostrofo na frente e o padrao OWASP. Vem ANTES do escape de aspas, para que o
+       apostrofo fique dentro das aspas quando o campo tambem precisar delas.
+       MEDIDO no Excel (pt-BR, Office 16), e o resultado contraria o que se costuma dizer:
+       na IMPORTACAO de CSV o apostrofo e conteudo literal e APARECE na celula (.Text
+       devolve '=2+2, .PrefixCharacter vem vazio). O comportamento de marcador invisivel
+       so vale para texto digitado direto na celula. Ou seja: a formula deixa de ser
+       calculada — que e o objetivo — ao custo de um apostrofo visivel nos poucos campos
+       que comecam com esses caracteres. Trade-off aceito de proposito.
+       Item do parecer de privacidade. */
+    if(/^[=+\-@\t\r]/.test(v)) v = "'"+v;
     if(/["\,\n;]/.test(v)) v = '"'+v.replace(/"/g,'""')+'"';
     return v;
   }
