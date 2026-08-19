@@ -1296,7 +1296,7 @@ function migrate(raw){
   /* Higiene de identificadores — ultima linha de defesa antes de o state ser usado.
      Os ids sao interpolados direto em atributos onclick na renderizacao (77 pontos),
      entao caractere fora de [A-Za-z0-9_-] ali vira execucao de codigo. Como migrate()
-     e o funil unico de todo state que entra (backup, pasta conectada, window.storage),
+     e o funil unico de todo state que entra (backup, pasta conectada, storage do ambiente ou memoria),
      limpar aqui cobre os tres caminhos de uma vez.
      A limpeza e deterministica: a mesma entrada gera sempre a mesma saida, entao o
      vinculo entre protocolo e grupo continua batendo depois da limpeza. */
@@ -1676,19 +1676,27 @@ function demoState(){
 }
 
 /* ===================== Persistência ===================== */
+/* O objeto de storage vive NESTA closure, nunca em window.
+   Antes o fallback em memoria era publicado como window.storage: isso expunha leitura e
+   escrita dos protocolos a qualquer script da pagina, e deixava o app passar a usar um
+   objeto trocado por fora sem ninguem ter pedido. Item do parecer de privacidade.
+   O ambiente de artifact do Claude.ai fornece window.storage por conta propria e esse
+   caso CONTINUA suportado — mas a referencia e capturada uma unica vez, aqui, e nada
+   que mexa em window.storage depois do carregamento e observado. */
+var storageAPI = null;
 function ensureStorage(){
-  if(!window.storage){
-    storageAvailable=false;
-    window.storage = {
-      get:function(key){ return Promise.resolve(memoryFallback[key]!==undefined ? {key:key,value:memoryFallback[key],shared:false} : null); },
-      set:function(key,value){ memoryFallback[key]=value; return Promise.resolve({key:key,value:value,shared:false}); },
-      delete:function(key){ delete memoryFallback[key]; return Promise.resolve({key:key,deleted:true,shared:false}); },
-      list:function(){ return Promise.resolve({keys:Object.keys(memoryFallback)}); }
-    };
-  }
+  if(storageAPI) return;
+  if(window.storage){ storageAPI = window.storage; return; }
+  storageAvailable=false;
+  storageAPI = {
+    get:function(key){ return Promise.resolve(memoryFallback[key]!==undefined ? {key:key,value:memoryFallback[key],shared:false} : null); },
+    set:function(key,value){ memoryFallback[key]=value; return Promise.resolve({key:key,value:value,shared:false}); },
+    delete:function(key){ delete memoryFallback[key]; return Promise.resolve({key:key,deleted:true,shared:false}); },
+    list:function(){ return Promise.resolve({keys:Object.keys(memoryFallback)}); }
+  };
 }
 function loadState(){
-  return window.storage.get(STORAGE_KEY, false).then(function(res){
+  return storageAPI.get(STORAGE_KEY, false).then(function(res){
     if(res && res.value){
       try{ return migrate(JSON.parse(res.value)); }catch(e){ return migrate(defaultState()); }
     }
@@ -1699,7 +1707,7 @@ function saveState(){
   if(fileMode && dirHandle){
     return fsFlush();
   }
-  return window.storage.set(STORAGE_KEY, JSON.stringify(state), false).catch(function(e){
+  return storageAPI.set(STORAGE_KEY, JSON.stringify(state), false).catch(function(e){
     console.error('Falha ao salvar dados', e);
   });
 }
@@ -1709,7 +1717,7 @@ function saveState(){
    o arquivo de dados ao vivo (FS_DATA_FILE) e uma subpasta de backups (FS_BACKUP_DIR) com
    copias datadas geradas 2x/dia (FS_BACKUP_SLOTS), com "recuperacao na proxima abertura".
    Tudo fica so no computador — nada vai para a nuvem (se a pasta for local). Convive com o
-   backup manual e com o window.storage do artifact — nao substitui nenhum. So funciona em
+   backup manual e com o storage do artifact — nao substitui nenhum. So funciona em
    navegadores Chromium (Chrome/Edge), por isso ha deteccao e degradacao graciosa. */
 
 function idbOpen(){
